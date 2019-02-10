@@ -80,7 +80,7 @@ class ComposerStaticInitaf125a87073de8f3b61a9f7ec1886a14
     public static $prefixesPsr0 = array (
         'S' => 
         array (
-            'SandraDG' => 
+            'SandraCore' => 
             array (
                 0 => __DIR__ . '/../..' . '/src',
             ),
@@ -640,11 +640,10 @@ class ComposerStaticInitaf125a87073de8f3b61a9f7ec1886a14
         'Prophecy\\Prophet' => __DIR__ . '/..' . '/phpspec/prophecy/src/Prophecy/Prophet.php',
         'Prophecy\\Util\\ExportUtil' => __DIR__ . '/..' . '/phpspec/prophecy/src/Prophecy/Util/ExportUtil.php',
         'Prophecy\\Util\\StringUtil' => __DIR__ . '/..' . '/phpspec/prophecy/src/Prophecy/Util/StringUtil.php',
-        'SandraDG\\DebugStack' => __DIR__ . '/../..' . '/src/sandraCore/DebugStack.php',
-        'SandraDG\\PdoConnexionWrapper' => __DIR__ . '/../..' . '/src/sandraCore/PdoConnexionWrapper.php',
-        'SandraDG\\SayHello' => __DIR__ . '/../..' . '/src/sandraCore/HelloWorld.php',
-        'SandraDG\\System' => __DIR__ . '/../..' . '/src/sandraCore/System.php',
-        'SandraDG\\SystemConcept' => __DIR__ . '/../..' . '/src/sandraCore/SystemConcept.php',
+        'SandraCore\\PdoConnexionWrapper' => __DIR__ . '/../..' . '/src/SandraCore/PdoConnexionWrapper.php',
+        'SandraCore\\SayHello' => __DIR__ . '/../..' . '/src/SandraCore/HelloWorld.php',
+        'SandraCore\\System' => __DIR__ . '/../..' . '/src/SandraCore/System.php',
+        'SandraCore\\SystemConcept' => __DIR__ . '/../..' . '/src/SandraCore/SystemConcept.php',
         'SebastianBergmann\\CodeCoverage\\CodeCoverage' => __DIR__ . '/..' . '/phpunit/php-code-coverage/src/CodeCoverage.php',
         'SebastianBergmann\\CodeCoverage\\CoveredCodeNotExecutedException' => __DIR__ . '/..' . '/phpunit/php-code-coverage/src/Exception/CoveredCodeNotExecutedException.php',
         'SebastianBergmann\\CodeCoverage\\Driver\\Driver' => __DIR__ . '/..' . '/phpunit/php-code-coverage/src/Driver/Driver.php',

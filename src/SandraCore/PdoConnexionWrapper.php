@@ -1,5 +1,5 @@
 <?php
-namespace SandraDG;
+namespace SandraCore;
 use PDO;
 
 class PdoConnexionWrapper

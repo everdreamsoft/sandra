@@ -6,5 +6,5 @@ $vendorDir = dirname(dirname(__FILE__));
 $baseDir = dirname($vendorDir);
 
 return array(
-    'SandraDG' => array($baseDir . '/src'),
+    'SandraCore' => array($baseDir . '/src'),
 );

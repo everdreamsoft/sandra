@@ -4,9 +4,10 @@
 	2016.11.08 Cache system has been removed to avoid collision between table switch
 */
 
-namespace SandraDG;
+namespace SandraCore;
 
 use PDOException ;
+use PDO;
 
 class SystemConcept
 {
@@ -15,7 +16,7 @@ class SystemConcept
 
     private $pdo;
 
-    private static $_conceptsByTable = array();
+    private  $_conceptsByTable = array();
 
     private static $_tableLoaded = 'default';
 
@@ -63,15 +64,16 @@ class SystemConcept
             $result = $this->pdo->query($sql);
         }
         catch(PDOException $exception){
-            print_r($exception);
-            die($exception->getMessage());
-            return $exception->getMessage();
+
+            System::sandraException($exception);
+            return ;
         }
 
 
         $concepts = array();
-        while($row = mysqli_fetch_object($result))
+        foreach($result->fetchAll(PDO::FETCH_OBJ) as $row)
         {
+
             $concepts[$row->shortname] = $row->id;
         }
         return $concepts;
@@ -90,7 +92,7 @@ class SystemConcept
         {
 
 
-            $key = array_search($concept_id, self::$_conceptsByTable[$table]);
+            $key = array_search($concept_id, $this->$_conceptsByTable[$table]);
 
             if($key) {
 
@@ -136,14 +138,23 @@ class SystemConcept
 
     private  function getFromDBWithCode($code, $table = null)
     {
-        global $tableLink, $tableReference, $tableConcept, $dbLink;
 
-        $sql = "SELECT * FROM $tableConcept WHERE `code` LIKE '" . $code . "'";
 
-        $result = mysqli_query ($dbLink,$sql); //action;;
+        $sql = "SELECT * FROM $this->conceptTable WHERE `code` LIKE '" . $code . "'";
 
-        if(mysqli_num_rows($result) > 0) {
-            return mysqli_fetch_object($result);
+        //$result = mysqli_query ($dbLink,$sql); //action;;
+
+        try {
+            $result = $this->pdo->query($sql);
+        }
+        catch(PDOException $exception){
+
+            System::sandraException($exception);
+            return ;
+        }
+
+        if($result->rowCount() > 0) {
+            return $result->fetchAll(PDO::FETCH_OBJ);
         }
 
         return null;
@@ -157,12 +168,18 @@ class SystemConcept
         //if an id is provided already
         if (is_numeric($shortname)) return $shortname ;
 
-        if(!isset(self::$_conceptsByTable[$table]))
-            $this->load($table);
+        if(!isset($this->_conceptsByTable[$table]))
+            try {
+                $this->load($table);
+            }catch(PDOException $exception) {
+                System::sandraException($exception);
 
-        if(!isset(self::$_conceptsByTable[$table][$shortname]))
+            }
+
+
+        if(!isset($this->_conceptsByTable[$table][$shortname]))
         {
-            $concept = self::getFromDB($shortname, $table);
+            $concept = $this->getFromDB($shortname, $table);
 
             if($concept != null)
             {
@@ -190,22 +207,31 @@ class SystemConcept
 
     private  function getFromDBWithId($concept_id, $table = null)
     {
-        global $tableLink,  $tableReference, $tableConcept, $dbLink;
+
 
         $table = $this->assignDefaultTable($table);
 
         if(!is_numeric($concept_id))
             throw new Exception("Bad request: concept_id must be numeric");
 
-        $sql = "SELECT id,shortname FROM $tableConcept WHERE id = $concept_id;";
+        $sql = "SELECT id,shortname FROM $this->conceptTable WHERE id = $concept_id;";
 
 
-        $result = mysqli_query ($dbLink,$sql); //action;;
 
 
-        if(mysqli_num_rows($result) > 0) {
+        try {
+            $result = $this->pdo->query($sql);
+        }
+        catch(PDOException $exception){
 
-            return mysqli_fetch_object($result);
+            System::sandraException($exception);
+            return ;
+        }
+
+
+        if($result->rowCount() > 0) {
+
+            return $result->fetchAll(PDO::FETCH_OBJ);
 
         }
 
@@ -215,22 +241,29 @@ class SystemConcept
 
     private  function getFromDBWithIdIncludingCode($concept_id, $table = null)
     {
-        global $tableLink,  $tableReference, $tableConcept, $dbLink;
+
 
         $table = $this->assignDefaultTable($table);
 
         if(!is_numeric($concept_id))
             throw new Exception("Bad request: concept_id must be numeric");
 
-        $sql = "SELECT id,code,shortname FROM $tableConcept WHERE id = $concept_id;";
+        $sql = "SELECT id,code,shortname FROM $this->conceptTable WHERE id = $concept_id;";
 
 
-        $result = mysqli_query ($dbLink,$sql); //action;;
+        try {
+            $result = $this->pdo->query($sql);
+        }
+        catch(PDOException $exception){
+
+            System::sandraException($exception);
+            return ;
+        }
 
 
-        if(mysqli_num_rows($result) > 0) {
+        if($result->rowCount() > 0) {
 
-            return mysqli_fetch_object($result);
+            return $result->fetchAll(PDO::FETCH_OBJ);
 
         }
 
@@ -241,44 +274,61 @@ class SystemConcept
     //Get one system concept from DB
     private  function getFromDB($shortname, $table = null)
     {
-        global $tableLink, $tableReference, $tableConcept, $dbLink;
+
 
         $table = $this->assignDefaultTable($table);
 
-        $shortname = mysqli_escape_string($dbLink,$shortname);
-
-        $sql = "SELECT id,shortname FROM $tableConcept WHERE shortname = '$shortname';";
 
 
-        $result = mysqli_query ($dbLink, $sql); //action;;
+        $sql = "SELECT id,shortname FROM $this->conceptTable WHERE shortname = '$shortname'";
 
-        if(mysqli_num_rows($result) > 0)
-            return mysqli_fetch_object($result);
+        try {
+            $result = $this->pdo->prepare($sql);
+            $result->execute();
+        }
+        catch(PDOException $exception){
+
+            System::sandraException($exception);
+            return ;
+        }
+
+
+
+        if($result->rowCount() > 0)
+            return $result->fetchAll(PDO::FETCH_OBJ);
 
         return null;
     }
 
     private  function create ($shortname, $table = null)
     {
-        global $tableLink,  $tableReference, $tableConcept, $dbLink;
+
 
         $table = $this->assignDefaultTable($table);
 
-        $code = mysqli_escape_string($dbLink, $shortname);
-        $shortname = mysqli_escape_string($dbLink, $shortname);
-
-        $sql = "INSERT INTO $tableConcept (id, code, shortname) VALUES (null, '$code', '$shortname');";
-        $resultat = mysqli_query ($dbLink, $sql); //action;;
 
 
+        $sql = "INSERT INTO $this->conceptTable (id, code, shortname) VALUES (null, 'system concept $shortname', '$shortname');";
 
-        return 	mysqli_insert_id($dbLink) ;
+        try {
+
+            $result = $this->pdo->prepare($sql);
+            $result->execute();
+        }
+        catch(PDOException $exception){
+
+            System::sandraException($exception);
+            return ;
+        }
+
+
+        return 	$this->pdo->lastInsertId() ;
     }
 
     //Find existings shortname in unidList and update database table
     public  function migrateShortname($table = null, $unid = null)
     {
-        global $tableLink,  $tableReference, $tableConcept, $unidList, $dbLink;
+
 
         $table = $this->assignDefaultTable($table);
 
@@ -286,7 +336,7 @@ class SystemConcept
 
         foreach($list as $shortname => $id)
         {
-            $sql = "UPDATE $tableConcept SET shortname = '$shortname' WHERE id = $id";
+            $sql = "UPDATE $this->conceptTable SET shortname = '$shortname' WHERE id = $id";
             mysqli_query ($dbLink, $sql);
 
         }
@@ -295,7 +345,7 @@ class SystemConcept
     //Load concepts from cache file
     public  function load($table = null)
     {
-        $table = self::assignDefaultTable($table);
+        $table = $this->assignDefaultTable($table);
 
         $this->_conceptsByTable[$table] = $this->listAll($table);
         /* Never write the cache
@@ -315,10 +365,10 @@ class SystemConcept
 
     private  function assignDefaultTable($table = null)
     {
-        global $tableConcept;
+
 
         if(is_null($table))
-            $table = $tableConcept;
+            $table = $this->conceptTable;
 
         return $table;
     }

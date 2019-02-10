@@ -9,8 +9,8 @@
 
 require_once __DIR__ . '/../vendor/autoload.php'; // Autoload files using Composer autoload
 
-use SandraDG\SayHello ;
-use SandraDG\System ;
+use SandraCore\SayHello ;
+use SandraCore\System ;
 
 
 
@@ -20,7 +20,8 @@ use SandraDG\System ;
 $config = new TomWright\PHPConfig\Config();
 $config->put('init', 'true');
 
-$sandra = new System();
+
+$sandra = new System(null);
 
 
 

@@ -1,5 +1,5 @@
 <?php
-namespace SandraDG;
+namespace SandraCore;
 class SayHello
 {
     public static function world()

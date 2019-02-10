@@ -6,7 +6,7 @@
  * Time: 15:14
  */
 
-namespace SandraDG;
+namespace SandraCore;
 use PDO;
 
 
@@ -25,41 +25,42 @@ class System
     private $testMode;
 
     // Assumptions
-    private $deletedUNID ; //Todo delete this
+    private $deletedUNID ;
 
     public $conceptTable;
     public $linkTable;
     public $tableReference;
     public $tableStorage;
+    public $tableConf ;
 
-    public  function __construct($env = ''){
+    public  function __construct($env = '',$install = false){
 
         self::$pdo = new PdoConnexionWrapper('localhost', 'sandra','root', '');
         $pdoWrapper = self::$pdo ;
 
-       $suffix = $env ;
+        $suffix = $env ;
+
+
 
         $this->conceptTable = 'SandraConcept' . $suffix;
         $this->linkTable = 'SandraTriplets' . $suffix;
         $this->tableReference = 'SandraReferences' . $suffix;
         $this->tableStorage = 'SandraDatastorage' . $suffix;
+        $this->tableConf = 'SandraConfig' . $suffix;
+
+        if ($install) $this->install();
 
         $debugStack = new DebugStack();
         $this->logger = $debugStack;
 
         $this->systemConcept = new SystemConcept($pdoWrapper, $this->logger, $this->conceptTable);
 
-        try{
-
-           $this->deletedUNID = $this->systemConcept->get('deleted');
-
-        }
-        catch (Exception $e){
-            die('hello me');
-            echo 'Exception reçue : ',  $e->getMessage(), "\n";
 
 
-        }
+        $this->deletedUNID = $this->systemConcept->get('deleted');
+        $this->deletedUNID = $this->systemConcept->get('is_a');
+        $this->deletedUNID = $this->systemConcept->get('contained_in_file');
+
 
 
 
@@ -71,9 +72,33 @@ class System
 
     }
 
-    public static function install(){
+    public function install(){
+
+        SandraDatabaseDefinition::createEnvTables($this->conceptTable,$this->linkTable,$this->tableReference,$this->tableStorage,$this->tableConf);
 
 
+
+
+
+
+    }
+
+    public static function sandraException(\Exception $exception){
+
+    //print_r($exception);
+    switch ($exception->getCode()){
+
+        case '42S02' :
+            echo"unavailable database";
+
+        break;
+
+
+    }
+
+    print_r($exception);
+
+    die();
 
 
 
