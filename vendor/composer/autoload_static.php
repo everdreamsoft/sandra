@@ -6,9 +6,20 @@ namespace Composer\Autoload;
 
 class ComposerStaticInitaf125a87073de8f3b61a9f7ec1886a14
 {
+    public static $prefixesPsr0 = array (
+        'S' => 
+        array (
+            'SandraDG' => 
+            array (
+                0 => __DIR__ . '/../..' . '/src',
+            ),
+        ),
+    );
+
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
+            $loader->prefixesPsr0 = ComposerStaticInitaf125a87073de8f3b61a9f7ec1886a14::$prefixesPsr0;
 
         }, null, ClassLoader::class);
     }
