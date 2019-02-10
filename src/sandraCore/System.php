@@ -25,7 +25,7 @@ class System
     private $testMode;
 
     // Assumptions
-    private $deletedUNID = 1107; //Todo delete this
+    private $deletedUNID ; //Todo delete this
 
     public $conceptTable;
     public $linkTable;
@@ -39,15 +39,31 @@ class System
 
        $suffix = $env ;
 
-        $this->conceptTable = 'ConceptSD' . $suffix;
-        $this->linkTable = 'TripletSD' . $suffix;
-        $this->tableReference = 'ReferencesSD' . $suffix;
-        $this->tableStorage = 'DataStorageSD' . $suffix;
+        $this->conceptTable = 'SandraConcept' . $suffix;
+        $this->linkTable = 'SandraTriplets' . $suffix;
+        $this->tableReference = 'SandraReferences' . $suffix;
+        $this->tableStorage = 'SandraDatastorage' . $suffix;
 
         $debugStack = new DebugStack();
         $this->logger = $debugStack;
 
         $this->systemConcept = new SystemConcept($pdoWrapper, $this->logger, $this->conceptTable);
+
+        try{
+
+           $this->deletedUNID = $this->systemConcept->get('deleted');
+
+        }
+        catch (Exception $e){
+            die('hello me');
+            echo 'Exception reçue : ',  $e->getMessage(), "\n";
+
+
+        }
+
+
+
+
 
         $debugStack->connectionInfo = array('Host' => $pdoWrapper->host, 'Database' => $pdoWrapper->database, 'Sandra environment' => $env);
         //$this->logger->info('[Sandra] Started sandra ' . $env . ' environment successfully.');
