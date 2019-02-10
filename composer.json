@@ -1,0 +1,8 @@
+{
+    "name": "everdreamsoft/sandra",
+    "description": "Sandra Ontologic Datagraph",
+    "type": "project",
+    "license": "MIT",
+    "minimum-stability": "dev",
+    "require": {}
+}
