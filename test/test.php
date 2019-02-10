@@ -11,4 +11,11 @@ require_once __DIR__ . '/../vendor/autoload.php'; // Autoload files using Compos
 
 use SandraDG\SayHello;
 
+
+
+$config = new TomWright\PHPConfig\Config();
+$config->put('init', 'true');
+
+
+
 echo SayHello::world();

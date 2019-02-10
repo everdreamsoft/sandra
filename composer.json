@@ -4,7 +4,9 @@
     "type": "project",
     "license": "MIT",
     "minimum-stability": "dev",
-    "require": {},
+    "require": {
+        "tomwright/php-config": "dev-master"
+    },
     "autoload": {
         "psr-0": {
             "SandraDG": "src/"
