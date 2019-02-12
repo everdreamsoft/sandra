@@ -33,7 +33,18 @@ class FactoryManager
 
     public function create($factoryName)  {
 
-    $myFactory = new EntityFactory('test','test',$this->sandraInstance);
+        $dogFactory = new EntityFactory('dog','dogFile1',$this->sandraInstance);
+        $dogData = array("name"=>'Felix',
+            "birthYear" => "2012",
+            "favoritfood" => "Chicken",
+            "favoritToy" => "ball"
+        );
+
+
+
+        $dogFactory->setSuperUser(1);
+
+        $dogFactory->createNewWithAutoIncrementIndex($dogData);
 
 
 

@@ -70,12 +70,17 @@ class SystemConcept
         }
 
 
+
+
         $concepts = array();
         foreach($result->fetchAll(PDO::FETCH_OBJ) as $row)
         {
 
             $concepts[$row->shortname] = $row->id;
         }
+
+
+
         return $concepts;
     }
 
@@ -92,7 +97,7 @@ class SystemConcept
         {
 
 
-            $key = array_search($concept_id, $this->$_conceptsByTable[$table]);
+            $key = array_search($concept_id, $this->_conceptsByTable[$table]);
 
             if($key) {
 
@@ -291,6 +296,8 @@ class SystemConcept
             System::sandraException($exception);
             return ;
         }
+
+
 
 
 

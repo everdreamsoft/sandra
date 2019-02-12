@@ -28,7 +28,7 @@ class System
     private $testMode;
 
     // Assumptions
-    private $deletedUNID ;
+    public  $deletedUNID ;
 
     public $conceptTable;
     public $linkTable;
@@ -58,6 +58,7 @@ class System
         $this->systemConcept = new SystemConcept($pdoWrapper, $this->logger, $this->conceptTable);
 
         $this->deletedUNID = $this->systemConcept->get('deleted');
+        //die("on system deleted ".$this->deletedUNID);
 
         $debugStack->connectionInfo = array('Host' => $pdoWrapper->host, 'Database' => $pdoWrapper->database, 'Sandra environment' => $env);
 

@@ -36,7 +36,7 @@ class EntityFactory
     public $entityIndexMap ;
     public $refMap ;
     public $maxIndex ;
-    public $foreignAdapter ; /* @var $foreignAdapter SandraForeignEntityAdapter */
+    public $foreignAdapter ; /* @var $foreignAdapter ForeignEntityAdapter */
 
     private $fuseForeignConcept ; /* @var $fuseForeignConcept ForeignConcept */
     private $fuseLocalConcept ; /* @var $fuseForeignConcept Concept */
@@ -90,8 +90,6 @@ class EntityFactory
     }
 
 
-
-
     public function mergeRefFromBrotherEntities($brotherVerb,  $brotherTarget){
 
         $this->brotherVerb = $this->sc->get($brotherVerb) ;
@@ -106,16 +104,16 @@ class EntityFactory
      */
     public function populateLocal($limit = 10000){
 
-        $this->conceptManager = new ConceptManager($this->su);
+        $this->conceptManager = new ConceptManager($this->su,$this->system);
 
         //do we filter by isa
         if ($this->entityIsa){
-            $filter = array(array('lklk' => getSC('is_a'), 'lktg' => $this->sc->get($this->entityIsa)));
+            $filter = array(array('lklk' => $this->sc->get('is_a'), 'lktg' => $this->sc->get($this->entityIsa)));
             $this->conceptManager->setFilter($filter);
 
         }
 
-        $entityReferenceContainer = getSC($this->entityReferenceContainer);
+        $entityReferenceContainer = $this->sc->get($this->entityReferenceContainer);
 
         //echoln("entity ref container ". $this->entityReferenceContainer);
 
@@ -195,8 +193,8 @@ class EntityFactory
 
             $classname = $this->generatedEntityClass ;
 
-            $entityVerb = ConceptFactory::getConceptFromShortnameOrId($entityReferenceContainer);
-            $entityTarget = ConceptFactory::getConceptFromShortnameOrId($this->entityContainedIn);
+            $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($entityReferenceContainer);
+            $entityTarget = $this->system->conceptFactory->getConceptFromShortnameOrId($this->entityContainedIn);
 
             $entity = new $classname($concept,$refArray,$this,$entityId,$entityVerb,$entityTarget,$this->system);
             $entityArray[$key] = $entity ;
@@ -248,7 +246,7 @@ class EntityFactory
     }
 
 
-    public function foreignPopulate(SandraForeignEntityAdapter $foreignAdapter = null){
+    public function foreignPopulate(ForeignEntityAdapter $foreignAdapter = null){
 
 
         if ($foreignAdapter == null){
@@ -315,8 +313,8 @@ class EntityFactory
 
         //$this->foreignAdapter->addToLocalVocabulary($foreignRef,$localRefName);
 
-        $localRefConcept = ConceptFactory::getConceptFromShortnameOrId($localRefName);
-        $foreignRefConcept = ConceptFactory::getForeignConceptFromId($foreignRef);
+        $localRefConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($localRefName);
+        $foreignRefConcept = $this->system->conceptFactory->getForeignConceptFromId($foreignRef);
         $this->fuseForeignConcept = $foreignRefConcept ;
         $this->fuseLocalConcept =  $localRefConcept ;
 
@@ -327,8 +325,8 @@ class EntityFactory
 
         //$this->foreignAdapter->addToLocalVocabulary($foreignRef,$localRefName);
 
-        $localRefConcept = ConceptFactory::getConceptFromShortnameOrId($localRefName);
-        $foreignRefConcept = ConceptFactory::getForeignConceptFromId($foreignRef);
+        $localRefConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($localRefName);
+        $foreignRefConcept = $this->system->conceptFactory->getForeignConceptFromId($foreignRef);
         $this->fuseForeignConcept = $foreignRefConcept ;
         $this->fuseLocalConcept =  $localRefConcept ;
 
@@ -454,7 +452,7 @@ class EntityFactory
 
         $this->verifyPopulated(true);
 
-        $referenceObject = ConceptFactory::getConceptFromId(getSC($refShortname));
+        $referenceObject = $this->system->conceptFactory->getConceptFromId(getSC($refShortname));
 
         $refmap = $this->getRefMap($referenceObject);
 
@@ -630,7 +628,7 @@ class EntityFactory
         if ($this->populated){
 
 
-            $referenceConcept = ConceptFactory::getConceptFromShortnameOrId($referenceName);
+            $referenceConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($referenceName);
 
             $refmap = $this->getRefMap($referenceConcept);
             //print_r($refmap);
@@ -650,7 +648,7 @@ class EntityFactory
 
         foreach ($tripletArray as $keyConcept => $triplet){
 
-            $concept = ConceptFactory::getConceptFromId($keyConcept);
+            $concept = $this->system->conceptFactory->getConceptFromId($keyConcept);
             $concept->tripletArray =$triplet ;
 
             //We look at revese triplet
@@ -658,7 +656,7 @@ class EntityFactory
             {
                 foreach ($target as $idConceptTarget) {
 
-                    $conceptTarget = ConceptFactory::getConceptFromId($idConceptTarget);
+                    $conceptTarget = $this->system->conceptFactory->getConceptFromId($idConceptTarget);
                     $conceptTarget->reverseTriplet[$verb] = $keyConcept;
 
                 }
