@@ -15,6 +15,9 @@ class System
 {
 
     public $env = 'main' ;
+    public $tableSuffix = '' ;
+    public $factoryManager ;
+
     public static $pdo ;
 
     private $logger;
@@ -39,8 +42,7 @@ class System
         $pdoWrapper = self::$pdo ;
 
         $suffix = $env ;
-
-
+        $this->tableSuffix = $suffix ;
 
         $this->conceptTable = 'SandraConcept' . $suffix;
         $this->linkTable = 'SandraTriplets' . $suffix;
@@ -55,29 +57,22 @@ class System
 
         $this->systemConcept = new SystemConcept($pdoWrapper, $this->logger, $this->conceptTable);
 
-
-
         $this->deletedUNID = $this->systemConcept->get('deleted');
-        $this->deletedUNID = $this->systemConcept->get('is_a');
-        $this->deletedUNID = $this->systemConcept->get('contained_in_file');
-
-
-
-
-
 
         $debugStack->connectionInfo = array('Host' => $pdoWrapper->host, 'Database' => $pdoWrapper->database, 'Sandra environment' => $env);
-        //$this->logger->info('[Sandra] Started sandra ' . $env . ' environment successfully.');
 
+        $this->factoryManager = new FactoryManager($this);
+        $this->conceptFactory = new ConceptFactory($this);
+
+
+
+        //$this->logger->info('[Sandra] Started sandra ' . $env . ' environment successfully.');
 
     }
 
     public function install(){
 
         SandraDatabaseDefinition::createEnvTables($this->conceptTable,$this->linkTable,$this->tableReference,$this->tableStorage,$this->tableConf);
-
-
-
 
 
 
@@ -96,7 +91,7 @@ class System
 
     }
 
-    print_r($exception);
+
 
     die();
 

@@ -17,15 +17,15 @@ use SandraCore\System ;
 
 
 
-$config = new TomWright\PHPConfig\Config();
-$config->put('init', 'true');
 
 
-$sandra = new System(null);
-
-
-
+$sandra = new System(null,true);
+$sandra->factoryManager->create('hello');
+echo"hello";
 
 
 
-echo SayHello::world();
+
+
+
+//echo SayHello::world();
