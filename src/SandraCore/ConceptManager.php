@@ -482,9 +482,7 @@ class ConceptManager
 
         return $array;
     }
-
-
-    public function getTriplets($lklkArray = null, $lktgArray = null, $getIds = 0)
+        public function getTriplets($lklkArray = null, $lktgArray = null, $getIds = 0)
     {
         global $tableReference, $tableLink, $deletedUNID, $dbLink;
 
