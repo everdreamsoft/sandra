@@ -404,6 +404,17 @@ class SystemConcept
         if(!file_exists($filename))
             touch($filename);
     }
+
+    public function tryGetSC($shortname, $table = null)
+    {
+        return SystemConcept::get($shortname, $table, false);
+    }
+
+    function getSCS($concept_id, $table = null)
+    {
+        return $this->getShortname($concept_id, $table);
+    }
+
 }
 
 /*

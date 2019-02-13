@@ -26,10 +26,12 @@ class Entity
 
     public function __construct($sandraConcept,$sandraReferencesArray,$factory,$entityId,$conceptVerb,$conceptTarget,System $system){
 
+        $this->system = $system ;
+
         foreach ($sandraReferencesArray as $sandraReferenceConceptId => $sandraReferenceValue){
 
 
-            $referenceConcept = ConceptFactory::getConceptFromId($sandraReferenceConceptId);
+            $referenceConcept = $this->system->conceptFactory->getForeignConceptFromId($sandraReferenceConceptId);
 
             $ref  = new Reference($referenceConcept,$this,$sandraReferenceValue);
             $this->entityRefs[$sandraReferenceConceptId] = $ref ;
@@ -51,7 +53,7 @@ class Entity
 
     public function get($referenceName){
 
-        $refId = getSC($referenceName);
+        $refId = $this->system->systemConcept->get($referenceName);
         //echoln("getting $referenceName is $refId");
 
         return $this->entityRefs[$refId]->refValue ;
@@ -61,7 +63,7 @@ class Entity
 
     public function getReference($referenceName): Reference{
 
-        $refId = getSC($referenceName);
+        $refId = $this->system->systemConcept->get($referenceName);
         //echoln("getting $referenceName is $refId");
 
         return $this->entityRefs[$refId] ;

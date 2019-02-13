@@ -14,7 +14,7 @@ class ConceptFactory
     private  $conceptMapFromId;
     private $system ;
 
-    public function __construct($system)
+    public function __construct(System $system)
     {
 
         $this->system = $system ;
@@ -24,7 +24,7 @@ class ConceptFactory
     public  function getConceptFromId($conceptId,$childObject=null)
     {
 
-        if ($this->conceptMapFromId[$conceptId]) {
+        if ( isset($this->conceptMapFromId[$conceptId])) {
 
             $concept = $this->conceptMapFromId[$conceptId];
         }  else {
@@ -35,7 +35,7 @@ class ConceptFactory
             }
             else {
 
-                $concept = new Concept($conceptId);
+                $concept = new Concept($conceptId,$this->system);
                 //$concept->getDisplayName();
             }
 
@@ -60,7 +60,7 @@ class ConceptFactory
             if(!is_numeric($conceptWeDontKnow))
             {
 
-                $conceptId = tryGetSC($conceptWeDontKnow) ;
+                $conceptId = $this->system->systemConcept->tryGetSC($conceptWeDontKnow) ;
 
                 if(!$conceptId){
                     throw new Exception("invalid concept $conceptWeDontKnow");

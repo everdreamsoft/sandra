@@ -2,6 +2,8 @@
 
 namespace SandraCore;
 
+use PDO;
+
 class ConceptManager {
 
     // This is the CLASS DEFINITION (everything in the curly brackets). test
@@ -13,8 +15,6 @@ class ConceptManager {
     private $deletedUnid ;
 
     public function __construct($su = 1, System $system, $tableLinkParam = 'default',$tableReferenceParam = 'default') {
-
-
 
         $this->filterSQL = '';
         $this->filterJoin = '';
@@ -31,7 +31,7 @@ class ConceptManager {
 
         $this->pdo = System::$pdo->get();
 
-        print_r($this->pdo);
+
 
         //table as instance data
         if ($tableLinkParam == 'default'){
@@ -52,8 +52,7 @@ class ConceptManager {
         }
 
         //$this->setFilter(array()); //
-        $this->setFilter2(array()); //
-
+        $this->setFilter(array()); //
 
     }
 
@@ -63,93 +62,24 @@ class ConceptManager {
         return $this->concepts;
     }
 
+
     public function setFilter($value, $limit = 0) {
         if (!is_array($value)) {
             $value = array();
         }
-        //print_r($value );
-        $this->filter = $value;
-        $this->buildFilterSQL2();
-    }
 
-    public function setFilter2($value, $limit = 0) {
-        if (!is_array($value)) {
-            $value = array();
-        }
-        //print_r($value );
         $this->filter = $value;
         $this->buildFilterSQL();
     }
 
+
+
     public function buildFilterSQL($limit = 0) {
-
-        $tableLink = $this->tableLink ;
-        $deletedUNID = $this->system->deletedUNID ;
-
-        echo("this system $deletedUNID");
-
-
-
-
-
-
-        //die(print_r($this->filter ));
-        //build the filter
-        foreach ($this->filter as $link => $targetConcept) {
-            //echoln("$link = key value $targetConcept[lklk]");
-
-            if ($targetConcept['lktg'] == 0 && $targetConcept['lklk'] == 0)
-                continue;
-
-            if (empty($targetConcept['exclusion'])) {
-
-                if (isset($targetConcept['logic']) && ($targetConcept['logic'] == 'OR'))
-                    $logic = 'OR';
-                else
-                    $logic = 'AND';
-
-                //it's an inclusion filter
-                if ($targetConcept['lktg'] == 0) {
-                    $this->filterSQL .= " $logic idConceptStart IN ( SELECT idConceptStart FROM  $this->tableLink WHERE idConceptLink = $targetConcept[lklk] AND flag != $deletedUNID) 
-			AND  $this->tableLink.id  AND flag != $deletedUNID ";
-                }
-
-                //any filter if the link equal 0 then make the filter on ANY link
-                else if ($targetConcept['lklk'] == 0) {
-                    $this->filterSQL .= " $logic idConceptStart IN ( SELECT idConceptStart FROM  $this->tableLink WHERE idConceptTarget = $targetConcept[lktg] AND flag != $deletedUNID) 
-			AND $tableLink.id AND flag != $deletedUNID ";
-                } else {
-
-                    $this->filterSQL .= " $logic idConceptStart IN ( SELECT idConceptStart FROM  $this->tableLink WHERE idConceptTarget =  $targetConcept[lktg] 
-	AND idConceptLink= $targetConcept[lklk] AND flag != $deletedUNID) AND  $this->tableLink.id AND flag != $deletedUNID ";
-                }
-            } else {
-                //eclusion filter
-                //it's an inclusion filter
-                if ($targetConcept['lktg'] == 0) {
-                    $this->filterSQL .= " AND idConceptStart NOT IN ( SELECT idConceptStart FROM  $this->tableLink WHERE idConceptLink = $targetConcept[lklk] AND flag != $deletedUNID) 
-			 ";
-                }
-
-                //any filter if the link equal 0 then make the filter on ANY link
-                else if ($targetConcept['lklk'] == 0) {
-                    $this->filterSQL .= " AND idConceptStart NOT IN ( SELECT idConceptStart FROM  $this->tableLink WHERE idConceptTarget = $targetConcept[lktg] AND flag != $deletedUNID) 
-			";
-                } else {
-
-                    $this->filterSQL .= " AND idConceptStart NOT IN ( SELECT idConceptStart FROM  $this->tableLink WHERE idConceptTarget =  $targetConcept[lktg] AND flag != $deletedUNID )
-	 ";
-                }
-            }
-        }
-    }
-
-    public function buildFilterSQL2($limit = 0) {
         global $tableLink, $tableReference, $existenseStatusUNID, $deletedUNID;
 
         $deletedUNID = $this->system->deletedUNID ;
 
-        //die(print_r($this->filter ));
+
         //build the filter
         $join = '';
         $conditionnalClause = '';
@@ -338,6 +268,7 @@ class ConceptManager {
         try {
             $pdoResult = $this->pdo->prepare($sql);
             $pdoResult->execute();
+
         }
         catch(PDOException $exception){
 
@@ -345,15 +276,15 @@ class ConceptManager {
             return ;
         }
 
-        if  (!$pdoResult->fetchAll())
-        {
-            return ;
-        }
+
+
+
+
 
         foreach ($pdoResult->fetchAll(PDO::FETCH_ASSOC) as $result) {
             $idConceptStart = $result['idConceptStart'];
             $array[] = $idConceptStart;
-            $this->concepts[] = new Concept($idConceptStart);
+            $this->concepts[] = new Concept($idConceptStart,$this->system);
             $this->conceptArray['conceptStartList'][] = $idConceptStart;
         }
 
@@ -527,7 +458,7 @@ class ConceptManager {
 
 
             try {
-                $pdoResult = $this->system->pdo->prepare($sql);
+                $pdoResult = $this->pdo->prepare($sql);
                 $pdoResult->execute();
             }
             catch(PDOException $exception){
@@ -538,20 +469,24 @@ class ConceptManager {
 
             $array = array();
 
+            $resultArray = $pdoResult->fetchAll(PDO::FETCH_ASSOC);
+
+
+
 
             if ($byTripletid) {
-                while ($result = $pdoResult->fetchAll(PDO::FETCH_ASSOC)) {
+                foreach ($resultArray as $key => $result) {
                     $idConcept = $result[$masterCondition];
                     $value = $result['value'];
                     $array[$idConcept][$result['id']][$result['idConcept']] = $value;
                     $array[$idConcept][$result['id']]['linkId'] = $result['id'];
 
                 }
-                //print_r($array);
+
             }
             else {
 
-            while ($result = mysqli_fetch_array($resultat)) {
+                foreach ($resultArray as $key => $result) {
 
                 $value = $result['value'];
                 $idConcept = $result[$masterCondition];
@@ -565,8 +500,6 @@ class ConceptManager {
 
         return $array;
     }
-
-
 
 
 
@@ -635,14 +568,7 @@ class ConceptManager {
 
     }
 
-    public function createConceptFromArray($array) {
-        global $tableLink, $tableReference, $deletedUNID, $includeCid, $containsInFileCid;
 
-
-        print_r($array);
-
-
-    }
 
 
 

@@ -17,10 +17,7 @@ class FactoryManager
     public function __construct(System $sandraInstance)
     {
 
-
         $this->sandraInstance = $sandraInstance ;
-
-
 
     }
 
@@ -40,13 +37,14 @@ class FactoryManager
             "favoritToy" => "ball"
         );
 
-
-
         $dogFactory->setSuperUser(1);
+        $dogFactory->populateLocal();
 
         $dogFactory->createNewWithAutoIncrementIndex($dogData);
 
+        //print_r($dogFactory);
 
+        return $dogFactory->return2dArray();
 
 
     }

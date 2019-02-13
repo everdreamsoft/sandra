@@ -24,11 +24,14 @@ class Concept
     public $conceptShortName;
     public $displayName;
     public $entities;
+    public $system;
     public $foreignPrefix = 'f:';
 
 
-    public function __construct($value)
+    public function __construct($value, System $system)
     {
+
+       $this->system = $system ;
         $this->setConceptId($value);
     }
 
@@ -36,14 +39,14 @@ class Concept
     {
 
         if (is_null($this->conceptShortName)) {
-            $this->conceptShortName = getSCS($this->idConcept);
+            $this->conceptShortName = $this->system->systemConcept->getSCS($this->idConcept);
         }
         return $this->conceptShortName;
 
 
     }
 
-    public function addEntity(SandraEntity $entity)
+    public function addEntity(Entity $entity)
     {
 
         //print_r($entity);

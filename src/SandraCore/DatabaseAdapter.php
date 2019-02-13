@@ -6,6 +6,9 @@
  * Time: 15:22
  */
 
+namespace SandraCore;
+
+
 class DatabaseAdapter{
 
 
@@ -14,6 +17,123 @@ class DatabaseAdapter{
 
 
 
+
+
+    }
+
+    public static function rawCreateReference($tripletId,$conceptId,$value, System $system,$autocommit = true){
+
+        $pdo = System::$pdo->get();
+
+        $targetTable = $system->tableReference ;
+
+        $sql = "INSERT INTO `$targetTable` (idConcept, linkReferenced, value) VALUES ($conceptId, $tripletId, '$value')
+        ON DUPLICATE KEY UPDATE  value = '$value', id=LAST_INSERT_ID(id)";
+
+
+
+        try {
+            $pdoResult = $pdo->prepare($sql);
+            $pdoResult->execute();
+        }
+        catch(PDOException $exception){
+
+            System::sandraException($exception);
+            return ;
+        }
+
+
+
+        return $pdo->lastInsertId();
+
+
+    }
+
+    public static function rawCreateTriplet($conceptSubject, $conceptVerb,$conceptTarget,System $system,$udateOnExistingLK = 0){
+
+        $pdo = System::$pdo->get();
+
+        $tableLink = $system->linkTable ;
+
+        $updateID = null;
+
+//if the link is existing and we try to update it instead of adding a new. For example card - set rarity - rare and we want to change the rarity
+//and not add a new link
+        if ($udateOnExistingLK == 1) {
+            echo('updating');
+
+            $sql = "SELECT id FROM $tableLink WHERE idConceptStart = $conceptSubject AND idConceptLink = $conceptVerb AND flag != $deletedUNID";
+
+            $result = $pdo->query($sql);
+
+            $row = $result->fetchAll(PDO::FETCH_ASSOC) ;
+
+            $updateID = $row['id'];
+        }
+
+        if ($updateID) {
+
+            $sql = "UPDATE $tableLink SET idConceptTarget = $conceptTarget  WHERE id = $updateID";
+
+
+            try {
+                $result = $pdo->query($sql);
+            }
+            catch(PDOException $exception){
+
+                System::sandraException($exception);
+                return ;
+            }
+
+
+            return $updateID;
+        }
+
+        $sql = "INSERT INTO $tableLink (idConceptStart ,idConceptLink ,idConceptTarget) VALUES ('$conceptSubject', '$conceptVerb', '$conceptTarget') ON DUPLICATE KEY UPDATE flag = 0, id=LAST_INSERT_ID(id)";
+
+
+        try {
+            $pdoResult = $pdo->prepare($sql);
+            $pdoResult->execute();
+        }
+        catch(PDOException $exception){
+
+            System::sandraException($exception);
+            return ;
+        }
+
+
+
+        return $pdo->lastInsertId();
+
+
+    }
+
+    public static function rawCreateConcept($code, System $system){
+
+
+        $pdo = System::$pdo->get();
+        $tableConcept = $system->conceptTable ;
+
+
+
+
+            $sql = "INSERT INTO $tableConcept (id, code) VALUES ('', '$code');";
+
+        try {
+            $pdoResult = $pdo->prepare($sql);
+            $pdoResult->execute();
+        }
+        catch(PDOException $exception){
+
+            System::sandraException($exception);
+            return ;
+        }
+
+
+
+
+        return $pdo->lastInsertId();
 
 
     }

@@ -20,7 +20,9 @@ use SandraCore\System ;
 
 
 $sandra = new System(null,true);
-$sandra->factoryManager->create('hello');
+print_r($sandra->factoryManager->create('hello'));
+
+
 echo"hello";
 
 
