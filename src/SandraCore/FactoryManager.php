@@ -30,14 +30,14 @@ class FactoryManager
 
     public function create($factoryName,$entityIsa,$entityFile)  {
 
-        $dogFactory = new EntityFactory($entityIsa,$entityFile,$this->sandraInstance);
-        $dogFactory->populateLocal();
+        $factory = new EntityFactory($entityIsa,$entityFile,$this->sandraInstance);
+        $factory->populateLocal();
 
 
 
         //print_r($dogFactory);
 
-        return $dogFactory->return2dArray();
+        return $factory ;
 
 
 

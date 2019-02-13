@@ -114,6 +114,7 @@ class EntityFactory
     {
 
         $this->conceptManager = new ConceptManager($this->su, $this->system);
+        $entityArray = array();
 
         //do we filter by isa
         if ($this->entityIsa) {

@@ -7,6 +7,7 @@
  */
 
 namespace SandraCore;
+use PDOException ;
 
 
 class DatabaseAdapter{

@@ -9,7 +9,7 @@
 namespace SandraCore;
 
 
-class SandraForeignEntity extends Entity
+class ForeignEntity extends Entity
 {
 
     private $entityIsa ;
@@ -17,7 +17,7 @@ class SandraForeignEntity extends Entity
     private $factory ;
     public $entityId ; // The is the id of the table link
     public $entityRefs ; // The is the id of the table link
-    private $system ;
+    public $system ;
 
 
 

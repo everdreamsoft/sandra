@@ -92,6 +92,8 @@ class System
 
     }
 
+    print_r($exception);
+
 
 
     die();

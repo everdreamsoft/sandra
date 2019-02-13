@@ -10,6 +10,8 @@ namespace SandraCore;
 
 
 
+
+
 /**
  * Created by PhpStorm.
  * User: shaban
@@ -18,7 +20,7 @@ namespace SandraCore;
  */
 class ForeignEntityAdapter extends EntityFactory
 {
-    public $mainEntityPath = 'txs' ;
+    public $mainEntityPath = '' ;
     public $entityArray = array();
     public $refMap ;
     public $foreignToLocalVocabulary ; //key is foreign value is local
@@ -34,7 +36,7 @@ class ForeignEntityAdapter extends EntityFactory
 
 
 
-    public function __construct($url,$pathToItem){
+    public function __construct($url,$pathToItem, System $system){
 
 
         //$json = $this->testJson();
@@ -59,9 +61,11 @@ class ForeignEntityAdapter extends EntityFactory
 
         $this->foreignRawArray = json_decode($json,1);
 
+        $this->system = $system ;
 
 
-        //print_r($this->foreignRawArray);
+
+       // print_r($this->foreignRawArray);
         //die();
 
 
@@ -79,8 +83,16 @@ class ForeignEntityAdapter extends EntityFactory
 
         $i=0;
 
+        //path to array
+        if (isset ($this->mainEntityPath) && $this->mainEntityPath != ''){
+            $pathedArray = $resultArray[$this->mainEntityPath] ;
+        }
+        else{
+            $pathedArray = $resultArray ;
+        }
+
         //Cycle trough the entity
-        foreach ($resultArray[$this->mainEntityPath] as $key => $foreignEntity){
+        foreach ($pathedArray as $key => $foreignEntity){
 
             $i++;
             $refArray = array();
@@ -97,23 +109,23 @@ class ForeignEntityAdapter extends EntityFactory
                     $refArray[$objectKey] =   $objectValue ;
 
                     //do we have the concept in reference into vocabulary ?
-                    if ($this->foreignToLocalVocabulary[$objectKey]){
+                    if (isset($this->foreignToLocalVocabulary[$objectKey])){
                         //then return local concept
-                        $this->refMap[$objectKey] = ConceptFactory::getConceptFromShortnameOrId($this->foreignToLocalVocabulary[$objectKey]);
+                        $this->refMap[$objectKey] = $this->system->conceptFactory->getConceptFromShortnameOrIdOrCreateShortname($this->foreignToLocalVocabulary[$objectKey]);
 
                     }
                     else {
 
-                        $this->refMap[$objectKey] = ConceptFactory::getForeignConceptFromId($objectKey);
+                        $this->refMap[$objectKey] = $this->system->conceptFactory->getForeignConceptFromId($objectKey);
                     }
 
                 }
                 //has children data
                 else {
                     //is the children to be flatten ?
-                    if ($this->flattingArray[$objectKey]);
+                    if (isset($this->flattingArray[$objectKey])){
                     $flatRef = $this->flatResult($objectValue,$objectKey);
-                    $refArray = $refArray + $flatRef ;
+                    $refArray = $refArray + $flatRef ;}
 
 
 
@@ -121,7 +133,7 @@ class ForeignEntityAdapter extends EntityFactory
 
             }
 
-            $entity = new SandraForeignEntity("foreign$i",$refArray,$this,"foreign$i");
+            $entity = new ForeignEntity("foreign$i",$refArray,$this,"foreign$i",$this->system);
             $entityArray["f:$i"] = $entity ;
 
         }
@@ -135,7 +147,7 @@ class ForeignEntityAdapter extends EntityFactory
     public function isLocalMapedReference($refname){
 
 
-        if ($this->foreignToLocalVocabulary[$refname]){
+        if (isset($this->foreignToLocalVocabulary[$refname])){
 
             return $this->foreignToLocalVocabulary[$refname] ;
 
@@ -148,8 +160,8 @@ class ForeignEntityAdapter extends EntityFactory
 
     public function fuseRemoteRefEqual( $foreignRef, $localRefConcept){
 
-        $localRefConcept = ConceptFactory::getConceptFromShortnameOrId($localRefConcept);
-        $foreignRefConcept = ConceptFactory::getForeignConceptFromId($foreignRef);
+        $localRefConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($localRefConcept);
+        $foreignRefConcept = $this->system->conceptFactory->getForeignConceptFromId($foreignRef);
         $this->remoteRefFuse = $foreignRefConcept ;
         $this->localRefToFuse =  $localRefConcept ;
 
@@ -219,12 +231,12 @@ class ForeignEntityAdapter extends EntityFactory
 
             if ($this->foreignToLocalVocabulary[$objectKey]){
                 //then return local concept
-                $this->refMap[$objectKey] = ConceptFactory::getConceptFromShortnameOrId($this->foreignToLocalVocabulary[$objectKey]);
+                $this->refMap[$objectKey] = $this->system->conceptFactory->getConceptFromShortnameOrId($this->foreignToLocalVocabulary[$objectKey]);
 
             }
             else {
 
-                $this->refMap[$objectKey] = ConceptFactory::getForeignConceptFromId($objectKey);
+                $this->refMap[$objectKey] = $this->system->conceptFactory->getForeignConceptFromId($objectKey);
             }
 
 

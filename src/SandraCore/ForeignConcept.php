@@ -15,9 +15,9 @@ class ForeignConcept extends Concept
     public function setConceptId($value)
     {
 
-        if (is_nan($value)) {
-            die("We are in a foreign concept it should not be numberic $value");
-        }
+        //if (is_nan($value)) {
+          //  die("We are in a foreign concept it should not be numberic $value");
+        //}
 
         $this->idConcept = $value;
 

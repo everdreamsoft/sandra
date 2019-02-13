@@ -84,7 +84,42 @@ class ConceptFactory
 
 
 
-        return self::getConceptFromId($conceptId);
+        return $this->getConceptFromId($conceptId);
+    }
+
+    public  function getConceptFromShortnameOrIdOrCreateShortname($conceptWeDontKnow)
+    {
+
+        //echoln("getting SC ".getSC('sandraAllowAccess'));
+
+
+        //we received a shortname
+        if (!($conceptWeDontKnow instanceof Concept)) {
+
+            //do we get a concept id ?
+            if(!is_numeric($conceptWeDontKnow))
+            {
+
+                $conceptId = $this->system->systemConcept->get($conceptWeDontKnow) ;
+
+
+
+            }
+            else{
+
+                $conceptId = $conceptWeDontKnow ;
+
+            }
+
+        }
+
+        else{
+            return $conceptWeDontKnow ;
+        }
+
+
+
+        return $this->getConceptFromId($conceptId);
     }
 
     public  function getForeignConceptFromId($conceptId)
@@ -92,13 +127,13 @@ class ConceptFactory
 
 
 
-        if ( $this->conceptMapFromId[$conceptId]) {
+        if ( isset($this->conceptMapFromId[$conceptId])) {
 
             $concept =  $this->conceptMapFromId[$conceptId];
         } else {
 
 
-            $concept = new ForeignConcept($conceptId);
+            $concept = new ForeignConcept($conceptId,$this->system);
             $concept->displayName = $conceptId ;
 
             $this->conceptMapFromId[$conceptId] = $concept;
