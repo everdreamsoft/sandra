@@ -4,17 +4,19 @@ namespace SandraCore;
 
 use PDO;
 
-class ConceptManager {
+class ConceptManager
+{
 
     // This is the CLASS DEFINITION (everything in the curly brackets). test
 
-    protected $filter, $filterSQL, $tableLink, $tableRef, $tableConcept;
     public $concepts;
-    private $system ;
-    private $pdo ;
-    private $deletedUnid ;
+    protected $filter, $filterSQL, $tableLink, $tableRef, $tableConcept;
+    private $system;
+    private $pdo;
+    private $deletedUnid;
 
-    public function __construct($su = 1, System $system, $tableLinkParam = 'default',$tableReferenceParam = 'default') {
+    public function __construct($su = 1, System $system, $tableLinkParam = 'default', $tableReferenceParam = 'default')
+    {
 
         $this->filterSQL = '';
         $this->filterJoin = '';
@@ -22,33 +24,27 @@ class ConceptManager {
         $this->concepts = array();
         $this->conceptArray = (array());
         $this->su = $su;
-        $this->system = $system ;
+        $this->system = $system;
 
-        $this->deletedUnid = $system->deletedUNID ;
-
-        //die("I should get one ". $system->deletedUNID);
+        $this->deletedUnid = $system->deletedUNID;
 
 
         $this->pdo = System::$pdo->get();
 
-
-
         //table as instance data
-        if ($tableLinkParam == 'default'){
-            $this->tableLink = $system->linkTable ;
+        if ($tableLinkParam == 'default') {
+            $this->tableLink = $system->linkTable;
+
+        } else {
+            $this->tableLink = $tableLinkParam;
 
         }
-        else {
-            $this->tableLink = $tableLinkParam ;
 
-        }
+        if ($tableReferenceParam == 'default') {
+            $this->tableReference = $system->tableReference;
+        } else {
 
-        if ($tableReferenceParam == 'default'){
-           $this->tableReference = $system->tableReference ;
-        }
-        else{
-
-            $this->tableReference = $tableReferenceParam ;
+            $this->tableReference = $tableReferenceParam;
         }
 
         //$this->setFilter(array()); //
@@ -56,14 +52,8 @@ class ConceptManager {
 
     }
 
-    public function getConcepts() {
-
-
-        return $this->concepts;
-    }
-
-
-    public function setFilter($value, $limit = 0) {
+    public function setFilter($value, $limit = 0)
+    {
         if (!is_array($value)) {
             $value = array();
         }
@@ -72,12 +62,11 @@ class ConceptManager {
         $this->buildFilterSQL();
     }
 
-
-
-    public function buildFilterSQL($limit = 0) {
+    public function buildFilterSQL($limit = 0)
+    {
         global $tableLink, $tableReference, $existenseStatusUNID, $deletedUNID;
 
-        $deletedUNID = $this->system->deletedUNID ;
+        $deletedUNID = $this->system->deletedUNID;
 
 
         //build the filter
@@ -115,16 +104,13 @@ class ConceptManager {
 
                     $join .= " JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
                     $conditionnalClause .= " AND link$tableCounter.flag != $deletedUNID AND link$tableCounter.idConceptLink = $targetConcept[lklk]";
-                }
-
-                //any filter if the link equal 0 then make the filter on ANY link
+                } //any filter if the link equal 0 then make the filter on ANY link
                 else if ($targetConcept['lklk'] == 0) {
 
 
                     $join .= " JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
                     $conditionnalClause .= " AND link$tableCounter.flag != $deletedUNID AND link$tableCounter.$secondaryConcept =$targetConcept[lktg]";
                 } else {
-
 
 
                     $join .= " JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
@@ -141,9 +127,7 @@ class ConceptManager {
 			 						  AND link$tableCounter.idConceptLink = $targetConcept[lklk]";
                     $conditionnalClause .= " 
 									  AND link$tableCounter.idConceptLink IS NULL";
-                }
-
-                //any filter if the link equal 0 then make the filter on ANY link
+                } //any filter if the link equal 0 then make the filter on ANY link
                 else if ($targetConcept['lklk'] == 0) {
 
 
@@ -169,8 +153,17 @@ class ConceptManager {
         $this->filterCondition = $conditionnalClause;
     }
 
+    public function getConcepts()
+    {
+
+
+        return $this->concepts;
+    }
+
     //Check the followup if something needs to be done
-    public function getConceptsFromLinkAndTarget2($linkConcept, $targetConcept, $limit = 0) {
+
+    public function getConceptsFromLinkAndTarget2($linkConcept, $targetConcept, $limit = 0)
+    {
         //Sub optimal request
 
         global $tableLink, $tableReference, $deletedUNID, $dbLink;
@@ -202,7 +195,8 @@ class ConceptManager {
             return $array;
     }
 
-    public function getResultsFromLink($linkId) {
+    public function getResultsFromLink($linkId)
+    {
         global $tableLink, $dbLink;
 
         $sql = "SELECT  l.idConceptStart, l.idConceptLink, l.`idConceptTarget` FROM  $this->tableLink l WHERE l.id = $linkId";
@@ -223,7 +217,8 @@ class ConceptManager {
     }
 
     //Check the followup if something needs to be done
-    public function getConceptsFromLinkAndTarget($linkConcept, $targetConcept, $limit = 0, $debug = '', $asc='ASC') {
+    public function getConceptsFromLinkAndTarget($linkConcept, $targetConcept, $limit = 0, $debug = '', $asc = 'ASC')
+    {
         global $tableLink, $tableReference, $deletedUNID, $includeCid, $containsInFileCid, $dbLink;
 
         $hideLinks = "";
@@ -232,12 +227,12 @@ class ConceptManager {
             $limitSQL = "LIMIT $limit";
         else
             $limitSQL = '';
-        
+
         //sub optimal to remove soon
 
-        if (!isset($_SESSION['accessToFiles'])){
+        if (!isset($_SESSION['accessToFiles'])) {
 
-            $_SESSION['accessToFiles'] = 0 ;
+            $_SESSION['accessToFiles'] = 0;
         }
 
         if ($this->su == 0 && isset($_SESSION['accessToFiles'])) {
@@ -247,20 +242,19 @@ class ConceptManager {
             (
             l.idConceptStart IN(SELECT idConceptStart FROM  $this->tableLink WHERE idConceptTarget IN($comma_separated) AND idConceptLink IN ($includeCid, $containsInFileCid ) ) 
             OR l.idConceptStart NOT IN ( SELECT idConceptStart FROM `$this->tableLink` WHERE idConceptLink IN ($includeCid, $containsInFileCid) )
-            )" ;
+            )";
         }
 
 
         $sql = "SELECT  l.idConceptStart, l.idConceptLink, l.`idConceptTarget` FROM  $this->tableLink l " .
-                $this->filterJoin . "
+            $this->filterJoin . "
 	WHERE l.idConceptLink = $linkConcept  
 	AND l.idConceptTarget = $targetConcept
 	AND l.flag != $deletedUNID 
 	" . $this->filterCondition . " $hideLinks ORDER BY l.idConceptStart DESC " . $limitSQL;
 
 
-
-       // echoln( "su = $this->su access to file". $_SESSION['accessToFiles']);
+        // echoln( "su = $this->su access to file". $_SESSION['accessToFiles']);
 
         if ($debug)
             echoln($sql);
@@ -269,22 +263,17 @@ class ConceptManager {
             $pdoResult = $this->pdo->prepare($sql);
             $pdoResult->execute();
 
-        }
-        catch(PDOException $exception){
+        } catch (PDOException $exception) {
 
             System::sandraException($exception);
-            return ;
+            return;
         }
-
-
-
-
 
 
         foreach ($pdoResult->fetchAll(PDO::FETCH_ASSOC) as $result) {
             $idConceptStart = $result['idConceptStart'];
             $array[] = $idConceptStart;
-            $this->concepts[] = new Concept($idConceptStart,$this->system);
+            $this->concepts[] = new Concept($idConceptStart, $this->system);
             $this->conceptArray['conceptStartList'][] = $idConceptStart;
         }
 
@@ -293,8 +282,8 @@ class ConceptManager {
     }
 
 
-
-    public function getConceptsFromLinkAndTargetWithRef($linkConcept, $targetConcept, $targetFile, $ref, $refValue, $limit = 0, $debug = '') {
+    public function getConceptsFromLinkAndTargetWithRef($linkConcept, $targetConcept, $targetFile, $ref, $refValue, $limit = 0, $debug = '')
+    {
         global $tableLink, $tableReference, $deletedUNID, $includeCid, $containsInFileCid, $dbLink;
 
         $hideLinks = "";
@@ -310,7 +299,7 @@ class ConceptManager {
 	            AND l.idConceptTarget = $targetConcept
 	            AND link1.idConceptTarget = $targetFile
 	            AND rf.idConcept = " . getSC($ref) . "
-                AND rf.value = '" . $refValue."'";
+                AND rf.value = '" . $refValue . "'";
 
         if ($debug)
             echoln($sql);
@@ -328,17 +317,18 @@ class ConceptManager {
             return $array;
     }
 
-    public function getConceptsFromLink($linkConcept, $limit = 0, $debug = '') {
+    public function getConceptsFromLink($linkConcept, $limit = 0, $debug = '')
+    {
         global $tableLink, $tableReference, $deletedUNID, $dbLink;
         //look at the followup object
 
- $hideLinks = "";
+        $hideLinks = "";
 
         if ($limit > 0)
             $limitSQL = "LIMIT $limit";
         else
             $limitSQL = '';
-        
+
         //sub optimal to remove soon 
         if ($this->su == 0 && isset($_SESSION['accessToFiles'])) {
             $comma_separated = implode(",", $_SESSION['accessToFiles']);
@@ -346,11 +336,11 @@ class ConceptManager {
             (
             l.idConceptStart IN(SELECT idConceptStart FROM  $this->tableLink WHERE idConceptTarget IN($comma_separated) AND idConceptLink IN ($includeCid, $containsInFileCid ) ) 
             OR l.idConceptStart NOT IN ( SELECT idConceptStart FROM ` $this->tableLink` WHERE idConceptLink IN ($includeCid, $containsInFileCid) )
-            )" ;
+            )";
         }
 
         $sql = "SELECT  l.idConceptStart, l.idConceptLink, l.`idConceptTarget` FROM  $this->tableLink l " .
-                $this->filterJoin . "
+            $this->filterJoin . "
 	
 	AND l.idConceptLink = $linkConcept
 	AND l.flag != $deletedUNID 
@@ -360,14 +350,14 @@ class ConceptManager {
             echoln($sql);
 
         //echo"$sql";
-        $resultat = mysqli_query($dbLink, $sql) ; //action;;
+        $resultat = mysqli_query($dbLink, $sql); //action;;
 
         while ($result = mysqli_fetch_array($resultat)) {
             $idConceptStart = $result['idConceptStart'];
             $idConceptTarget = $result['idConceptTarget'];
 
             //be s
-           // $array[] = $idConceptTarget;
+            // $array[] = $idConceptTarget;
             $array[] = $idConceptStart;
 
             $this->concepts[] = new Concept($idConceptStart);
@@ -380,8 +370,8 @@ class ConceptManager {
     }
 
 
-
-    public function getReferences($idConceptLink = 0, $idConceptTarget = 0, $refIdArray = null, $isTargetList = 0, $byTripletid = 0) {
+    public function getReferences($idConceptLink = 0, $idConceptTarget = 0, $refIdArray = null, $isTargetList = 0, $byTripletid = 0)
+    {
         global $tableReference, $tableLink, $deletedUNID, $dbLink;
 
         /*Note about $byTripletid. The goal is to patch the system if there are different reference on the same idConcept link the first version overight the changes. By adding the variable $byTripletid whe change the form of the result array
@@ -421,8 +411,7 @@ class ConceptManager {
             && is_array($this->conceptArray[$list])
             && (sizeof($this->conceptArray[$list]) > 0)
             && (is_null($refIdArray) || is_array($refIdArray))
-        )
-        {
+        ) {
             $concepts = implode(",", $this->conceptArray[$list]);
 
             $refsFilter = '';
@@ -454,24 +443,18 @@ class ConceptManager {
             //AND flag != $deletedUNID";
 
 
-
-
-
             try {
                 $pdoResult = $this->pdo->prepare($sql);
                 $pdoResult->execute();
-            }
-            catch(PDOException $exception){
+            } catch (PDOException $exception) {
 
                 System::sandraException($exception);
-                return ;
+                return;
             }
 
             $array = array();
 
             $resultArray = $pdoResult->fetchAll(PDO::FETCH_ASSOC);
-
-
 
 
             if ($byTripletid) {
@@ -483,29 +466,27 @@ class ConceptManager {
 
                 }
 
-            }
-            else {
+            } else {
 
                 foreach ($resultArray as $key => $result) {
 
-                $value = $result['value'];
-                $idConcept = $result[$masterCondition];
-                $array[$idConcept][$result['idConcept']] = $value;
-                $array[$idConcept]['linkId'] = $result['id'];
+                    $value = $result['value'];
+                    $idConcept = $result[$masterCondition];
+                    $array[$idConcept][$result['idConcept']] = $value;
+                    $array[$idConcept]['linkId'] = $result['id'];
+
+                }
 
             }
-
-        }
         }
 
         return $array;
     }
 
 
-
-    public function getTriplets($lklkArray = null, $lktgArray = null, $getIds = 0) {
+    public function getTriplets($lklkArray = null, $lktgArray = null, $getIds = 0)
+    {
         global $tableReference, $tableLink, $deletedUNID, $dbLink;
-
 
 
         $array = null;
@@ -543,33 +524,31 @@ class ConceptManager {
     }
 
 
-    public function getConceptsFromArray($conceptArray) {
-    global $tableLink, $tableReference, $deletedUNID, $includeCid, $containsInFileCid;
-
-
-
-    foreach ($conceptArray as $value) {
-        $idConceptStart = $value ;
-        $array[] = $idConceptStart;
-        $this->concepts[] = new Concept($idConceptStart);
-        $this->conceptArray['conceptStartList'][] = $idConceptStart;
-    }
-
-    if (isset($array))
-        return $array;
-}
-
-    public function createConceptFromJson($json) {
+    public function getConceptsFromArray($conceptArray)
+    {
         global $tableLink, $tableReference, $deletedUNID, $includeCid, $containsInFileCid;
 
-        $array = json_decode($json,1);
+
+        foreach ($conceptArray as $value) {
+            $idConceptStart = $value;
+            $array[] = $idConceptStart;
+            $this->concepts[] = new Concept($idConceptStart);
+            $this->conceptArray['conceptStartList'][] = $idConceptStart;
+        }
+
+        if (isset($array))
+            return $array;
+    }
+
+    public function createConceptFromJson($json)
+    {
+        global $tableLink, $tableReference, $deletedUNID, $includeCid, $containsInFileCid;
+
+        $array = json_decode($json, 1);
         $this->createConceptFromArray($array);
 
 
     }
-
-
-
 
 
 }

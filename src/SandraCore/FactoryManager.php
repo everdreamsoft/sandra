@@ -28,9 +28,25 @@ class FactoryManager
 
 }
 
-    public function create($factoryName)  {
+    public function create($factoryName,$entityIsa,$entityFile)  {
 
-        $dogFactory = new EntityFactory('dog','dogFile1',$this->sandraInstance);
+        $dogFactory = new EntityFactory($entityIsa,$entityFile,$this->sandraInstance);
+        $dogFactory->populateLocal();
+
+
+
+        //print_r($dogFactory);
+
+        return $dogFactory->return2dArray();
+
+
+
+
+    }
+
+    public function demo($factoryName,$entityIsa,$entityFile)  {
+
+        $dogFactory = new EntityFactory($entityIsa,$entityFile,$this->sandraInstance);
         $dogData = array("name"=>'Felix',
             "birthYear" => "2012",
             "favoritfood" => "Chicken",
