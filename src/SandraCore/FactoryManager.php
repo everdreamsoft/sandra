@@ -48,7 +48,8 @@ class FactoryManager
         $dogData = array("name"=>'Felix',
             "birthYear" => "2012",
             "favoritfood" => "Chicken",
-            "favoritToy" => "ball"
+            "favoritToy" => "ball",
+            "quoted" => "hey my quote '"
         );
 
         $dogFactory->setSuperUser(1);

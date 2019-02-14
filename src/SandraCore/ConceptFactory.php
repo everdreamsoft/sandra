@@ -9,6 +9,7 @@
 namespace SandraCore;
 
 
+
 class ConceptFactory
 {
     private  $conceptMapFromId;
@@ -63,7 +64,7 @@ class ConceptFactory
                 $conceptId = $this->system->systemConcept->tryGetSC($conceptWeDontKnow) ;
 
                 if(!$conceptId){
-                    throw new Exception("invalid concept $conceptWeDontKnow");
+                    die("invalid concept $conceptWeDontKnow");
                 }
 
 

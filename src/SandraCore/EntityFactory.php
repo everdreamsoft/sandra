@@ -248,7 +248,7 @@ class EntityFactory
     }
 
 
-    public function foreignPopulate(ForeignEntityAdapter $foreignAdapter = null)
+    public function foreignPopulate(ForeignEntityAdapter $foreignAdapter = null,$limit = 0)
     {
 
 
@@ -256,7 +256,7 @@ class EntityFactory
             $foreignAdapter = $this->foreignAdapter;
         }
 
-        $foreignAdapter->populate();
+        $foreignAdapter->populate($limit);
 
 
         $this->addNewEtities($foreignAdapter->returnEntities(), $foreignAdapter->getReferenceMap());
@@ -385,7 +385,7 @@ class EntityFactory
             $foreignOnThisRef = reset($foreignOnThisRef);
 
 
-            if (is_array($localOnThisRef->entityRefs) && is_array($foreignOnThisRef->entityRefs)) {
+            if (isset($localOnThisRef->entityRefs) && isset($foreignOnThisRef->entityRefs)) {
 
                 $localOnThisRef->entityRefs = $localOnThisRef->entityRefs + $foreignOnThisRef->entityRefs;
 
@@ -528,9 +528,11 @@ class EntityFactory
             }
 
 
-            DatabaseAdapter::rawCreateReference($link, $key, $value, $this->system);
+            DatabaseAdapter::rawCreateReference($link, $key, $value, $this->system,false);
 
         }
+        //we are comiting references all at one
+        DatabaseAdapter::commit();
 
         if (is_array($linArray)) {
             //each link

@@ -72,7 +72,7 @@ class ForeignEntityAdapter extends EntityFactory
 
 
     }
-    public function populate(){
+    public function populate($limit = 0){
 
 
         //$json = $this->testJson();
@@ -96,6 +96,8 @@ class ForeignEntityAdapter extends EntityFactory
 
             $i++;
             $refArray = array();
+
+            if ($limit && $i >= $limit) break ;
 
 
             foreach ($foreignEntity as $objectKey => $objectValue){

@@ -12,6 +12,9 @@ use PDOException ;
 
 class DatabaseAdapter{
 
+    private static $transactionStarted = false ;
+    private static $pdo ;
+
 
     public static function getSujectConcept(){
 
@@ -24,24 +27,44 @@ class DatabaseAdapter{
 
     public static function rawCreateReference($tripletId,$conceptId,$value, System $system,$autocommit = true){
 
+        if (!isset($value)){
+
+            return ;
+        }
+
         $pdo = System::$pdo->get();
+
+
+        if (!self::$transactionStarted && $autocommit == false){
+            $pdo->beginTransaction();
+            self::$pdo = $pdo ;
+            self::$transactionStarted = true ;
+
+
+        }
+
+
 
         $targetTable = $system->tableReference ;
 
-        $sql = "INSERT INTO `$targetTable` (idConcept, linkReferenced, value) VALUES ($conceptId, $tripletId, '$value')
-        ON DUPLICATE KEY UPDATE  value = '$value', id=LAST_INSERT_ID(id)";
+        $sql = "INSERT INTO `$targetTable` (idConcept, linkReferenced, value) VALUES ($conceptId, $tripletId, :value)
+        ON DUPLICATE KEY UPDATE  value = :value, id=LAST_INSERT_ID(id)";
+
+
 
 
 
         try {
             $pdoResult = $pdo->prepare($sql);
-            $pdoResult->execute();
+            $pdoResult->execute(array(':value' => $value));
         }
         catch(PDOException $exception){
 
             System::sandraException($exception);
             return ;
         }
+
+
 
 
 
@@ -132,9 +155,17 @@ class DatabaseAdapter{
         }
 
 
-
-
         return $pdo->lastInsertId();
+
+
+    }
+
+
+    public static function commit(){
+
+       self::$pdo->commit() ;
+        self::$transactionStarted = false ;
+
 
 
     }
