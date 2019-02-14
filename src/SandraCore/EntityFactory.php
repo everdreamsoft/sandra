@@ -45,7 +45,7 @@ class EntityFactory
     private $fuseLocalConcept;
     /* @var $fuseForeignConcept Concept */
 
-    public $newEntities = null;
+    public $newEntities = array();
 
     public $factoryIdentifier = 'noNameFactory';
 
