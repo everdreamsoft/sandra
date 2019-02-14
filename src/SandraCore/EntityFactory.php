@@ -584,6 +584,7 @@ class EntityFactory
 
     public function saveEntitiesNotInLocal()
     {
+        $newEntities = array();
 
         foreach ($this->entityArray as $key => $value) {
 
