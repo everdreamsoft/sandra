@@ -546,7 +546,7 @@ class ConceptManager
         $this->createConceptFromArray($array);
 
 
-    }
+    }//
 
 
 }
