@@ -44,9 +44,9 @@ class FactoryManager
 
     }
 
-    public function demo($factoryName,$entityIsa,$entityFile)  {
+    public function demo($factoryName)  {
 
-        $dogFactory = new EntityFactory($entityIsa,$entityFile,$this->sandraInstance);
+        $dogFactory = new EntityFactory('dog','dogFactory',$this->sandraInstance);
         $dogData = array("name"=>'Felix',
             "birthYear" => "2012",
             "favoritfood" => "Chicken",
