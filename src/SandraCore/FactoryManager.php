@@ -40,8 +40,6 @@ class FactoryManager
         return $factory ;
 
 
-
-
     }
 
     public function demo($factoryName)  {
