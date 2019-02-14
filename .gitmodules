@@ -1,0 +1,3 @@
+[submodule "src/Submodule"]
+	path = src/Submodule
+	url = https://yodark@bitbucket.org/yodark/bcysubmodules.git
