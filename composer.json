@@ -4,9 +4,7 @@
     "type": "project",
     "license": "MIT",
     "minimum-stability": "dev",
-    "require": {
-        "tomwright/php-config": "dev-master"
-    },
+
     "autoload": {
         "psr-0": {
             "SandraCore": "src/"
