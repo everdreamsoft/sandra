@@ -20,13 +20,13 @@ class SandraDatabaseDefinition
         (
           id        int auto_increment
             primary key,
-          code      varchar(32)  not null,
-          shortname varchar(255) null,
+          code      varchar(64)  not null,
+          shortname varchar(64) null,
           constraint shortname
           unique (shortname)
         )
           engine = InnoDB
-          collate = latin1_german1_ci;";
+          DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
 
         System::$pdo->get()->query($sql);
 
@@ -42,7 +42,7 @@ class SandraDatabaseDefinition
   KEY `idConceptStart_4` (`idConceptStart`),
   KEY `idConceptTarget` (`idConceptTarget`),
   KEY `idConceptLink` (`idConceptLink`,`idConceptTarget`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_german1_ci;";
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
 
 
         System::$pdo->get()->query($sql);
@@ -55,11 +55,11 @@ class SandraDatabaseDefinition
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `idConcept` int(11) NOT NULL,
   `linkReferenced` int(11) NOT NULL,
-  `value` varchar(128) CHARACTER SET utf8 NOT NULL DEFAULT '',
+  `value` varchar(255) CHARACTER SET utf8 NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   UNIQUE KEY `unique_ref` (`idConcept`,`linkReferenced`),
   KEY `linkReferenced` (`linkReferenced`)
-) ENGINE=InnoDB  DEFAULT CHARSET=latin1 COLLATE=latin1_german1_ci;";
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
 
 
         System::$pdo->get()->query($sql);
@@ -68,7 +68,7 @@ class SandraDatabaseDefinition
   `linkReferenced` int(11) NOT NULL,
   `value` mediumtext CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
   PRIMARY KEY (`linkReferenced`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1 COLLATE=latin1_german1_ci;";
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
 
 
         System::$pdo->get()->query($sql);

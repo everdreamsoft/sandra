@@ -20,7 +20,7 @@ class Entity
     public $verbConcept ; /** @var $verbConcept Concept */
     public $targetConcept ; /** @var $targetConcept Concept */
     public $entityId ; // The is the id of the table link
-    public $entityRefs ; // The is the id of the table link
+    public $entityRefs ; /** @var $entityRefs Reference[] */
 
     public $system ;
 

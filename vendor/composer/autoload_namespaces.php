@@ -7,4 +7,5 @@ $baseDir = dirname($vendorDir);
 
 return array(
     'SandraCore' => array($baseDir . '/src'),
+    'InnateSkills' => array($baseDir . '/src'),
 );

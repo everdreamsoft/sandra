@@ -49,10 +49,23 @@ class Concept
     public function addEntity(Entity $entity)
     {
 
-        //print_r($entity);
-        // echoln("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+
         $verb = $entity->verbConcept ;
-        $this->entityArray[$verb->idConcept] = $entity ;
+        $target = $entity->targetConcept ;
+        return $this->entityArray[$verb->idConcept][$target->idConcept] = $entity ;
+
+
+    }
+
+    public function getEntity($verbConcept,$targetConcept)
+    {
+
+        if (isset ($this->entityArray[$verbConcept->idConcept][$targetConcept->idConcept])){
+
+            return $this->entityArray[$verbConcept->idConcept][$targetConcept->idConcept];
+        }
+
+        else return null ;
 
 
     }

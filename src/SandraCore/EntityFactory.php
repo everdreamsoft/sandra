@@ -53,6 +53,9 @@ class EntityFactory
     private $brotherVerb;
     private $brotherTarget;
 
+    public $brotherEntities ;
+    public $brotherMap ;
+
     public $system;
     public $sc;
 
@@ -86,6 +89,8 @@ class EntityFactory
         $this->system = $system;
         $this->sc = $system->systemConcept;
 
+        $this->conceptManager = new ConceptManager($this->su, $this->system);
+
 
     }
 
@@ -93,6 +98,7 @@ class EntityFactory
     {
 
         $this->su = $boolean;
+        $this->conceptManager = new ConceptManager($this->su, $this->system);
 
     }
 
@@ -113,7 +119,7 @@ class EntityFactory
     public function populateLocal($limit = 10000)
     {
 
-        $this->conceptManager = new ConceptManager($this->su, $this->system);
+
         $entityArray = array();
 
         //do we filter by isa
@@ -140,77 +146,79 @@ class EntityFactory
         $sandraReferenceMap = array();
 
         //Each concept
-        foreach ($refs as $key => $value) {
+        if (is_array($refs)) {
+            foreach ($refs as $key => $value) {
 
-            $concept = $this->system->conceptFactory->getConceptFromId($key);
-            $entityId = $value['linkId'];
-            $refArray = null;
-
-
-            //each reference
-            foreach ($value as $refConceptUnid => $refValue) {
-
-                //escape if reference is not a concept id
-                if (!is_numeric($refConceptUnid))
-                    continue;
-
-                //we are builiding the auto increment index if any
-                if ($refConceptUnid == $this->indexUnid) {
+                $concept = $this->system->conceptFactory->getConceptFromId($key);
+                $entityId = $value['linkId'];
+                $refArray = null;
 
 
-                    if ($refValue > $this->maxIndex) {
+                //each reference
+                foreach ($value as $refConceptUnid => $refValue) {
 
-                        $indexFound = $refValue;
-                        $this->maxIndex = $refValue;
+                    //escape if reference is not a concept id
+                    if (!is_numeric($refConceptUnid))
+                        continue;
+
+                    //we are builiding the auto increment index if any
+                    if ($refConceptUnid == $this->indexUnid) {
+
+
+                        if ($refValue > $this->maxIndex) {
+
+                            $indexFound = $refValue;
+                            $this->maxIndex = $refValue;
+                        }
+
+                    }
+
+                    $refArray[$refConceptUnid] = $refValue;
+
+                    //we add the reference in the factory reference map
+                    $sandraReferenceMap[$refConceptUnid] = $this->system->conceptFactory->getConceptFromId($refConceptUnid);
+
+                }
+
+                //there are ref to be merged
+                if (isset($mergedRefs[$key])) {
+
+                    foreach ($mergedRefs[$key] as $mergeConceptId => $refValueMerged) {
+
+                        //the reference not already exist in entity
+                        if (!$refArray[$mergeConceptId]) {
+
+                            $refArray[$mergeConceptId] = $refValueMerged;
+
+                            //we add the reference in the factory reference map
+                            $sandraReferenceMap[$refConceptUnid] = $this->system->conceptFactory->getConceptFromId($mergeConceptId);
+
+                        }
+
                     }
 
                 }
 
-                $refArray[$refConceptUnid] = $refValue;
+                $classname = $this->generatedEntityClass;
 
-                //we add the reference in the factory reference map
-                $sandraReferenceMap[$refConceptUnid] = $this->system->conceptFactory->getConceptFromId($refConceptUnid);
+                $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($entityReferenceContainer);
+                $entityTarget = $this->system->conceptFactory->getConceptFromShortnameOrId($this->entityContainedIn);
 
-            }
 
-            //there are ref to be merged
-            if (isset($mergedRefs[$key])) {
+                $entity = new $classname($concept, $refArray, $this, $entityId, $entityVerb, $entityTarget, $this->system);
+                //$entity = new Entity($concept,$refArray,$this,$entityId,$entityVerb,$entityTarget,$this->system);
 
-                foreach ($mergedRefs[$key] as $mergeConceptId => $refValueMerged) {
 
-                    //the reference not already exist in entity
-                    if (!$refArray[$mergeConceptId]) {
+                $entityArray[$key] = $entity;
 
-                        $refArray[$mergeConceptId] = $refValueMerged;
+                if (isset($indexFound)) {
 
-                        //we add the reference in the factory reference map
-                        $sandraReferenceMap[$refConceptUnid] = $this->system->conceptFactory->getConceptFromId($mergeConceptId);
-
-                    }
-
+                    //if entity of this factory have index
+                    $this->entityIndexMap[$indexFound] = $entity;
                 }
 
+
             }
-
-            $classname = $this->generatedEntityClass;
-
-            $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($entityReferenceContainer);
-            $entityTarget = $this->system->conceptFactory->getConceptFromShortnameOrId($this->entityContainedIn);
-
-
-            $entity = new $classname($concept, $refArray, $this, $entityId, $entityVerb, $entityTarget, $this->system);
-            //$entity = new Entity($concept,$refArray,$this,$entityId,$entityVerb,$entityTarget,$this->system);
-
-
-            $entityArray[$key] = $entity;
-
-            if (isset($indexFound)) {
-
-                //if entity of this factory have index
-                $this->entityIndexMap[$indexFound] = $entity;
-            }
-
-
         }
 
 
@@ -220,6 +228,95 @@ class EntityFactory
 
 
     }
+    /**
+     * @return Entity[]
+     */
+    public function populateBotherEntiies($verb,$target)
+    {
+
+
+        $entityArray = array();
+
+
+
+        $refs = $this->conceptManager->getReferences($this->sc->get($verb), $this->sc->get($target));
+
+
+
+
+
+
+
+        $sandraReferenceMap = array();
+
+        //Each concept
+        if (is_array($refs)) {
+            foreach ($refs as $key => $value) {
+
+                $concept = $this->system->conceptFactory->getConceptFromId($key);
+                $entityId = $value['linkId'];
+                $refArray = null;
+
+
+                //each reference
+                foreach ($value as $refConceptUnid => $refValue) {
+
+                    //escape if reference is not a concept id
+                    if (!is_numeric($refConceptUnid))
+                        continue;
+
+                    //we are builiding the auto increment index if any
+                    if ($refConceptUnid == $this->indexUnid) {
+
+
+                        if ($refValue > $this->maxIndex) {
+
+                            $indexFound = $refValue;
+                            $this->maxIndex = $refValue;
+                        }
+
+                    }
+
+                    $refArray[$refConceptUnid] = $refValue;
+
+                    //we add the reference in the factory reference map
+                    $sandraReferenceMap[$refConceptUnid] = $this->system->conceptFactory->getConceptFromId($refConceptUnid);
+
+                }
+
+
+
+
+
+                $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($verb);
+                $entityTarget = $this->system->conceptFactory->getConceptFromShortnameOrId($target);
+
+
+                $entity = new Entity($concept, $refArray, $this, $entityId, $entityVerb, $entityTarget, $this->system);
+                //$entity = new Entity($concept,$refArray,$this,$entityId,$entityVerb,$entityTarget,$this->system);
+
+
+
+                $entityArray[$key] = $entity;
+
+                if (isset($indexFound)) {
+
+                    //if entity of this factory have index
+                    $this->entityIndexMap[$indexFound] = $entity;
+                }
+
+
+            }
+        }
+
+
+        $this->addBrotherEntities($entityArray, $sandraReferenceMap);
+
+        return $this->entityArray;
+
+
+    }
+
 
     public function populatePartialEntity($referenceOnVerb, $referenceOnTarget)
     {
@@ -234,6 +331,28 @@ class EntityFactory
         if (!is_array($referenceMap)) return;
 
         if ($this->entityArray) {
+
+
+            $this->entityArray = $this->entityArray + $entityArray;
+            $this->sandraReferenceMap = $this->sandraReferenceMap + $referenceMap;
+
+        } else {
+
+            $this->entityArray = $entityArray;
+            $this->sandraReferenceMap = $referenceMap;
+        }
+
+    }
+
+    public function addBrotherEntities($entityArray, $referenceMap)
+    {
+
+        if (!is_array($entityArray)) return;
+        if (!is_array($referenceMap)) return;
+
+
+        //die("stop");
+        if ($entityArray) {
 
 
             $this->entityArray = $this->entityArray + $entityArray;
@@ -515,7 +634,6 @@ class EntityFactory
             DatabaseAdapter::rawCreateReference($link, $this->sc->get('creator'), $userUNID, $this->system);
         }
 
-
         DatabaseAdapter::rawCreateReference($link, $this->sc->get('creationTimestamp'), time(), $this->system);
 
 
@@ -527,7 +645,6 @@ class EntityFactory
                 $key = $this->sc->get($key);
             }
 
-
             DatabaseAdapter::rawCreateReference($link, $key, $value, $this->system,false);
 
         }
@@ -535,13 +652,53 @@ class EntityFactory
         DatabaseAdapter::commit();
 
         if (is_array($linArray)) {
-            //each link
-            foreach ($linArray as $key => $value) {
+            //each link verb
+            foreach ($linArray as $verb => $valueTargetArray) {
+                //Each target
+                foreach ($valueTargetArray as $target => $targetNameOrArray) {
+                    $extraRef = array();
 
-                DatabaseAdapter::rawCreateReference($this->sc->get($key), $conceptId, $this->sc->get($value), $this->system);
+                    //if the link array contains an array then there are reference to be added
+                    if (is_array($targetNameOrArray)) {
+
+                        $targetName = $target;
+                        $extraRef = $targetNameOrArray;
+                        echo"Extra ref is array we take the key $target \n";
+                        print_r($extraRef);
+
+                    } else {
+                        $targetName = $target;
+
+                    }
+
+                    $linkId = DatabaseAdapter::rawCreateTriplet($conceptId, $this->sc->get($verb), $this->sc->get($targetName), $this->system);
+                    echo"should create $conceptId - $verb - $targetName \n";
+
+
+                    //Now we will add reference on additional links if any
+                    if (!empty($extraRef)) {
+
+                        foreach ($extraRef as $refname => $refValue) {
+
+
+
+                            DatabaseAdapter::rawCreateReference($linkId, $this->sc->get($refname), $refValue, $this->system, false);
+                            echo"should create Reference $refname - on link $linkId  \n";
+
+
+                        }
+                        DatabaseAdapter::commit();
+
+                    }
+                }
+
+
+                //DatabaseAdapter::rawCreateReference($this->sc->get($key), $conceptId, $this->sc->get($value), $this->system);
             }
 
         }
+
+
 
 
     }

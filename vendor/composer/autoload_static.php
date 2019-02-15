@@ -14,6 +14,13 @@ class ComposerStaticInitaf125a87073de8f3b61a9f7ec1886a14
                 0 => __DIR__ . '/../..' . '/src',
             ),
         ),
+        'I' => 
+        array (
+            'InnateSkills' => 
+            array (
+                0 => __DIR__ . '/../..' . '/src',
+            ),
+        ),
     );
 
     public static function getInitializer(ClassLoader $loader)
