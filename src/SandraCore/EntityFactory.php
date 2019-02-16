@@ -390,7 +390,7 @@ class EntityFactory
 
     public function return2dArray()
     {
-
+        $returnArray = array();
 
         foreach ($this->entityArray as $key => $entity) {
 
@@ -476,6 +476,9 @@ class EntityFactory
         $localRefMap = $this->getRefMap($localRefConcept);
         //$foreignRefMap = $this->foreignAdapter->getRefMap($foreignRef);
 
+        //return if no refmap
+        if (empty($localRefMap))
+            return ;
 
         foreach ($localRefMap as $key => $value) {
 
@@ -601,6 +604,9 @@ class EntityFactory
 
         }
 
+        if (!isset($valOfConcept))
+            return null ;
+
         return $this->refMap[$valOfConcept];
 
 
@@ -615,7 +621,6 @@ class EntityFactory
 
 
         if ($this->entityIsa) {
-
 
             DatabaseAdapter::rawCreateTriplet($conceptId, $this->sc->get('is_a'), $this->sc->get($this->entityIsa), $this->system);
         }

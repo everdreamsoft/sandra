@@ -91,6 +91,12 @@ class ForeignEntityAdapter extends EntityFactory
             $pathedArray = $resultArray ;
         }
 
+        //if the array is empty return
+        if (!isset($pathedArray) or empty($pathedArray)){
+
+            return array();
+        }
+
         //Cycle trough the entity
         foreach ($pathedArray as $key => $foreignEntity){
 

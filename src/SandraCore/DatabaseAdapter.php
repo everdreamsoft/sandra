@@ -113,7 +113,7 @@ class DatabaseAdapter{
             return $updateID;
         }
 
-        $sql = "INSERT INTO $tableLink (idConceptStart ,idConceptLink ,idConceptTarget) VALUES ('$conceptSubject', '$conceptVerb', '$conceptTarget') ON DUPLICATE KEY UPDATE flag = 0, id=LAST_INSERT_ID(id)";
+        $sql = "INSERT INTO $tableLink (idConceptStart ,idConceptLink ,idConceptTarget,flag) VALUES ('$conceptSubject', '$conceptVerb', '$conceptTarget',0) ON DUPLICATE KEY UPDATE flag = 0, id=LAST_INSERT_ID(id)";
 
 
         try {
@@ -139,10 +139,7 @@ class DatabaseAdapter{
         $pdo = System::$pdo->get();
         $tableConcept = $system->conceptTable ;
 
-
-
-
-            $sql = "INSERT INTO $tableConcept (id, code) VALUES ('', '$code');";
+            $sql = "INSERT INTO $tableConcept (code) VALUES ('$code');";
 
         try {
             $pdoResult = $pdo->prepare($sql);

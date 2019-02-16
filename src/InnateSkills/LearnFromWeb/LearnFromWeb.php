@@ -34,17 +34,12 @@ class LearnFromWeb
     public function createOrUpdate($learnerName, $vocabularyArray, $url, $path, $learnerLocalIsa, $learnerLocalFile,$fuseLocalConcept,$fuseRemoteConcept)
     {
 
-
-
-
-
         $existEntity = $this->webLearnerFactory->getAllWith('learnerName', $learnerName);
-
-
 
         if (!isset($existEntity)) {
 
             $this->create($learnerName, $vocabularyArray, $url, $path, $learnerLocalIsa, $learnerLocalFile,$fuseLocalConcept,$fuseRemoteConcept);
+            echo"creating";
 
         } else {
 
