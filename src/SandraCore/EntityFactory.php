@@ -9,7 +9,7 @@
 namespace SandraCore;
 
 
-class EntityFactory
+class EntityFactory implements Dumpable
 {
 
     //Sandra entity is a pair of two triplets.
@@ -29,6 +29,7 @@ class EntityFactory
 
     protected $generatedEntityClass = '\SandraCore\Entity';
 
+    /* @var $entityArray Entity[] */
     public $entityArray;
     public $entityReferenceContainer = 'contained_in_file';
 
@@ -90,6 +91,8 @@ class EntityFactory
         $this->sc = $system->systemConcept;
 
         $this->conceptManager = new ConceptManager($this->su, $this->system);
+
+        $this->refMap = array();
 
 
     }
@@ -584,9 +587,10 @@ class EntityFactory
     //the ref map is an array that list reference as map so it's easier to acess them
     public function getRefMap($conceptObject)
     {
-
-
-        if (!$this->refMap[$conceptObject]) {
+        //print_r($conceptObject->dumpMeta());
+        //print_r($this->refMap);
+        //die();
+        if (!isset($this->refMap[$conceptObject->idConcept])) {
 
             foreach ($this->entityArray as $value) {
 
@@ -595,6 +599,8 @@ class EntityFactory
 
                 $valOfConcept = $conceptObject->idConcept;
                 $valueOfThisRef = $value->entityRefs[$valOfConcept]->refValue;
+
+                //echo " of concept $valOfConcept -> $valueOfThisRef \n";
 
 
                 $this->refMap[$valOfConcept][$valueOfThisRef][] = $value;
@@ -606,6 +612,7 @@ class EntityFactory
 
         if (!isset($valOfConcept))
             return null ;
+        echo("should return refmap $valOfConcept \n");
 
         return $this->refMap[$valOfConcept];
 
@@ -617,29 +624,29 @@ class EntityFactory
     {
 
 
-        $conceptId = DatabaseAdapter::rawCreateConcept("A " . $this->entityIsa, $this->system);
+        $conceptId = DatabaseAdapter::rawCreateConcept("A " . $this->entityIsa, $this->system,false);
 
 
         if ($this->entityIsa) {
 
-            DatabaseAdapter::rawCreateTriplet($conceptId, $this->sc->get('is_a'), $this->sc->get($this->entityIsa), $this->system);
+            DatabaseAdapter::rawCreateTriplet($conceptId, $this->sc->get('is_a'), $this->sc->get($this->entityIsa), $this->system,false);
         }
 
         $entityReferenceContainer = $this->sc->get($this->entityReferenceContainer);
 
 
-        $link = DatabaseAdapter::rawCreateTriplet($conceptId, $entityReferenceContainer, $this->sc->get($this->entityContainedIn), $this->system);
+        $link = DatabaseAdapter::rawCreateTriplet($conceptId, $entityReferenceContainer, $this->sc->get($this->entityContainedIn), $this->system,0,false);
 
 
         if (isset($_GET['trigger'])) {
-            DatabaseAdapter::rawCreateReference($this->sc->get('calledByTrigger'), $link, $_GET['trigger'], $this->system);
+            DatabaseAdapter::rawCreateReference($this->sc->get('calledByTrigger'), $link, $_GET['trigger'], $this->system,false);
         }
 
         if (isset($userUNID)) {
-            DatabaseAdapter::rawCreateReference($link, $this->sc->get('creator'), $userUNID, $this->system);
+            DatabaseAdapter::rawCreateReference($link, $this->sc->get('creator'), $userUNID, $this->system,false);
         }
 
-        DatabaseAdapter::rawCreateReference($link, $this->sc->get('creationTimestamp'), time(), $this->system);
+        DatabaseAdapter::rawCreateReference($link, $this->sc->get('creationTimestamp'), time(), $this->system, false);
 
 
         //each reference
@@ -653,8 +660,7 @@ class EntityFactory
             DatabaseAdapter::rawCreateReference($link, $key, $value, $this->system,false);
 
         }
-        //we are comiting references all at one
-        DatabaseAdapter::commit();
+
 
         if (is_array($linArray)) {
             //each link verb
@@ -668,16 +674,16 @@ class EntityFactory
 
                         $targetName = $target;
                         $extraRef = $targetNameOrArray;
-                        echo"Extra ref is array we take the key $target \n";
-                        print_r($extraRef);
+
+                        
 
                     } else {
                         $targetName = $target;
 
                     }
 
-                    $linkId = DatabaseAdapter::rawCreateTriplet($conceptId, $this->sc->get($verb), $this->sc->get($targetName), $this->system);
-                    echo"should create $conceptId - $verb - $targetName \n";
+                    $linkId = DatabaseAdapter::rawCreateTriplet($conceptId, $this->sc->get($verb), $this->sc->get($targetName), $this->system,false);
+
 
 
                     //Now we will add reference on additional links if any
@@ -688,22 +694,32 @@ class EntityFactory
 
 
                             DatabaseAdapter::rawCreateReference($linkId, $this->sc->get($refname), $refValue, $this->system, false);
-                            echo"should create Reference $refname - on link $linkId  \n";
+
 
 
                         }
-                        DatabaseAdapter::commit();
+                        //DatabaseAdapter::commit();
 
                     }
                 }
+
+                //we are comiting references all at one
+
 
 
                 //DatabaseAdapter::rawCreateReference($this->sc->get($key), $conceptId, $this->sc->get($value), $this->system);
             }
 
         }
+        
+        $conceptContainedIn = $this->system->conceptFactory->getConceptFromId($this->sc->get($this->entityContainedIn)) ;
+        $conceptContainerConcept = $this->system->conceptFactory->getConceptFromId($this->sc->get($this->entityReferenceContainer)) ;
 
-
+        DatabaseAdapter::commit();
+        
+        $createdEntity = new Entity($this->system->conceptFactory->getConceptFromId($conceptId),$dataArray,$this,$link,$conceptContainerConcept,$conceptContainedIn,$this->system);
+        
+        return $createdEntity ;
 
 
     }
@@ -771,18 +787,80 @@ class EntityFactory
 
 
         if ($this->populated) {
+            echo("refercen value : $referenceValue");
 
 
             $referenceConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($referenceName);
 
             $refmap = $this->getRefMap($referenceConcept);
+            
+            if (is_array($refmap) && key_exists($referenceValue,$refmap)){
+                echo("key exist $referenceValue");
+                return $refmap[$referenceValue];
+            }
+            else {
+                echo"key dones't exist $referenceValue";
+                return null;
+            }
 
 
-            return $refmap[$referenceValue];
+
+           
         }
 
         die("not full populated");
+        
         return $newEntities;
+
+    }
+
+    public function dumpMeta()
+    {
+
+        $factoryData['status']['populated'] = $this->populated ;
+       $factoryData['is_a'] = $this->entityIsa;
+       $factoryData['path'][$this->entityReferenceContainer] = $this->entityContainedIn;
+
+        $entities = array();
+       
+       if (!empty($this->entityArray)) {
+           foreach ($this->entityArray as $key => $entity) {
+               $entities[] = $entity->dumpMeta() ;
+
+           }
+          
+       }
+        $factoryData['entities'] = $entities ;
+
+       $refMap = array();
+       //print_r($this->refMap);
+        echo "empty refmap";
+
+       if(is_array($this->refMap)) {
+           echo "Not empty \n";
+           foreach ($this->refMap as $conceptId => $valueArray) {
+               foreach ($valueArray as $valueOfIndex => $entityArray) {
+                   foreach ($entityArray as $entityCounter => $entity) {
+
+                       $conceptObject = $this->system->conceptFactory->getConceptFromId($conceptId);
+                       $conceptMeta = $conceptObject->dumpMeta();
+
+                       $refMap[$conceptMeta][$valueOfIndex] = $entity->dumpMeta();
+                   }
+               }
+           }
+       }
+
+        $factoryData['refMap'] = $refMap ;
+
+       $meta['factory'] =  $factoryData ;
+
+
+       
+       
+
+       return $meta ;
+        
 
     }
 

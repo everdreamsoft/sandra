@@ -11,7 +11,7 @@ namespace SandraCore;
 
 
 
-class Concept
+class Concept implements Dumpable
 {
 
     public $idConcept;
@@ -142,15 +142,13 @@ class Concept
 
 
     }
-
-
-
-
-
-
-
-
-
+    
+    public function dumpMeta()
+    {
+       
+        return $this->getDisplayName()." ($this->idConcept)";
+        
+    }
 
 
 }

@@ -29,21 +29,38 @@ class LearnFromWeb
         $this->webLearnerFactory->populateBotherEntiies('has','vocabulary');
 
 
+
+
     }
 
     public function createOrUpdate($learnerName, $vocabularyArray, $url, $path, $learnerLocalIsa, $learnerLocalFile,$fuseLocalConcept,$fuseRemoteConcept)
     {
 
-        $existEntity = $this->webLearnerFactory->getAllWith('learnerName', $learnerName);
+        //print_r( $this->webLearnerFactory->dumpMeta() );
+
+       $existEntity = $this->webLearnerFactory->getAllWith('learnerName', $learnerName);
+      // print_r( $this->webLearnerFactory) ;
+
+       //print_r( $this->webLearnerFactory->dumpMeta() );
+
+
+        //print_r($existEntity);
+        echo("$learnerName has entities don't understand oh yes : \n");
+        echo(count($existEntity)."\n");
+       // print_r($existEntity);
+
 
         if (!isset($existEntity)) {
+            echo "creating";
 
             $this->create($learnerName, $vocabularyArray, $url, $path, $learnerLocalIsa, $learnerLocalFile,$fuseLocalConcept,$fuseRemoteConcept);
-            echo"creating";
+
+           
 
         } else {
+            echo "returning";
 
-            return $this->webLearnerFactory->return2dArray();
+            return $existEntity;
         }
 
 
@@ -76,7 +93,8 @@ class LearnFromWeb
             $vocabulary['has']['vocabulary'] = $referencesToAdd;
         }
 
-        $this->webLearnerFactory->createNew($entityData, $vocabulary);
+        $learnerEntity = $this->webLearnerFactory->createNew($entityData, $vocabulary);
+        return $learnerEntity;
 
 
     }
@@ -108,13 +126,7 @@ class LearnFromWeb
 
 
         }
-
-
-
-
-
-
-
+        
         $learnerName = $learnerConcept->get('learnerName');
         $url = $learnerConcept->get('url');
         $path = $learnerConcept->get('path');
@@ -125,16 +137,8 @@ class LearnFromWeb
 
 
         $factory = $this->system->factoryManager->create("$learnerName"."_factory", $isa_a, $contained_in_file);
-
-
-
-
         $foreignAdapter = new ForeignEntityAdapter($url, $path, $this->system);
-
-
-
-
-
+        
 
         $foreignAdapter->adaptToLocalVocabulary($vocabulary);
 
@@ -157,8 +161,12 @@ class LearnFromWeb
     public function test()
     {
 
-    $firstEntity = reset($this->webLearnerFactory->entityArray);
-    return $this->learn($firstEntity);
+    //$firstEntity = reset($this->webLearnerFactory->entityArray);
+    if($firstEntity instanceof Entity) {
+
+        return $this->learn($firstEntity);
+    }
+    else return false ;
 
 
     }

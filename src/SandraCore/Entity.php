@@ -9,7 +9,7 @@
 namespace SandraCore;
 
 
-class Entity
+class Entity implements Dumpable
 {
 
 
@@ -33,7 +33,7 @@ class Entity
 
             $referenceConcept = $this->system->conceptFactory->getForeignConceptFromId($sandraReferenceConceptId);
 
-            $ref  = new Reference($referenceConcept,$this,$sandraReferenceValue);
+            $ref  = new Reference($referenceConcept,$this,$sandraReferenceValue,$this->system);
             $this->entityRefs[$sandraReferenceConceptId] = $ref ;
             $this->entityId = $entityId ;
             //$this->factory = $factory ;
@@ -73,7 +73,7 @@ class Entity
     public function createOrUpdateRef(Concept $referenceConcept,$value): Reference{
 
         createReference($referenceConcept->idConcept,$this->entityId,$value);
-        $ref  = new Reference($referenceConcept,$this,$value);
+        $ref  = new Reference($referenceConcept,$this,$value,$this->system);
         $this->entityRefs[$referenceConcept->idConcept] = $ref ;
 
         return $ref ;
@@ -82,6 +82,30 @@ class Entity
 
 
     }
+
+    public function dumpMeta(){
+
+
+        $entity['id']=$this->entityId;
+
+        $meta['entity'] = $entity;
+
+        foreach ($this->entityRefs as $key => $value){
+            /** @var $value Reference */
+
+            $references[$value->refConcept->dumpMeta()] = $value->dumpMeta() ;
+        }
+
+        $meta['references'] = $references ;
+
+        return $meta ;
+
+
+
+
+
+    }
+
 
 
 

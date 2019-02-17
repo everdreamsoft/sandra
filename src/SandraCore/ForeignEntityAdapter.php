@@ -55,6 +55,10 @@ class ForeignEntityAdapter extends EntityFactory
         // $output contains the output string
         $json = curl_exec($ch);
 
+
+
+        
+
         // close curl resource to free up system resources
         curl_close($ch);
 

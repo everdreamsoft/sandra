@@ -8,6 +8,7 @@
 
 namespace SandraCore;
 use PDOException ;
+use PDO;
 
 
 class DatabaseAdapter{
@@ -43,23 +44,26 @@ class DatabaseAdapter{
 
         }
 
-
-
         $targetTable = $system->tableReference ;
 
         $sql = "INSERT INTO `$targetTable` (idConcept, linkReferenced, value) VALUES ($conceptId, $tripletId, :value)
         ON DUPLICATE KEY UPDATE  value = :value, id=LAST_INSERT_ID(id)";
 
+        //do we reach the max column data
+        if (strlen($value) > 255)
+            $value = substr($value, 0, 255) ;
 
 
 
 
         try {
             $pdoResult = $pdo->prepare($sql);
-            $pdoResult->execute(array(':value' => $value));
+            $pdoResult->bindParam(":value", $value, PDO::PARAM_STR, 50);
+            $pdoResult->execute();
+
         }
         catch(PDOException $exception){
-
+            //die("too havy");
             System::sandraException($exception);
             return ;
         }
@@ -73,11 +77,19 @@ class DatabaseAdapter{
 
     }
 
-    public static function rawCreateTriplet($conceptSubject, $conceptVerb,$conceptTarget,System $system,$udateOnExistingLK = 0){
+    public static function rawCreateTriplet($conceptSubject, $conceptVerb,$conceptTarget,System $system,$udateOnExistingLK = 0,$autocommit = true){
 
         $pdo = System::$pdo->get();
 
         $tableLink = $system->linkTable ;
+
+        if (!self::$transactionStarted && $autocommit == false){
+            $pdo->beginTransaction();
+            self::$pdo = $pdo ;
+            self::$transactionStarted = true ;
+
+
+        }
 
         $updateID = null;
 
@@ -133,11 +145,20 @@ class DatabaseAdapter{
 
     }
 
-    public static function rawCreateConcept($code, System $system){
+    public static function rawCreateConcept($code, System $system,$autocommit = true){
 
 
         $pdo = System::$pdo->get();
         $tableConcept = $system->conceptTable ;
+
+        if (!self::$transactionStarted && $autocommit == false){
+            $pdo->beginTransaction();
+            self::$pdo = $pdo ;
+            self::$transactionStarted = true ;
+
+
+        }
+        
 
             $sql = "INSERT INTO $tableConcept (code) VALUES ('$code');";
 

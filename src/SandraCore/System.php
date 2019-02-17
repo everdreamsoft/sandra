@@ -91,8 +91,9 @@ class System
 
 
     }
+    print_r($exception->getMessage());
 
-    print_r($exception);
+    //print_r($exception);
 
 
 

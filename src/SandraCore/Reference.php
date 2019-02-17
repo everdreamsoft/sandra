@@ -8,19 +8,21 @@
 
 namespace SandraCore;
 
-class Reference
+class Reference implements Dumpable
 {
 
-    public $refConcept ;
+    public $refConcept ;/** @var $refConcept Concept */
     public $refEntity ;  /** @var $refEntity SandraEntity */
     public $refValue ;
+    private $system ;
 
-    public function __construct($refConcept,$refEntity,$refValue)
+    public function __construct(Concept $refConcept,Entity $refEntity,$refValue,System $system)
     {
 
         $this->refConcept = $refConcept;
         $this->refEntity = $refEntity;
         $this->refValue = $refValue;
+        $this->system = $system ;
     }
 
     public function hasChangedFromDatabase(): bool
@@ -68,6 +70,16 @@ class Reference
 
         return $newValue ;
 
+    }
+    
+    public function dumpMeta()
+    {
+        
+        $meta = $this->refValue ;
+        
+        return $meta ;
+        
+        
     }
 
 
