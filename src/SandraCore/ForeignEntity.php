@@ -42,7 +42,7 @@ class ForeignEntity extends Entity
             }
 
 
-            $ref  = new Reference($referenceConcept,$this,$sandraReferenceValue);
+            $ref  = new Reference($referenceConcept,$this,$sandraReferenceValue,$system);
             $this->entityRefs[$sandraReferenceConceptId] = $ref ;
             $this->entityId = $entityId ;
             //$this->factory = $factory ;

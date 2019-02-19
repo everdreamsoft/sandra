@@ -9,6 +9,7 @@
 namespace InnateSkills\LearnFromWeb;
 
 use SandraCore\Entity;
+use SandraCore\FactoryManager;
 use SandraCore\Reference;
 use SandraCore\System;
 use SandraCore\ForeignEntityAdapter ;
@@ -43,26 +44,29 @@ class LearnFromWeb
 
        //print_r( $this->webLearnerFactory->dumpMeta() );
 
+        if (is_array($existEntity)){
 
-        //print_r($existEntity);
-        echo("$learnerName has entities don't understand oh yes : \n");
-        echo(count($existEntity)."\n");
-       // print_r($existEntity);
+
+            foreach ($existEntity as $entity){
+
+                
+
+            }
+
+        }
 
 
         if (!isset($existEntity)) {
-            echo "creating";
+
 
             $this->create($learnerName, $vocabularyArray, $url, $path, $learnerLocalIsa, $learnerLocalFile,$fuseLocalConcept,$fuseRemoteConcept);
 
-           
 
         } else {
-            echo "returning";
 
-            return $existEntity;
+
+            return reset($existEntity);
         }
-
 
     }
 
@@ -103,7 +107,8 @@ class LearnFromWeb
     {
 
         //print_r($learnerConcept);
-        $learnerConcept->subjectConcept->system = null ;
+        //print_r($learnerConcept->dumpMeta());
+        //$learnerConcept->subjectConcept->system = null ;
         $refVocabulary = array();
 
 
@@ -112,9 +117,6 @@ class LearnFromWeb
 
         $vocabularyEntity = $learnerConcept->subjectConcept->getEntity($hasConcept,$vocabularyConcept);
 
-
-
-        //die("stop");
 
         //building the vocabulary
 
@@ -138,7 +140,9 @@ class LearnFromWeb
 
         $factory = $this->system->factoryManager->create("$learnerName"."_factory", $isa_a, $contained_in_file);
         $foreignAdapter = new ForeignEntityAdapter($url, $path, $this->system);
-        
+
+
+
 
         $foreignAdapter->adaptToLocalVocabulary($vocabulary);
 
@@ -153,12 +157,39 @@ class LearnFromWeb
 
         $factory->saveEntitiesNotInLocal();
 
+        print_r($factory->dumpMeta());
+
         return($factory->return2dArray());
 
 
     }
 
-    public function test()
+    public function getFactoryFromLearnerName($learnerName)
+    {
+
+
+        $learnerEntities = $this->webLearnerFactory->getAllWith('learnerName', $learnerName);
+        $learnerEntity = end($learnerEntities); //make sure we take the last.
+
+        $learnerName = $learnerEntity->get('learnerName');
+        $isa_a = $learnerEntity->get('isa_a');
+        $contained_in_file = $learnerEntity->get('contained_in_file');
+
+
+        $factory = $this->system->factoryManager->create("$learnerName"."_factory", $isa_a, $contained_in_file);
+
+        return $factory ;
+
+
+
+
+
+
+
+
+    }
+
+    public function test($firstEntity)
     {
 
     //$firstEntity = reset($this->webLearnerFactory->entityArray);

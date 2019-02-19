@@ -590,6 +590,7 @@ class EntityFactory implements Dumpable
         //print_r($conceptObject->dumpMeta());
         //print_r($this->refMap);
         //die();
+        $valOfConcept = $conceptObject->idConcept;
         if (!isset($this->refMap[$conceptObject->idConcept])) {
 
             foreach ($this->entityArray as $value) {
@@ -612,7 +613,7 @@ class EntityFactory implements Dumpable
 
         if (!isset($valOfConcept))
             return null ;
-        echo("should return refmap $valOfConcept \n");
+
 
         return $this->refMap[$valOfConcept];
 
@@ -787,30 +788,31 @@ class EntityFactory implements Dumpable
 
 
         if ($this->populated) {
-            echo("refercen value : $referenceValue");
-
 
             $referenceConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($referenceName);
 
             $refmap = $this->getRefMap($referenceConcept);
             
             if (is_array($refmap) && key_exists($referenceValue,$refmap)){
-                echo("key exist $referenceValue");
+
+                //If we have a single entity make sure to return an array
+                if (!is_array($refmap[$referenceValue])){
+                    return array($refmap[$referenceValue]);
+                }
+
                 return $refmap[$referenceValue];
             }
             else {
-                echo"key dones't exist $referenceValue";
+
                 return null;
             }
-
-
 
            
         }
 
         die("not full populated");
         
-        return $newEntities;
+
 
     }
 
@@ -834,10 +836,9 @@ class EntityFactory implements Dumpable
 
        $refMap = array();
        //print_r($this->refMap);
-        echo "empty refmap";
 
        if(is_array($this->refMap)) {
-           echo "Not empty \n";
+
            foreach ($this->refMap as $conceptId => $valueArray) {
                foreach ($valueArray as $valueOfIndex => $entityArray) {
                    foreach ($entityArray as $entityCounter => $entity) {
@@ -850,7 +851,6 @@ class EntityFactory implements Dumpable
                }
            }
        }
-
         $factoryData['refMap'] = $refMap ;
 
        $meta['factory'] =  $factoryData ;

@@ -35,8 +35,6 @@ class FactoryManager
 
 
 
-        //print_r($dogFactory);
-
         return $factory ;
 
 
