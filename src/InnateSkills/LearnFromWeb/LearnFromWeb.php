@@ -169,6 +169,9 @@ class LearnFromWeb
 
 
         $learnerEntities = $this->webLearnerFactory->getAllWith('learnerName', $learnerName);
+
+        if (!is_array($learnerEntities)) return null ;
+
         $learnerEntity = end($learnerEntities); //make sure we take the last.
 
         $learnerName = $learnerEntity->get('learnerName');
@@ -179,9 +182,6 @@ class LearnFromWeb
         $factory = $this->system->factoryManager->create("$learnerName"."_factory", $isa_a, $contained_in_file);
 
         return $factory ;
-
-
-
 
 
 
