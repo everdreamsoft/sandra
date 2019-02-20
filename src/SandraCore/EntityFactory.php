@@ -9,7 +9,9 @@
 namespace SandraCore;
 
 
-class EntityFactory implements Dumpable
+use SandraCore\displayer\Displayer;
+
+class EntityFactory extends FactoryBase implements Dumpable
 {
 
     //Sandra entity is a pair of two triplets.
@@ -91,6 +93,8 @@ class EntityFactory implements Dumpable
         $this->sc = $system->systemConcept;
 
         $this->conceptManager = new ConceptManager($this->su, $this->system);
+
+        $this->initDisplayer();
 
         $this->refMap = array();
 

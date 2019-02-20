@@ -100,7 +100,13 @@ class System
     die();
 
 
+    }
 
+    public function systemError($code,$source,$level,$message){
+        
+        
+
+        die($message);
 
     }
 
