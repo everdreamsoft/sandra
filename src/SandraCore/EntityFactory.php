@@ -52,7 +52,6 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     public $factoryIdentifier = 'noNameFactory';
 
-
     private $brotherVerb;
     private $brotherTarget;
 
