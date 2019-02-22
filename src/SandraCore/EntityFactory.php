@@ -430,7 +430,7 @@ class EntityFactory extends FactoryBase implements Dumpable
         $this->maxIndex++;
         $dataArray[$this->indexShortname] = $this->maxIndex;
 
-        $this->createNew($dataArray, $linkArray);
+        return $this->createNew($dataArray, $linkArray);
 
     }
 

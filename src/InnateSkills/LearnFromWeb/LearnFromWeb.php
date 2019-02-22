@@ -46,23 +46,10 @@ class LearnFromWeb extends EntityFactory
     public function createOrUpdate($learnerName, $vocabularyArray, $url, $path, $learnerLocalIsa, $learnerLocalFile,$fuseLocalConcept,$fuseRemoteConcept)
     {
 
-        //print_r( $this->webLearnerFactory->dumpMeta() );
 
        $existEntity = $this->getAllWith('learnerName', $learnerName);
-      // print_r( $this->webLearnerFactory) ;
-
-       //print_r( $this->webLearnerFactory->dumpMeta() );
-
-        if (is_array($existEntity)){
 
 
-            foreach ($existEntity as $entity){
-
-                
-
-            }
-
-        }
 
 
         if (!isset($existEntity)) {

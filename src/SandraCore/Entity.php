@@ -30,6 +30,9 @@ class Entity implements Dumpable
 
         foreach ($sandraReferencesArray as $sandraReferenceConceptId => $sandraReferenceValue){
 
+            //if $sandraReferenceConceptId is not an id then we need to convert it
+            $sandraReferenceConcept = $system->conceptFactory->getConceptFromShortnameOrId($sandraReferenceConceptId);
+            $sandraReferenceConceptId = $sandraReferenceConcept->idConcept ;
 
             $referenceConcept = $this->system->conceptFactory->getForeignConceptFromId($sandraReferenceConceptId);
 
