@@ -614,6 +614,9 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         }
 
+        if (!isset($this->refMap[$valOfConcept]))
+            return null ;
+
         if (!isset($valOfConcept))
             return null ;
 

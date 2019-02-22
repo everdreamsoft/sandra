@@ -9,25 +9,34 @@
 namespace InnateSkills\LearnFromWeb;
 
 use SandraCore\Entity;
+use SandraCore\EntityFactory;
 use SandraCore\FactoryManager;
 use SandraCore\Reference;
 use SandraCore\System;
 use SandraCore\ForeignEntityAdapter ;
 
 
-class LearnFromWeb
+class LearnFromWeb extends EntityFactory
 {
     public $system;
     public $webLearnerFactory;
 
+
     public function __construct(System $system)
     {
 
-        $this->system = $system;
-        $this->webLearnerFactory = new WebLearnerFactory($this->system);
+        $entityIsa = 'webLearner';
+        $entityContainedIn = 'ewbLearnerFile';
+        $this->system = $system ;
+
+        parent::__construct($entityIsa, $entityContainedIn, $system);
+
+
+
         $system->systemConcept->get('learnerName');
-        $this->webLearnerFactory->populateLocal();
-        $this->webLearnerFactory->populateBotherEntiies('has','vocabulary');
+        $this->populateLocal();
+        $this->populateBotherEntiies('has','vocabulary');
+
 
 
 
@@ -39,7 +48,7 @@ class LearnFromWeb
 
         //print_r( $this->webLearnerFactory->dumpMeta() );
 
-       $existEntity = $this->webLearnerFactory->getAllWith('learnerName', $learnerName);
+       $existEntity = $this->getAllWith('learnerName', $learnerName);
       // print_r( $this->webLearnerFactory) ;
 
        //print_r( $this->webLearnerFactory->dumpMeta() );
@@ -59,7 +68,7 @@ class LearnFromWeb
         if (!isset($existEntity)) {
 
 
-            $this->create($learnerName, $vocabularyArray, $url, $path, $learnerLocalIsa, $learnerLocalFile,$fuseLocalConcept,$fuseRemoteConcept);
+            return $this->create($learnerName, $vocabularyArray, $url, $path, $learnerLocalIsa, $learnerLocalFile,$fuseLocalConcept,$fuseRemoteConcept);
 
 
         } else {
@@ -97,7 +106,7 @@ class LearnFromWeb
             $vocabulary['has']['vocabulary'] = $referencesToAdd;
         }
 
-        $learnerEntity = $this->webLearnerFactory->createNew($entityData, $vocabulary);
+        $learnerEntity = $this->createNew($entityData, $vocabulary);
         return $learnerEntity;
 
 
@@ -157,9 +166,9 @@ class LearnFromWeb
 
         $factory->saveEntitiesNotInLocal();
 
-        print_r($factory->dumpMeta());
 
-        return($factory->return2dArray());
+
+        return $factory;
 
 
     }
@@ -168,7 +177,7 @@ class LearnFromWeb
     {
 
 
-        $learnerEntities = $this->webLearnerFactory->getAllWith('learnerName', $learnerName);
+        $learnerEntities = $this->getAllWith('learnerName', $learnerName);
 
         if (!is_array($learnerEntities)) return null ;
 

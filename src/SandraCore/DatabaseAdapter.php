@@ -49,6 +49,8 @@ class DatabaseAdapter{
         $sql = "INSERT INTO `$targetTable` (idConcept, linkReferenced, value) VALUES ($conceptId, $tripletId, :value)
         ON DUPLICATE KEY UPDATE  value = :value, id=LAST_INSERT_ID(id)";
 
+
+
         //do we reach the max column data
         if (strlen($value) > 255)
             $value = substr($value, 0, 255) ;

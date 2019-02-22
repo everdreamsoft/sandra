@@ -87,13 +87,12 @@ class ForeignEntityAdapter extends EntityFactory
 
         $i=0;
 
-        //path to array
-        if (isset ($this->mainEntityPath) && $this->mainEntityPath != ''){
-            $pathedArray = $resultArray[$this->mainEntityPath] ;
-        }
-        else{
-            $pathedArray = $resultArray ;
-        }
+        $pathedArray = $this->divideForeignPath($resultArray,$this->mainEntityPath);
+
+
+
+
+
 
         //if the array is empty return
         if (!isset($pathedArray) or empty($pathedArray)){
@@ -153,6 +152,45 @@ class ForeignEntityAdapter extends EntityFactory
         $this->entityArray = $entityArray ;
 
         return $entityArray ;
+
+    }
+
+    public function divideForeignPath($pathedArray,$path){
+
+        if (empty($path)) {
+
+            return $pathedArray ;
+        }
+
+        $explodedPath = explode ('/',$path);
+        $fistNode = reset($explodedPath);
+
+        //If we have a special command in the path for example first or last node
+        switch($fistNode){
+
+            case '$first':
+                $pathedArray = reset($pathedArray);
+                break ;
+
+            case '$last':
+                $pathedArray = end($pathedArray);
+                break ;
+
+            default:
+                $pathedArray = $pathedArray[$fistNode];
+
+
+        }
+
+
+
+        //remove first node
+        array_shift($explodedPath);
+
+       return $this->divideForeignPath($pathedArray,implode('/',$explodedPath)) ;
+
+
+
 
     }
 
