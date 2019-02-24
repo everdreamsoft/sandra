@@ -35,6 +35,8 @@ class System
     public $tableReference;
     public $tableStorage;
     public $tableConf ;
+    public $conceptFactory ;
+    public $foreignConceptFactory ;
 
     public  function __construct($env = '',$install = false){
 

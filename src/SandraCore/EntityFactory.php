@@ -23,7 +23,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     public $conceptManager;
     /* @var $conceptManager ConceptManager */
     private $factoryTable;
-    private $populated; //is the factory populated from database
+    protected $populated; //is the factory populated from database
     private $foreignPopulated = false; //is full if we got all the entities without the filter
     private $populatedFull = false; //is full if we got all the entities without the filter
     private $su = true; //is the factory super user status
@@ -334,7 +334,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     {
 
         if (!is_array($entityArray)) return;
-        if (!is_array($referenceMap)) return;
+       // if (!is_array($referenceMap)) return;
 
         if ($this->entityArray) {
 
@@ -434,15 +434,25 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     }
 
-    public function setFuseForeignOnRef($foreignRef, $localRefName)
+    public function setFuseForeignOnRef($foreignRef, $localRefName,$vocabulary = null)
     {
+        /* doenst work yet
 
-        //$this->foreignAdapter->addToLocalVocabulary($foreignRef,$localRefName);
+        if (is_array($vocabulary)) {
+            $this->foreignAdapter->adaptToLocalVocabulary($vocabulary);
+        }
+        $this->foreignAdapter->addToLocalVocabulary($foreignRef,$localRefName); //Caution I reactivated that but I don't know why
+*/
+
+
+        $this->system->systemConcept->get($localRefName);
 
         $localRefConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($localRefName);
         $foreignRefConcept = $this->system->conceptFactory->getForeignConceptFromId($foreignRef);
         $this->fuseForeignConcept = $foreignRefConcept;
         $this->fuseLocalConcept = $localRefConcept;
+
+
 
 
     }
@@ -588,7 +598,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     }
 
     //the ref map is an array that list reference as map so it's easier to acess them
-    public function getRefMap($conceptObject)
+    public function getRefMap($conceptObject,$forceRefresh = false)
     {
         //print_r($conceptObject->dumpMeta());
         //print_r($this->refMap);
@@ -602,6 +612,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
 
                 $valOfConcept = $conceptObject->idConcept;
+                if (!isset  ($value->entityRefs[$valOfConcept])) continue ;
                 $valueOfThisRef = $value->entityRefs[$valOfConcept]->refValue;
 
                 //echo " of concept $valOfConcept -> $valueOfThisRef \n";
@@ -795,7 +806,13 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         if ($this->populated) {
 
-            $referenceConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($referenceName);
+            //do we have local concept or a foreign ?
+            if($this instanceof ForeignEntityAdapter){
+             $referenceConcept = $this->system->conceptFactory->getForeignConceptFromId($referenceName);
+            }
+            else {
+                $referenceConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($referenceName);
+            }
 
             $refmap = $this->getRefMap($referenceConcept);
             

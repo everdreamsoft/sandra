@@ -17,6 +17,7 @@ class SystemConcept
     private $pdo;
 
     private  $_conceptsByTable = array();
+    private  $_conceptsByTableUnsensitive = array();
 
     private static $_tableLoaded = 'default';
 
@@ -92,6 +93,7 @@ class SystemConcept
 
 
         //print_r(self::$_conceptsByTable[$table]);
+
 
         if(isset($this->_conceptsByTable[$table]))
         {
@@ -170,11 +172,15 @@ class SystemConcept
     {
         $table = $this->assignDefaultTable($table);
 
+        //we have to lowecase the shortname
+        $shortnameCaseUnsensitive = strtolower($shortname);
+
         //if an id is provided already
         if (is_numeric($shortname)) return $shortname ;
 
         if(!isset($this->_conceptsByTable[$table]))
             try {
+
                 $this->load($table);
             }catch(PDOException $exception) {
                 System::sandraException($exception);
@@ -182,14 +188,16 @@ class SystemConcept
             }
 
 
-        if(!isset($this->_conceptsByTable[$table][$shortname]))
+        if(!isset($this->_conceptsByTableUnsensitive[$table][$shortnameCaseUnsensitive]))
         {
             $concept = $this->getFromDB($shortname, $table);
+
 
             if($concept != null)
             {
                 //self::write($table);	//reload all things from db and update json file
                 $this->_conceptsByTable[$table][$shortname] = $concept->id;
+                $this->_conceptsByTableUnsensitive[$table][$shortnameCaseUnsensitive] = $concept->id;
                 return $concept->id;
             }
             else
@@ -198,6 +206,7 @@ class SystemConcept
                 {
                     $id = self::create($shortname, $table);
                     $this->_conceptsByTable[$table][$shortname] = $id;
+                    $this->_conceptsByTableUnsensitive[$table][$shortnameCaseUnsensitive] = $id;
                     return $id;
                 }
                 return null;
@@ -205,7 +214,8 @@ class SystemConcept
 
         }
         else{
-            return $this->_conceptsByTable[$table][$shortname];
+            //echo"loading $shortname \n";
+            return $this->_conceptsByTableUnsensitive[$table][$shortnameCaseUnsensitive];
         }
 
     }
@@ -285,7 +295,9 @@ class SystemConcept
 
 
 
+
         $sql = "SELECT id,shortname FROM $this->conceptTable WHERE shortname = '$shortname'";
+
 
         try {
             $result = $this->pdo->prepare($sql);
@@ -356,19 +368,27 @@ class SystemConcept
         $table = $this->assignDefaultTable($table);
 
         $this->_conceptsByTable[$table] = $this->listAll($table);
-        /* Never write the cache
-        self::tryCreateFile($table);
-        $content = file_get_contents(sprintf(self::$_includePath . self::FILENAME, $table));
-        $json = json_decode($content);
-        self::$_concepts = array();
-        if((bool)empty($json))
-            return array();
 
-        foreach($json as $k=>$v)
-            self::$_concepts[$k] = $v;
+                //build the case insensitive array
+                foreach  ($this->_conceptsByTable[$table] as $key => $value){
+                    $key = strtolower($key);
+                    $this->_conceptsByTableUnsensitive[$table][$key] = $value ;
+                }
 
-        self::$_tableLoaded = $table;
-        */
+/*
+                 Never write the cache
+                self::tryCreateFile($table);
+                $content = file_get_contents(sprintf(self::$_includePath . self::FILENAME, $table));
+                $json = json_decode($content);
+                self::$_concepts = array();
+                if((bool)empty($json))
+                    return array();
+
+                foreach($json as $k=>$v)
+                    self::$_concepts[$k] = $v;
+
+                self::$_tableLoaded = $table;
+                */
     }
 
     private  function assignDefaultTable($table = null)

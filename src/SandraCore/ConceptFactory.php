@@ -61,14 +61,12 @@ class ConceptFactory
             if(!is_numeric($conceptWeDontKnow))
             {
 
-                $conceptId = $this->system->systemConcept->tryGetSC($conceptWeDontKnow) ;
+                $conceptId = $this->system->systemConcept->get($conceptWeDontKnow) ;
 
                 if(!$conceptId){
                     die("invalid concept $conceptWeDontKnow");
                 }
-
-
-
+                
 
             }
             else{
@@ -125,9 +123,7 @@ class ConceptFactory
 
     public  function getForeignConceptFromId($conceptId)
     {
-
-
-
+        
         if ( isset($this->conceptMapFromId[$conceptId])) {
 
             $concept =  $this->conceptMapFromId[$conceptId];
@@ -143,6 +139,8 @@ class ConceptFactory
 
         return $concept;
     }
+
+    
 
 
 }

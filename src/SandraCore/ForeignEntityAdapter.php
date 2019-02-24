@@ -7,9 +7,7 @@
  */
 
 namespace SandraCore;
-
-
-
+use Exception;
 
 
 /**
@@ -43,29 +41,48 @@ class ForeignEntityAdapter extends EntityFactory
 
         $this->mainEntityPath = "$pathToItem";
 
-        // create curl resource
-        $ch = curl_init();
+        try {
+            $ch = curl_init();
 
-        // set url
-        curl_setopt($ch, CURLOPT_URL, "$url");
+            // Check if initialization had gone wrong*
+            if ($ch === false) {
+                throw new Exception('failed to initialize');
+            }
 
-        //return the transfer as a string
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-
-        // $output contains the output string
-        $json = curl_exec($ch);
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
 
 
+            $json = curl_exec($ch);
+
+            // Check the return value of curl_exec(), too
+            if ($json === false) {
+                throw new Exception(curl_error($ch), curl_errno($ch));
+            }
+
+            /* Process $content here */
+
+            // Close curl handle
+            curl_close($ch);
+        } catch(Exception $e) {
+
+            trigger_error(sprintf(
+                'Curl failed with error #%d: %s',
+                $e->getCode(), $e->getMessage()),
+                E_USER_ERROR);
+
+        }
 
         
-
-        // close curl resource to free up system resources
-        curl_close($ch);
-
 
         $this->foreignRawArray = json_decode($json,1);
 
         $this->system = $system ;
+
+
+
+       //echo" X $json $url";
 
 
 
@@ -88,10 +105,6 @@ class ForeignEntityAdapter extends EntityFactory
         $i=0;
 
         $pathedArray = $this->divideForeignPath($resultArray,$this->mainEntityPath);
-
-
-
-
 
 
         //if the array is empty return
@@ -121,13 +134,14 @@ class ForeignEntityAdapter extends EntityFactory
 
                     //do we have the concept in reference into vocabulary ?
                     if (isset($this->foreignToLocalVocabulary[$objectKey])){
+
                         //then return local concept
-                        $this->refMap[$objectKey] = $this->system->conceptFactory->getConceptFromShortnameOrIdOrCreateShortname($this->foreignToLocalVocabulary[$objectKey]);
+                       // $this->refMap[$objectKey] = $entity ;
 
                     }
                     else {
 
-                        $this->refMap[$objectKey] = $this->system->conceptFactory->getForeignConceptFromId($objectKey);
+                      //  $this->refMap[$objectKey] = $entity;
                     }
 
                 }
@@ -150,6 +164,7 @@ class ForeignEntityAdapter extends EntityFactory
         }
 
         $this->entityArray = $entityArray ;
+        $this->populated = true ;
 
         return $entityArray ;
 
