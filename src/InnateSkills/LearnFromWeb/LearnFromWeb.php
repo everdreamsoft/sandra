@@ -115,14 +115,16 @@ class LearnFromWeb extends EntityFactory
 
 
         //building the vocabulary
+        if(is_array($vocabularyEntity->entityRefs)) {
 
-        foreach  ((array) $vocabularyEntity->entityRefs as $reference){
+            foreach ((array)$vocabularyEntity->entityRefs as $reference) {
 
-            /* @var Reference $reference */
+                /* @var Reference $reference */
 
-            $vocabulary[$reference->refValue] = $reference->refConcept->getShortname() ;
+                $vocabulary[$reference->refValue] = $reference->refConcept->getShortname();
 
 
+            }
         }
         
         $learnerName = $learnerConcept->get('learnerName');

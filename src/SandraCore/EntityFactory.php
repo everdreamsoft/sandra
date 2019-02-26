@@ -340,7 +340,9 @@ class EntityFactory extends FactoryBase implements Dumpable
 
 
             $this->entityArray = $this->entityArray + $entityArray;
-            $this->sandraReferenceMap = $this->sandraReferenceMap + $referenceMap;
+            if (is_array($referenceMap)) {
+                $this->sandraReferenceMap = $this->sandraReferenceMap + $referenceMap;
+            }
 
         } else {
 

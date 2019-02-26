@@ -38,6 +38,7 @@ class ForeignEntityAdapter extends EntityFactory
 
 
         //$json = $this->testJson();
+        if (is_null($url)) return ;
 
         $this->mainEntityPath = "$pathToItem";
 
