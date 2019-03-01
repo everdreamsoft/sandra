@@ -37,7 +37,7 @@ final class ForeignEntityAdapterTest extends TestCase
         );
     }
 
-    public function testA(): void    {
+    public function testPureForeignAdapter(): void    {
 
 
 
@@ -67,9 +67,9 @@ final class ForeignEntityAdapterTest extends TestCase
 
       //search
         
-             $entityArray = $foreignAdapter->getAllWith('Visa','MR542','Error getting Visa ');
-             $noMatch = $foreignAdapter->getAllWith('Visa','MR599','Error getting Visa '); //Unexisting entity
-             $invalidRef = $foreignAdapter->getAllWith('VisaX','MR542','Error getting Visa '); // Unexisting Reference
+             $entityArray = $foreignAdapter->getAllWith('Visa','MR542');
+             $noMatch = $foreignAdapter->getAllWith('Visa','MR599'); //Unexisting entity
+             $invalidRef = $foreignAdapter->getAllWith('VisaX','MR542'); // Unexisting Reference
 
 
             //$entityArray = $foreignAdapter->getAllWith('Visa','MR548','Error getting Visa ');
@@ -77,6 +77,7 @@ final class ForeignEntityAdapterTest extends TestCase
              $this->assertNull($invalidRef,'Invalid Reference returned a response');
              $this->assertNull($noMatch,'Non existing reference value  returned something');
              $this->assertIsArray($entityArray,'Search for Visa MR542 Did not return an Array of Entities');
+
 
 
                     $this->assertInstanceOf(\SandraCore\ForeignEntity::class,$entity,'Entity with Visa MR542 Not found');
@@ -97,11 +98,69 @@ final class ForeignEntityAdapterTest extends TestCase
 */
 
 
+    }
 
+    public function testForeignAndLocalFusion(): void    {
+
+
+
+        $sandraToFlush = new SandraCore\System('_phpUnit', true);
+        \SandraCore\Setup::flushDatagraph($sandraToFlush);
+
+        $sandra = new SandraCore\System('_phpUnit',true);
+        $factory = $sandra->factoryManager->create('personnelFactoryTestLocal','person','peopleFile');
+
+
+        $foreignAdapter = new ForeignEntityAdapter("https://script.google.com/macros/s/AKfycbzJWIW1e0rsVx611g4EcYmZ9SJonpnzwmskDsg_A_9j3qGlht0/exec",'user',$sandra);
+
+
+// testing limit should return only one entity
+        $foreignAdapter->populate(1);
+
+        $this->assertCount(1,$foreignAdapter->entityArray,'The limitation of 1 in Foreign entity failed');
+
+
+        $vocabulary = array(
+            'Visa' => 'visa',
+            'Title'=> 'Title'
+        );
+
+
+                $foreignAdapter->adaptToLocalVocabulary($vocabulary); // If after populate then fail
+        $controlFactory = clone $factory ;
+
+                $factory->foreignPopulate($foreignAdapter,2);
+
+        $this->assertCount(2,$factory->entityArray,'Our local factory should have 2 foreign concepts');
+
+                $factory->setFuseForeignOnRef('Visa','visa',$vocabulary);
+                $factory->fuseRemoteEntity();
+                $factory->saveEntitiesNotInLocal();
+
+                //We should have a local entity
+                $entityArray = $factory->getAllWith('Visa','MR542');
+                $entity = reset($entityArray);
+
+
+
+        $controlFactory->populateLocal();
+        //did the two has been saved in the database
+        $this->assertCount(2,$controlFactory->entityArray,'The two foreign entity not successful saved');
+        $controlFactory->foreignPopulate($foreignAdapter,3);
+        $controlFactory->setFuseForeignOnRef('Visa','visa',$vocabulary);
+        $controlFactory->fuseRemoteEntity();
+
+        //Now we should have two local entities and other foreign assuming the size of foreign data
+
+
+
+
+        $dump= $controlFactory->dumpMeta();
+
+        //
 
 
     }
-
 
 
 

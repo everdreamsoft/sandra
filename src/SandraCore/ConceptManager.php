@@ -488,6 +488,7 @@ class ConceptManager
     {
         global $tableReference, $tableLink, $deletedUNID, $dbLink;
 
+        if (!key_exists('conceptStartList',$this->conceptArray)) return array();
 
         $array = null;
         if (is_array($this->conceptArray['conceptStartList']) && (sizeof($this->conceptArray['conceptStartList']) > 0)) {
@@ -507,10 +508,19 @@ class ConceptManager
             // AND `$this->tableReference`.linkReferenced =  $this->tableLink.id
             // AND `$this->tableReference`.idConcept IN ($refs)
 
-            $resultat = mysqli_query($dbLink, $sql);
+            try {
+                $pdoResult = $this->pdo->prepare($sql);
+                $pdoResult->execute();
+            } catch (PDOException $exception) {
+
+                System::sandraException($exception);
+                return null;
+            }
 
             $array = array();
-            while ($result = mysqli_fetch_array($resultat)) {
+            $resultArray = $pdoResult->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($resultArray as $key => $result) {
                 $idConcept = $result['idConceptStart'];
                 if ($getIds) {
                     $idLink = $result['id'];

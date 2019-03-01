@@ -9,8 +9,10 @@
 namespace SandraCore;
 
 
-class EntityBase
+abstract class EntityBase
 {
+
+
 
 
 

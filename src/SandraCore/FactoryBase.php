@@ -9,10 +9,34 @@
 namespace SandraCore;
 
 
-class FactoryBase
+abstract class FactoryBase
 {
 
     public $displayer ;
+
+    abstract public function getAllWith($referenceName, $referenceValue);
+
+    public function first($referenceName, $referenceValue){
+
+       $resultArray = $this->getAllWith($referenceName, $referenceValue) ;
+       if (!is_array($resultArray)) return null ;
+
+       $result = reset($resultArray);
+
+        return $result;
+
+    }
+
+    public function last($referenceName, $referenceValue){
+
+        $resultArray = $this->getAllWith($referenceName, $referenceValue) ;
+        if (!is_array($resultArray)) return null ;
+
+        $result = end($resultArray);
+
+        return $result;
+
+    }
     
 
     public function getDisplay($format,$refToDisplay = null, $dictionnary=null){

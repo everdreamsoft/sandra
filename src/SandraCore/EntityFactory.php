@@ -671,11 +671,12 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         //each reference
         foreach ($dataArray as $key => $value) {
-
+            if(is_array($value)) continue ;
             if (!is_numeric($key)) {
 
                 $key = $this->sc->get($key);
             }
+
 
             DatabaseAdapter::rawCreateReference($link, $key, $value, $this->system,false);
 
@@ -684,8 +685,17 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         if (is_array($linArray)) {
             //each link verb
-            foreach ($linArray as $verb => $valueTargetArray) {
+            foreach ($linArray as $verb => $valueToTarget) {
+                $valueTargetArray = array();
                 //Each target
+                if(!is_array($valueToTarget)){
+                    //in case we have only one target for a link
+                    $valueTargetArray[$valueToTarget] =$valueToTarget;
+                }
+
+                else{
+                    $valueTargetArray = $valueToTarget;
+                }
                 foreach ($valueTargetArray as $target => $targetNameOrArray) {
                     $extraRef = array();
 
@@ -783,6 +793,9 @@ class EntityFactory extends FactoryBase implements Dumpable
     public function saveEntitiesNotInLocal()
     {
         $newEntities = array();
+        //we need to verify if everything is polpulated and fused.
+       $this->verifyPopulated(1);
+
 
         foreach ($this->entityArray as $key => $value) {
 
@@ -872,10 +885,14 @@ class EntityFactory extends FactoryBase implements Dumpable
                        $conceptMeta = $conceptObject->dumpMeta();
 
                        $refMap[$conceptMeta][$valueOfIndex] = $entity->dumpMeta();
+                       $refMap[$conceptMeta][$valueOfIndex] = $entity->dumpMeta();
                    }
                }
            }
        }
+
+
+
         $factoryData['refMap'] = $refMap ;
 
        $meta['factory'] =  $factoryData ;
@@ -894,6 +911,9 @@ class EntityFactory extends FactoryBase implements Dumpable
 
 
         $tripletArray = $this->conceptManager->getTriplets();
+        if(is_array($tripletArray)){
+
+
 
         foreach ($tripletArray as $keyConcept => $triplet) {
 
@@ -914,6 +934,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         }
 
+    }
     }
 
 

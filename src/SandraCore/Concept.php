@@ -143,10 +143,27 @@ class Concept implements Dumpable
 
     }
     
-    public function dumpMeta()
+    public function dumpMeta($withTriplet = false)
     {
-       
-        return $this->getDisplayName()." ($this->idConcept)";
+
+
+
+        if ($withTriplet) {
+            $response['concept'] = $this->getDisplayName();
+            if($this->tripletArray) {
+                foreach ($this->tripletArray as $link => $value) {
+                    $verbDisplayName = $this->system->conceptFactory->getForeignConceptFromId($link);
+                    $response["verb $link ". $verbDisplayName->getDisplayName()][] = $value;
+
+
+                }
+            }
+        return $response ;
+        }
+
+        $return = $this->getDisplayName() ;
+
+        return $return ;
         
     }
 

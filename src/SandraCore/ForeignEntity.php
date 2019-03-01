@@ -52,6 +52,28 @@ class ForeignEntity extends Entity
 
     }
 
+    //we override entity get because the reference is not an id
+    public function get($referenceName){
+
+        // if the get on foreign is not in the reference array is maybe because we fused the concept
+        if (!isset($this->entityRefs[$referenceName])){
+
+            if(!$this->system->systemConcept->tryGetSC($referenceName)){
+                //this has no local reference
+                return null ;
+            }
+            $referenceName = $this->system->systemConcept->tryGetSC($referenceName) ;
+
+        }
+
+        if(!isset($this->entityRefs[$referenceName]))
+        return null ;
+
+        return $this->entityRefs[$referenceName]->refValue ;
+
+
+    }
+
     public function save(EntityFactory $factory){
 
 

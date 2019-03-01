@@ -581,6 +581,7 @@ return array(
     'SandraCore\\PdoConnexionWrapper' => $baseDir . '/src/SandraCore/PdoConnexionWrapper.php',
     'SandraCore\\Reference' => $baseDir . '/src/SandraCore/Reference.php',
     'SandraCore\\SayHello' => $baseDir . '/src/SandraCore/HelloWorld.php',
+    'SandraCore\\Setup' => $baseDir . '/src/SandraCore/Setup.php',
     'SandraCore\\System' => $baseDir . '/src/SandraCore/System.php',
     'SandraCore\\SystemConcept' => $baseDir . '/src/SandraCore/SystemConcept.php',
     'SandraCore\\displayer\\Displayer' => $baseDir . '/src/SandraCore/displayer/Displayer.php',

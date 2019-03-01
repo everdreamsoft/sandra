@@ -59,6 +59,10 @@ class Entity implements Dumpable
         $refId = $this->system->systemConcept->get($referenceName);
         //echoln("getting $referenceName is $refId");
 
+        if (!isset($this->entityRefs[$refId]))
+            return null ;
+
+
         return $this->entityRefs[$refId]->refValue ;
 
 
@@ -97,6 +101,12 @@ class Entity implements Dumpable
             /** @var $value Reference */
 
             $references[$value->refConcept->dumpMeta()] = $value->dumpMeta() ;
+        }
+
+        if (!$this instanceof ForeignEntity) {
+            $conceptLinks = $this->subjectConcept->dumpMeta(true);
+            $meta['conceptSubject']  = $conceptLinks ;
+
         }
 
         $meta['references'] = $references ;

@@ -657,6 +657,7 @@ class ComposerStaticInitaf125a87073de8f3b61a9f7ec1886a14
         'SandraCore\\PdoConnexionWrapper' => __DIR__ . '/../..' . '/src/SandraCore/PdoConnexionWrapper.php',
         'SandraCore\\Reference' => __DIR__ . '/../..' . '/src/SandraCore/Reference.php',
         'SandraCore\\SayHello' => __DIR__ . '/../..' . '/src/SandraCore/HelloWorld.php',
+        'SandraCore\\Setup' => __DIR__ . '/../..' . '/src/SandraCore/Setup.php',
         'SandraCore\\System' => __DIR__ . '/../..' . '/src/SandraCore/System.php',
         'SandraCore\\SystemConcept' => __DIR__ . '/../..' . '/src/SandraCore/SystemConcept.php',
         'SandraCore\\displayer\\Displayer' => __DIR__ . '/../..' . '/src/SandraCore/displayer/Displayer.php',

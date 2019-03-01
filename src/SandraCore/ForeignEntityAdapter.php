@@ -120,7 +120,7 @@ class ForeignEntityAdapter extends EntityFactory
             $i++;
             $refArray = array();
 
-            if ($limit && $i >= $limit) break ;
+            if ($limit && $i > $limit) break ;
 
 
             foreach ($foreignEntity as $objectKey => $objectValue){
@@ -293,7 +293,7 @@ class ForeignEntityAdapter extends EntityFactory
         foreach ($dataToFlat as $objectKey => $objectValue) {
             //do we have the concept in reference into vocabulary ?
 
-            $refArray[$objectKey] =   $objectValue ;
+            $refArray["$prefix.".$objectKey] =   $objectValue ;
 
             if ($this->foreignToLocalVocabulary[$objectKey]){
                 //then return local concept
@@ -302,7 +302,7 @@ class ForeignEntityAdapter extends EntityFactory
             }
             else {
 
-                $this->refMap[$objectKey] = $this->system->conceptFactory->getForeignConceptFromId($objectKey);
+                $this->refMap["$prefix.".$objectKey] = $this->system->conceptFactory->getForeignConceptFromId($objectKey);
             }
 
 

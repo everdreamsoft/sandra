@@ -442,12 +442,12 @@
         "source": {
             "type": "git",
             "url": "https://github.com/sebastianbergmann/php-code-coverage.git",
-            "reference": "cfca9c5f7f2694ca0c7749ffb142927d9f05250f"
+            "reference": "0317a769a81845c390e19684d9ba25d7f6aa4707"
         },
         "dist": {
             "type": "zip",
-            "url": "https://api.github.com/repos/sebastianbergmann/php-code-coverage/zipball/cfca9c5f7f2694ca0c7749ffb142927d9f05250f",
-            "reference": "cfca9c5f7f2694ca0c7749ffb142927d9f05250f",
+            "url": "https://api.github.com/repos/sebastianbergmann/php-code-coverage/zipball/0317a769a81845c390e19684d9ba25d7f6aa4707",
+            "reference": "0317a769a81845c390e19684d9ba25d7f6aa4707",
             "shasum": ""
         },
         "require": {
@@ -468,7 +468,7 @@
         "suggest": {
             "ext-xdebug": "^2.6.1"
         },
-        "time": "2019-02-15T13:40:27+00:00",
+        "time": "2019-02-26T07:38:26+00:00",
         "type": "library",
         "extra": {
             "branch-alias": {
@@ -704,12 +704,12 @@
         "source": {
             "type": "git",
             "url": "https://github.com/sebastianbergmann/phpunit.git",
-            "reference": "efb5af42b4ad74b93f6bb0647695da903173ebc0"
+            "reference": "36f92d57c2b25b778fbf72bc806e6aca0ba344b4"
         },
         "dist": {
             "type": "zip",
-            "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/efb5af42b4ad74b93f6bb0647695da903173ebc0",
-            "reference": "efb5af42b4ad74b93f6bb0647695da903173ebc0",
+            "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/36f92d57c2b25b778fbf72bc806e6aca0ba344b4",
+            "reference": "36f92d57c2b25b778fbf72bc806e6aca0ba344b4",
             "shasum": ""
         },
         "require": {
@@ -746,7 +746,7 @@
             "ext-xdebug": "*",
             "phpunit/php-invoker": "^2.0"
         },
-        "time": "2019-02-21T08:29:35+00:00",
+        "time": "2019-02-22T13:07:17+00:00",
         "bin": [
             "phpunit"
         ],
