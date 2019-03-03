@@ -16,7 +16,7 @@ class Reference implements Dumpable
     public $refValue ;
     private $system ;
 
-    public function __construct(Concept $refConcept,Entity $refEntity,$refValue,System $system)
+    public function __construct(Concept $refConcept,Entity &$refEntity,$refValue,System $system)
     {
 
         $this->refConcept = $refConcept;
@@ -65,7 +65,10 @@ class Reference implements Dumpable
     public function save($newValue)
     {
 
-        $newValue = createReference($this->refConcept->idConcept,$this->refEntity->entityId,$newValue);
+        DatabaseAdapter::rawCreateReference($this->refEntity->entityId,
+            $this->refConcept->idConcept,
+            $newValue,
+        $this->system);
         $this->refValue = $newValue ;
 
         return $newValue ;

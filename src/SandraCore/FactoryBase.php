@@ -1,4 +1,5 @@
 <?php
+namespace SandraCore;
 /**
  * Created by EverdreamSoft.
  * User: Shaban Shaame
@@ -6,7 +7,6 @@
  * Time: 09:29
  */
 
-namespace SandraCore;
 
 
 abstract class FactoryBase
@@ -15,6 +15,7 @@ abstract class FactoryBase
     public $displayer ;
 
     abstract public function getAllWith($referenceName, $referenceValue);
+    abstract public function createNew($dataArray, $linkArray = null);
 
     public function first($referenceName, $referenceValue){
 
@@ -50,9 +51,17 @@ abstract class FactoryBase
 
         return  $displayer->getAllDisplayable();
         
-        
 
+    }
 
+    public function getOrCreateFromRef($refname,$refvalue):Entity{
+
+       $entity = $this->first($refname,$refvalue);
+       if(!$entity) {
+        $entity =   $this->createNew(array($refname=>$refvalue));
+               }
+
+        return $entity ;
     }
 
 

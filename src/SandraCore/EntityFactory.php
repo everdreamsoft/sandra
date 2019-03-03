@@ -1,4 +1,5 @@
 <?php
+namespace SandraCore;
 /**
  * Created by PhpStorm.
  * User: shaban
@@ -6,7 +7,7 @@
  * Time: 15:49
  */
 
-namespace SandraCore;
+
 
 
 use SandraCore\displayer\Displayer;
@@ -847,8 +848,53 @@ class EntityFactory extends FactoryBase implements Dumpable
 
            
         }
+        else {
+            $entityReferenceContainer = $this->sc->get($this->entityReferenceContainer);
+            $referenceConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($referenceName);
+            $link = $this->system->conceptFactory->getConceptFromShortnameOrId($this->entityReferenceContainer);
+            $target = $this->system->conceptFactory->getConceptFromShortnameOrId($this->entityContainedIn);
+            
+            $searchResults = DatabaseAdapter::searchConcept($referenceValue,
+                $referenceConcept->idConcept,$this->system,$link->idConcept,$target->idConcept,'', '', 1);
+            
+            if (is_array($searchResults)) {
+                foreach ($searchResults as $resultSet) {
 
-        die("not full populated");
+                    $concept = $this->system->conceptFactory->getConceptFromId($resultSet['entityId']);
+
+                    $classname = $this->generatedEntityClass;
+
+                    $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($entityReferenceContainer);
+                    $entityTarget = $this->system->conceptFactory->getConceptFromShortnameOrId($this->entityContainedIn);
+
+                    $entityId = $resultSet['entityId'];
+
+                    $refArray[$referenceConcept->idConcept] = $resultSet['referenceValue'];
+
+                    $entity = new $classname($concept, $refArray, $this, $entityId, $entityVerb, $entityTarget, $this->system);
+                    /** @var Entity $entity */
+                    //$entity = new Entity($concept,$refArray,$this,$entityId,$entityVerb,$entityTarget,$this->system);
+                    $referenceCreated = $entity->getReference($referenceName);
+                    $referenceCreated->refEntity = $entity->entityId;
+
+                    $this->entityArray[] = $entity;
+                }
+
+                $refmap = $this->getRefMap($referenceConcept);
+                $dump = $this->dumpMeta();
+                return $refmap[$referenceValue];
+            }
+            return null ;
+
+
+
+
+
+
+            
+        }
+
+
         
 
 
@@ -884,8 +930,8 @@ class EntityFactory extends FactoryBase implements Dumpable
                        $conceptObject = $this->system->conceptFactory->getConceptFromId($conceptId);
                        $conceptMeta = $conceptObject->dumpMeta();
 
-                       $refMap[$conceptMeta][$valueOfIndex] = $entity->dumpMeta();
-                       $refMap[$conceptMeta][$valueOfIndex] = $entity->dumpMeta();
+                       $refMap[$conceptMeta][$valueOfIndex][$entityCounter] = $entity->dumpMeta();
+
                    }
                }
            }

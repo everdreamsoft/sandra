@@ -68,24 +68,42 @@ class Entity implements Dumpable
 
     }
 
-    public function getReference($referenceName): Reference{
+    public function getReference($referenceName){
 
         $refId = $this->system->systemConcept->get($referenceName);
         //echoln("getting $referenceName is $refId");
-
-        return $this->entityRefs[$refId] ;
+        if (isset($this->entityRefs[$refId])) {
+            return $this->entityRefs[$refId];
+        }
+        return null ;
 
     }
 
-    public function createOrUpdateRef(Concept $referenceConcept,$value): Reference{
+    public function createOrUpdateRef($referenceShortname,$value): Reference{
 
-        createReference($referenceConcept->idConcept,$this->entityId,$value);
+        $referenceConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($referenceShortname);
+
+        DatabaseAdapter::rawCreateReference($this->entityId,$referenceConcept->idConcept,$value,$this->system);
         $ref  = new Reference($referenceConcept,$this,$value,$this->system);
         $this->entityRefs[$referenceConcept->idConcept] = $ref ;
 
         return $ref ;
 
         //Todo rebuild factory index
+
+
+    }
+
+    public function getOrInitReference($referenceShortname,$value): Reference{
+
+      $reference = $this->getReference($referenceShortname);
+
+      if(is_null($reference)){
+
+          $reference = $this->createOrUpdateRef($referenceShortname,$value);
+      }
+
+      return $reference ;
 
 
     }

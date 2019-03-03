@@ -158,7 +158,6 @@ class DatabaseAdapter{
             self::$pdo = $pdo ;
             self::$transactionStarted = true ;
 
-
         }
         
 
@@ -176,6 +175,122 @@ class DatabaseAdapter{
 
 
         return $pdo->lastInsertId();
+
+
+    }
+
+    public static function searchConcept($valueToSearch, $referenceUNID = 'IS NOT NULL', System $system, $conceptLinkConcept = '',
+                                         $conceptTargetConcept = '', $limit = '', $random = '', $advanced = null){
+        $limitSQL = '';
+        $randomSQL = '';
+        $targetConceptSQL = '';
+        $tableReference = $system->tableReference ;
+
+        $pdo = System::$pdo->get();
+
+
+        $tableLink = $system->linkTable ;
+        $i=0;
+
+        //we are building an OR statement if the re are different value to search
+        if (is_array($valueToSearch)) {
+
+            $initialStatement = true;
+            $orStatement = '';
+
+
+            foreach ($valueToSearch as $uniqueValue) {
+
+                if (!$initialStatement) {
+                    $orStatement .= " OR value = :value_$i";
+                    $bindParamArray[$i] = $uniqueValue ;
+                }
+                $initialStatement = 0;
+                $i++;
+            }
+
+            $valueToSearchStatement =  "(value = :value_0".$orStatement  .")";
+            $bindParamArray[0] = $valueToSearch[0] ;
+        } else {
+            //$valueToSearch = mysqli_real_escape_string($dbLink, $valueToSearch);
+            $valueToSearchStatement = "value = :value_$i";
+            $bindParamArray[$i] = $valueToSearch ;
+        }
+
+
+        if ($referenceUNID == 'IS NOT NULL') {
+            $equalSeparator = '';
+        } else {
+            $equalSeparator = '=';
+        } //This fix is because the request says references.idConcept = IS NOT NULL raising an sql error. When is not null the equal need to be striped
+
+        if ($conceptLinkConcept) {
+            $linkConceptSQL = "AND $tableLink.idConceptLink =  $conceptLinkConcept";
+        }
+
+        if ($conceptTargetConcept) {
+            $targetConceptSQL = "AND $tableLink.idConceptTarget =  $conceptTargetConcept";
+        }
+
+        if ($limit && is_numeric($limit)) {
+            $limitSQL = "LIMIT $limit";
+        }
+
+        if ($random) {
+            $randomSQL = 'ORDER BY RAND()';
+        }
+
+        $sql = "
+	
+	SELECT * FROM `$tableReference`, $tableLink 
+	WHERE $valueToSearchStatement 
+	AND `$tableReference`.idConcept $equalSeparator $referenceUNID
+	AND `$tableReference`.linkReferenced = $tableLink.id 
+	$linkConceptSQL $targetConceptSQL $randomSQL $limitSQL 
+	
+	";
+
+        try {
+            $pdoResult = $pdo->prepare($sql);
+
+            foreach ($bindParamArray as $key => $value){
+
+                $pdoResult->bindParam(":value_$key", $value, PDO::PARAM_STR);
+            }
+            $pdoResult->execute();
+        }
+        catch(PDOException $exception){
+
+            System::sandraException($exception);
+            return null ;
+        }
+
+
+
+        $array = null;
+
+        foreach ($pdoResult->fetchAll(PDO::FETCH_ASSOC) as $result) {
+
+            $conceptStart = $result['idConceptStart'];
+
+            //do we want concept
+            if ($advanced == true) {
+
+                $buildArray['idConceptStart'] = $conceptStart;
+                $buildArray['referenceConcept'] = $result['idConcept'];
+                $buildArray['entityId'] = $result['id'];
+                $buildArray['referenceValue'] = $result['value'];
+                $array[] = $buildArray;
+
+            } else {
+                $array[] = $conceptStart;
+            }
+
+        }
+
+        return $array;
+
+
 
 
     }
