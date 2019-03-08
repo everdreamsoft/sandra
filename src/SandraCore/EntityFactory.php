@@ -603,9 +603,8 @@ class EntityFactory extends FactoryBase implements Dumpable
     //the ref map is an array that list reference as map so it's easier to acess them
     public function getRefMap($conceptObject,$forceRefresh = false)
     {
-        //print_r($conceptObject->dumpMeta());
-        //print_r($this->refMap);
-        //die();
+        if(empty($this->entityArray)) return null ;
+
         $valOfConcept = $conceptObject->idConcept;
         if (!isset($this->refMap[$conceptObject->idConcept])) {
 
@@ -820,47 +819,40 @@ class EntityFactory extends FactoryBase implements Dumpable
     {
 
 
-        if ($this->populated) {
-
-            //do we have local concept or a foreign ?
-            if($this instanceof ForeignEntityAdapter){
-             $referenceConcept = $this->system->conceptFactory->getForeignConceptFromId($referenceName);
-            }
-            else {
-                $referenceConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($referenceName);
-            }
-
-            $refmap = $this->getRefMap($referenceConcept);
-            
-            if (is_array($refmap) && key_exists($referenceValue,$refmap)){
-
-                //If we have a single entity make sure to return an array
-                if (!is_array($refmap[$referenceValue])){
-                    return array($refmap[$referenceValue]);
-                }
-
-                return $refmap[$referenceValue];
-            }
-            else {
-
-                return null;
-            }
-
-           
+        //do we have local concept or a foreign ?
+        if ($this instanceof ForeignEntityAdapter) {
+            $referenceConcept = $this->system->conceptFactory->getForeignConceptFromId($referenceName);
+        } else {
+            $referenceConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($referenceName);
         }
-        else {
+
+        $refmap = $this->getRefMap($referenceConcept);
+
+        if (is_array($refmap) && key_exists($referenceValue, $refmap)) {
+
+            //If we have a single entity make sure to return an array
+            if (!is_array($refmap[$referenceValue])) {
+                return array($refmap[$referenceValue]);
+            }
+
+            return $refmap[$referenceValue];
+        } //the factory is not populated so we look in database
+        else if (!$this->populated) {
+
             $entityReferenceContainer = $this->sc->get($this->entityReferenceContainer);
             $referenceConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($referenceName);
             $link = $this->system->conceptFactory->getConceptFromShortnameOrId($this->entityReferenceContainer);
             $target = $this->system->conceptFactory->getConceptFromShortnameOrId($this->entityContainedIn);
-            
+
+            //First we need to know if exist already in the factory
+
             $searchResults = DatabaseAdapter::searchConcept($referenceValue,
-                $referenceConcept->idConcept,$this->system,$link->idConcept,$target->idConcept,'', '', 1);
-            
+                $referenceConcept->idConcept, $this->system, $link->idConcept, $target->idConcept, '', '', 1);
+
             if (is_array($searchResults)) {
                 foreach ($searchResults as $resultSet) {
 
-                    $concept = $this->system->conceptFactory->getConceptFromId($resultSet['entityId']);
+                    $concept = $this->system->conceptFactory->getConceptFromId($resultSet['idConceptStart']);
 
                     $classname = $this->generatedEntityClass;
 
@@ -875,29 +867,27 @@ class EntityFactory extends FactoryBase implements Dumpable
                     /** @var Entity $entity */
                     //$entity = new Entity($concept,$refArray,$this,$entityId,$entityVerb,$entityTarget,$this->system);
                     $referenceCreated = $entity->getReference($referenceName);
-                    $referenceCreated->refEntity = $entity->entityId;
+                    $referenceCreated->refEntity = $entity;
+                    $this->refMap[$referenceConcept->idConcept][$referenceValue][] = $entity ;
 
                     $this->entityArray[] = $entity;
                 }
 
+
+
                 $refmap = $this->getRefMap($referenceConcept);
-                $dump = $this->dumpMeta();
                 return $refmap[$referenceValue];
+
+
+
             }
-            return null ;
 
 
+            return null;
 
 
-
-
-            
         }
-
-
-        
-
-
+        return null;
     }
 
     public function dumpMeta()
