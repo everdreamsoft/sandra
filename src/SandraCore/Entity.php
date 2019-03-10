@@ -28,6 +28,7 @@ class Entity implements Dumpable
 
         $this->system = $system ;
 
+
         foreach ($sandraReferencesArray as $sandraReferenceConceptId => $sandraReferenceValue){
 
             //if $sandraReferenceConceptId is not an id then we need to convert it
@@ -39,9 +40,11 @@ class Entity implements Dumpable
             $ref  = new Reference($referenceConcept,$this,$sandraReferenceValue,$this->system);
             $this->entityRefs[$sandraReferenceConceptId] = $ref ;
             $this->entityId = $entityId ;
-            //$this->factory = $factory ;
+            $this->factory = $factory ;
 
         }
+
+        /** @var $sandraConcept Concept */
 
         $this->subjectConcept = $sandraConcept;
         $this->verbConcept = $conceptVerb;
@@ -62,16 +65,40 @@ class Entity implements Dumpable
         if (!isset($this->entityRefs[$refId]))
             return null ;
 
-
         return $this->entityRefs[$refId]->refValue ;
+
+    }
+
+    public function getJoined($joinVerb,$referenceName){
+
+        $verbConceptId = CommonFunctions::somethingToConceptId($joinVerb,$this->system);
+        $joindedConceptId = reset($this->subjectConcept->tripletArray[$verbConceptId]);
+        $joinedConcept = $this->system->conceptFactory->getConceptFromId($joindedConceptId);
+
+        /** @var $factory EntityFactory */
+        $factory = $this->factory ;
+
+        //we find the joined factory
+        $joinedFactory = $factory->joinedFactoryArray[$verbConceptId];
+
+        /** @var $joinedFactory EntityFactory */
+        //we need to find the correct datapath from the factory
+        $mainVerb = CommonFunctions::somethingToConceptId($joinedFactory->entityReferenceContainer,$this->system) ;
+        $mainTarget = CommonFunctions::somethingToConceptId($joinedFactory->entityContainedIn,$this->system) ;
+
+        $joinedEntity = $joinedConcept->entityArray[$mainVerb][$mainTarget];
+        return $joinedEntity->get($referenceName);
+
+
 
 
     }
 
+
     public function getReference($referenceName){
 
         $refId = $this->system->systemConcept->get($referenceName);
-        //echoln("getting $referenceName is $refId");
+
         if (isset($this->entityRefs[$refId])) {
             return $this->entityRefs[$refId];
         }
@@ -82,7 +109,6 @@ class Entity implements Dumpable
     public function createOrUpdateRef($referenceShortname,$value): Reference{
 
         $referenceConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($referenceShortname);
-
         DatabaseAdapter::rawCreateReference($this->entityId,$referenceConcept->idConcept,$value,$this->system);
         $ref  = new Reference($referenceConcept,$this,$value,$this->system);
         $this->entityRefs[$referenceConcept->idConcept] = $ref ;
@@ -105,11 +131,9 @@ class Entity implements Dumpable
 
       return $reference ;
 
-
     }
 
     public function dumpMeta(){
-
 
         $entity['id']=$this->entityId;
 
@@ -131,14 +155,6 @@ class Entity implements Dumpable
 
         return $meta ;
 
-
-
-
-
     }
-
-
-
-
 
 }

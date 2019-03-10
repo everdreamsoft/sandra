@@ -17,7 +17,7 @@ abstract class FactoryBase
     abstract public function getAllWith($referenceName, $referenceValue);
     abstract public function createNew($dataArray, $linkArray = null);
 
-    public function first($referenceName, $referenceValue){
+    public function first($referenceName, $referenceValue) : ?Entity{
 
        $resultArray = $this->getAllWith($referenceName, $referenceValue) ;
        if (!is_array($resultArray)) return null ;
@@ -28,7 +28,7 @@ abstract class FactoryBase
 
     }
 
-    public function last($referenceName, $referenceValue){
+    public function last($referenceName, $referenceValue) : ?Entity{
 
         $resultArray = $this->getAllWith($referenceName, $referenceValue) ;
         if (!is_array($resultArray)) return null ;

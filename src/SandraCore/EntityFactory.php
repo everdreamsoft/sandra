@@ -8,8 +8,6 @@ namespace SandraCore;
  */
 
 
-
-
 use SandraCore\displayer\Displayer;
 
 class EntityFactory extends FactoryBase implements Dumpable
@@ -20,7 +18,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     // 2. concept contained in dogFile
 
     private $entityIsa;
-    protected $entityContainedIn;
+    public $entityContainedIn;
     public $conceptManager;
     /* @var $conceptManager ConceptManager */
     private $factoryTable;
@@ -59,6 +57,9 @@ class EntityFactory extends FactoryBase implements Dumpable
     public $brotherEntities ;
     public $brotherMap ;
 
+    public $joinedFactoryArray = array(); /* @var $joinedFactoryArray EntityFactory[] */
+    public $conceptArray = array(); /* if we have a list of concept already  */
+
     public $system;
     public $sc;
 
@@ -88,7 +89,6 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         $this->indexUnid = $system->systemConcept->get($this->indexShortname);
 
-
         $this->system = $system;
         $this->sc = $system->systemConcept;
 
@@ -97,7 +97,6 @@ class EntityFactory extends FactoryBase implements Dumpable
         $this->initDisplayer();
 
         $this->refMap = array();
-
 
     }
 
@@ -126,22 +125,27 @@ class EntityFactory extends FactoryBase implements Dumpable
     public function populateLocal($limit = 10000)
     {
 
-
         $entityArray = array();
 
         //do we filter by isa
         if ($this->entityIsa) {
             $filter = array(array('lklk' => $this->sc->get('is_a'), 'lktg' => $this->sc->get($this->entityIsa)));
             $this->conceptManager->setFilter($filter);
-
         }
 
         $entityReferenceContainer = $this->sc->get($this->entityReferenceContainer);
 
+        //we don't have preselected concept yet
+        if(empty($this->conceptArray)){
 
         $this->conceptManager->getConceptsFromLinkAndTarget($entityReferenceContainer, $this->sc->get($this->entityContainedIn), $limit);
-        $refs = $this->conceptManager->getReferences($entityReferenceContainer, $this->sc->get($this->entityContainedIn));
+        }
+        else {
 
+            $this->conceptManager->getConceptsFromArray($this->conceptArray);
+        }
+
+        $refs = $this->conceptManager->getReferences($entityReferenceContainer, $this->sc->get($this->entityContainedIn));
 
         if ($this->brotherVerb or $this->brotherTarget) {
             $mergedRefs = $this->conceptManager->getReferences($this->brotherVerb, $this->brotherTarget);
@@ -199,23 +203,16 @@ class EntityFactory extends FactoryBase implements Dumpable
 
                             //we add the reference in the factory reference map
                             $sandraReferenceMap[$refConceptUnid] = $this->system->conceptFactory->getConceptFromId($mergeConceptId);
-
                         }
-
                     }
 
                 }
-
                 $classname = $this->generatedEntityClass;
 
                 $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($entityReferenceContainer);
                 $entityTarget = $this->system->conceptFactory->getConceptFromShortnameOrId($this->entityContainedIn);
-
-
                 $entity = new $classname($concept, $refArray, $this, $entityId, $entityVerb, $entityTarget, $this->system);
                 //$entity = new Entity($concept,$refArray,$this,$entityId,$entityVerb,$entityTarget,$this->system);
-
-
                 $entityArray[$key] = $entity;
 
                 if (isset($indexFound)) {
@@ -223,16 +220,12 @@ class EntityFactory extends FactoryBase implements Dumpable
                     //if entity of this factory have index
                     $this->entityIndexMap[$indexFound] = $entity;
                 }
-
-
             }
         }
-
 
         $this->addNewEtities($entityArray, $sandraReferenceMap);
 
         return $this->entityArray;
-
 
     }
     /**
@@ -241,18 +234,9 @@ class EntityFactory extends FactoryBase implements Dumpable
     public function populateBotherEntiies($verb,$target)
     {
 
-
         $entityArray = array();
 
-
-
         $refs = $this->conceptManager->getReferences($this->sc->get($verb), $this->sc->get($target));
-
-
-
-
-
-
 
         $sandraReferenceMap = array();
 
@@ -264,7 +248,6 @@ class EntityFactory extends FactoryBase implements Dumpable
                 $entityId = $value['linkId'];
                 $refArray = null;
 
-
                 //each reference
                 foreach ($value as $refConceptUnid => $refValue) {
 
@@ -274,35 +257,23 @@ class EntityFactory extends FactoryBase implements Dumpable
 
                     //we are builiding the auto increment index if any
                     if ($refConceptUnid == $this->indexUnid) {
-
-
                         if ($refValue > $this->maxIndex) {
 
                             $indexFound = $refValue;
                             $this->maxIndex = $refValue;
                         }
-
                     }
-
                     $refArray[$refConceptUnid] = $refValue;
 
                     //we add the reference in the factory reference map
                     $sandraReferenceMap[$refConceptUnid] = $this->system->conceptFactory->getConceptFromId($refConceptUnid);
-
                 }
-
-
-
-
 
                 $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($verb);
                 $entityTarget = $this->system->conceptFactory->getConceptFromShortnameOrId($target);
 
-
                 $entity = new Entity($concept, $refArray, $this, $entityId, $entityVerb, $entityTarget, $this->system);
                 //$entity = new Entity($concept,$refArray,$this,$entityId,$entityVerb,$entityTarget,$this->system);
-
-
 
                 $entityArray[$key] = $entity;
 
@@ -311,16 +282,11 @@ class EntityFactory extends FactoryBase implements Dumpable
                     //if entity of this factory have index
                     $this->entityIndexMap[$indexFound] = $entity;
                 }
-
-
             }
         }
 
-
         $this->addBrotherEntities($entityArray, $sandraReferenceMap);
-
         return $this->entityArray;
-
 
     }
 
@@ -339,18 +305,49 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         if ($this->entityArray) {
 
-
             $this->entityArray = $this->entityArray + $entityArray;
             if (is_array($referenceMap)) {
                 $this->sandraReferenceMap = $this->sandraReferenceMap + $referenceMap;
             }
-
         } else {
 
             $this->entityArray = $entityArray;
             $this->sandraReferenceMap = $referenceMap;
         }
+    }
 
+    public function joinFactory($verbJoin, EntityFactory $factory)
+    {
+
+        $verbJoinConceptId = CommonFunctions::somethingToConceptId($verbJoin,$this->system);
+        $this->joinedFactoryArray[$verbJoinConceptId] = $factory;
+
+    }
+
+    public function joinPopulate()
+    {
+        $conceptIdList = array();
+        $this->getTriplets();
+        //we cycle trough all entities subject concepts
+        foreach ($this->entityArray as $key => $entity) {
+            $triplets = $entity->subjectConcept->tripletArray ;
+
+            foreach ($this->joinedFactoryArray as $conceptVerbId => $value) {
+                if (!isset($triplets[$conceptVerbId])){continue;}
+                foreach ($triplets[$conceptVerbId] as $targetConceptId) {
+                    $conceptIdList[$conceptVerbId][] = $targetConceptId;
+                    }
+            }
+        }
+
+    //then we inject all concept into the joined factories
+        foreach ($this->joinedFactoryArray as $verbUnid => $factory)
+        {
+            if (!isset($conceptIdList[$verbUnid])){continue ;}
+            /* @var $factory EntityFactory */
+            $factory->conceptArray = $conceptIdList[$verbUnid] ;
+            $factory->populateLocal();
+        }
     }
 
     public function addBrotherEntities($entityArray, $referenceMap)
@@ -358,23 +355,14 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         if (!is_array($entityArray)) return;
         if (!is_array($referenceMap)) return;
-
-
-        //die("stop");
         if ($entityArray) {
-
-
             $this->entityArray = $this->entityArray + $entityArray;
             $this->sandraReferenceMap = $this->sandraReferenceMap + $referenceMap;
-
         } else {
-
             $this->entityArray = $entityArray;
             $this->sandraReferenceMap = $referenceMap;
         }
-
     }
-
 
     public function foreignPopulate(ForeignEntityAdapter $foreignAdapter = null,$limit = 0)
     {
@@ -423,8 +411,6 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     public function createNewWithAutoIncrementIndex($dataArray, $linkArray = null)
     {
-
-
         if (!$this->populatedFull) {
             $this->populateLocal();
 
@@ -446,17 +432,12 @@ class EntityFactory extends FactoryBase implements Dumpable
         }
         $this->foreignAdapter->addToLocalVocabulary($foreignRef,$localRefName); //Caution I reactivated that but I don't know why
 */
-
-
         $this->system->systemConcept->get($localRefName);
 
         $localRefConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($localRefName);
         $foreignRefConcept = $this->system->conceptFactory->getForeignConceptFromId($foreignRef);
         $this->fuseForeignConcept = $foreignRefConcept;
         $this->fuseLocalConcept = $localRefConcept;
-
-
-
 
     }
 
@@ -470,9 +451,7 @@ class EntityFactory extends FactoryBase implements Dumpable
         $this->fuseForeignConcept = $foreignRefConcept;
         $this->fuseLocalConcept = $localRefConcept;
 
-
     }
-
 
     /**
      *
@@ -533,22 +512,17 @@ class EntityFactory extends FactoryBase implements Dumpable
                 $fused = true;
 
             }
-
-
             $key = array_search($foreignOnThisRef, $this->entityArray);
 
             //if fused remove the remote entity
             if ($fused) {
                 unset($this->entityArray[$key]);
             }
-
-
         }
 
         //unset the entitymap
         //unset($this->refMap);
         //unset($this->entityIndexMap);
-
 
     }
 
@@ -569,8 +543,6 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     public function update($entity, $dataArray)
     {
-
-
         //if()
 
     }
@@ -579,13 +551,10 @@ class EntityFactory extends FactoryBase implements Dumpable
     {
 
         $this->verifyPopulated(true);
-
         $referenceObject = $this->system->conceptFactory->getConceptFromId(getSC($refShortname));
-
         $refmap = $this->getRefMap($referenceObject);
 
         //Now we find if the object exists
-
 
         if ($refmap[$refValue]) {
 
@@ -594,10 +563,7 @@ class EntityFactory extends FactoryBase implements Dumpable
         else {
 
             $this->createNewWithAutoIncrementIndex($dataArray, $linkArray);
-
         }
-
-
     }
 
     //the ref map is an array that list reference as map so it's easier to acess them
@@ -611,20 +577,13 @@ class EntityFactory extends FactoryBase implements Dumpable
             foreach ($this->entityArray as $value) {
 
                 //id of the reference
-
-
                 $valOfConcept = $conceptObject->idConcept;
                 if (!isset  ($value->entityRefs[$valOfConcept])) continue ;
                 $valueOfThisRef = $value->entityRefs[$valOfConcept]->refValue;
 
-                //echo " of concept $valOfConcept -> $valueOfThisRef \n";
-
-
                 $this->refMap[$valOfConcept][$valueOfThisRef][] = $value;
 
-
             }
-
         }
 
         if (!isset($this->refMap[$valOfConcept]))
@@ -633,19 +592,13 @@ class EntityFactory extends FactoryBase implements Dumpable
         if (!isset($valOfConcept))
             return null ;
 
-
         return $this->refMap[$valOfConcept];
-
-
     }
 
 
     public function createNew($dataArray, $linArray = null)
     {
-
-
         $conceptId = DatabaseAdapter::rawCreateConcept("A " . $this->entityIsa, $this->system,false);
-
 
         if ($this->entityIsa) {
 
@@ -653,10 +606,7 @@ class EntityFactory extends FactoryBase implements Dumpable
         }
 
         $entityReferenceContainer = $this->sc->get($this->entityReferenceContainer);
-
-
         $link = DatabaseAdapter::rawCreateTriplet($conceptId, $entityReferenceContainer, $this->sc->get($this->entityContainedIn), $this->system,0,false);
-
 
         if (isset($_GET['trigger'])) {
             DatabaseAdapter::rawCreateReference($this->sc->get('calledByTrigger'), $link, $_GET['trigger'], $this->system,false);
@@ -668,7 +618,6 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         DatabaseAdapter::rawCreateReference($link, $this->sc->get('creationTimestamp'), time(), $this->system, false);
 
-
         //each reference
         foreach ($dataArray as $key => $value) {
             if(is_array($value)) continue ;
@@ -676,17 +625,19 @@ class EntityFactory extends FactoryBase implements Dumpable
 
                 $key = $this->sc->get($key);
             }
-
-
             DatabaseAdapter::rawCreateReference($link, $key, $value, $this->system,false);
-
         }
-
 
         if (is_array($linArray)) {
             //each link verb
             foreach ($linArray as $verb => $valueToTarget) {
                 $valueTargetArray = array();
+
+                if ($valueToTarget instanceof Entity){
+                    $valueToTarget = $valueToTarget->subjectConcept->idConcept ;
+
+                }
+
                 //Each target
                 if(!is_array($valueToTarget)){
                     //in case we have only one target for a link
@@ -704,42 +655,24 @@ class EntityFactory extends FactoryBase implements Dumpable
 
                         $targetName = $target;
                         $extraRef = $targetNameOrArray;
-
-                        
-
                     } else {
                         $targetName = $target;
+                    }
 
+                    if ($targetNameOrArray instanceof Entity){
+                        $targetName = $targetNameOrArray->subjectConcept->idConcept ;
                     }
 
                     $linkId = DatabaseAdapter::rawCreateTriplet($conceptId, $this->sc->get($verb), $this->sc->get($targetName), $this->system,false);
-
-
-
                     //Now we will add reference on additional links if any
                     if (!empty($extraRef)) {
-
                         foreach ($extraRef as $refname => $refValue) {
-
-
-
                             DatabaseAdapter::rawCreateReference($linkId, $this->sc->get($refname), $refValue, $this->system, false);
 
-
-
-                        }
-                        //DatabaseAdapter::commit();
-
+                            }
                     }
                 }
-
-                //we are comiting references all at one
-
-
-
-                //DatabaseAdapter::rawCreateReference($this->sc->get($key), $conceptId, $this->sc->get($value), $this->system);
             }
-
         }
         
         $conceptContainedIn = $this->system->conceptFactory->getConceptFromId($this->sc->get($this->entityContainedIn)) ;
@@ -750,7 +683,6 @@ class EntityFactory extends FactoryBase implements Dumpable
         $createdEntity = new Entity($this->system->conceptFactory->getConceptFromId($conceptId),$dataArray,$this,$link,$conceptContainerConcept,$conceptContainedIn,$this->system);
         
         return $createdEntity ;
-
 
     }
 
@@ -786,8 +718,6 @@ class EntityFactory extends FactoryBase implements Dumpable
         $lightFactory->foreignPopulated = null;
 
         return serialize($lightFactory);
-
-
     }
 
     public function saveEntitiesNotInLocal()
@@ -796,7 +726,6 @@ class EntityFactory extends FactoryBase implements Dumpable
         //we need to verify if everything is polpulated and fused.
        $this->verifyPopulated(1);
 
-
         foreach ($this->entityArray as $key => $value) {
 
             //it's a new entity
@@ -804,21 +733,13 @@ class EntityFactory extends FactoryBase implements Dumpable
                 $newEntities[] = $value;
 
                 $value->save($this);
-
-
             }
-
-
         }
-
         return $newEntities;
-
     }
 
     public function getAllWith($referenceName, $referenceValue)
     {
-
-
         //do we have local concept or a foreign ?
         if ($this instanceof ForeignEntityAdapter) {
             $referenceConcept = $this->system->conceptFactory->getForeignConceptFromId($referenceName);
@@ -873,19 +794,10 @@ class EntityFactory extends FactoryBase implements Dumpable
                     $this->entityArray[] = $entity;
                 }
 
-
-
                 $refmap = $this->getRefMap($referenceConcept);
                 return $refmap[$referenceValue];
-
-
-
             }
-
-
             return null;
-
-
         }
         return null;
     }
@@ -902,9 +814,7 @@ class EntityFactory extends FactoryBase implements Dumpable
        if (!empty($this->entityArray)) {
            foreach ($this->entityArray as $key => $entity) {
                $entities[] = $entity->dumpMeta() ;
-
            }
-          
        }
         $factoryData['entities'] = $entities ;
 
@@ -921,37 +831,21 @@ class EntityFactory extends FactoryBase implements Dumpable
                        $conceptMeta = $conceptObject->dumpMeta();
 
                        $refMap[$conceptMeta][$valueOfIndex][$entityCounter] = $entity->dumpMeta();
-
                    }
                }
            }
        }
-
-
-
-        $factoryData['refMap'] = $refMap ;
-
+       $factoryData['refMap'] = $refMap ;
        $meta['factory'] =  $factoryData ;
-
-
-       
-       
-
        return $meta ;
-        
-
     }
 
     public function getTriplets()
     {
-
-
         $tripletArray = $this->conceptManager->getTriplets();
         if(is_array($tripletArray)){
 
-
-
-        foreach ($tripletArray as $keyConcept => $triplet) {
+            foreach ($tripletArray as $keyConcept => $triplet) {
 
             $concept = $this->system->conceptFactory->getConceptFromId($keyConcept);
             $concept->tripletArray = $triplet;
@@ -962,14 +856,9 @@ class EntityFactory extends FactoryBase implements Dumpable
 
                     $conceptTarget = $this->system->conceptFactory->getConceptFromId($idConceptTarget);
                     $conceptTarget->reverseTriplet[$verb] = $keyConcept;
-
                 }
-
-
             }
-
         }
-
     }
     }
 

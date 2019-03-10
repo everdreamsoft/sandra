@@ -25,6 +25,7 @@ class Concept implements Dumpable
     public $displayName;
     public $entities;
     public $system;
+    public $entityArray;
     public $foreignPrefix = 'f:';
 
 

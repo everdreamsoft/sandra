@@ -536,13 +536,11 @@ class ConceptManager
 
     public function getConceptsFromArray($conceptArray)
     {
-        global $tableLink, $tableReference, $deletedUNID, $includeCid, $containsInFileCid;
-
 
         foreach ($conceptArray as $value) {
             $idConceptStart = $value;
             $array[] = $idConceptStart;
-            $this->concepts[] = new Concept($idConceptStart);
+            $this->concepts[] = new Concept($idConceptStart, $this->system);
             $this->conceptArray['conceptStartList'][] = $idConceptStart;
         }
 
@@ -550,15 +548,7 @@ class ConceptManager
             return $array;
     }
 
-    public function createConceptFromJson($json)
-    {
-        global $tableLink, $tableReference, $deletedUNID, $includeCid, $containsInFileCid;
 
-        $array = json_decode($json, 1);
-        $this->createConceptFromArray($array);
-
-
-    }//
 
 
 }
