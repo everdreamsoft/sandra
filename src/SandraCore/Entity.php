@@ -84,7 +84,7 @@ class Entity implements Dumpable
         /** @var $joinedFactory EntityFactory */
         //we need to find the correct datapath from the factoryK
         $mainVerb = CommonFunctions::somethingToConceptId($joinedFactory->entityReferenceContainer,$this->system) ;
-        $mainTarget = CommonFunctions::somethingToConceKptId($joinedFactory->entityContainedIn,$this->system) ;
+        $mainTarget = CommonFunctions::somethingToConceptId($joinedFactory->entityContainedIn,$this->system) ;
 
         $joinedEntity = $joinedConcept->entityArray[$mainVerb][$mainTarget];
         return $joinedEntity->get($referenceName);
