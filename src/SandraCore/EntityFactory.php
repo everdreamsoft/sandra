@@ -54,7 +54,8 @@ class EntityFactory extends FactoryBase implements Dumpable
     private $brotherVerb;
     private $brotherTarget;
 
-    public $brotherEntities ;
+    public $brotherEntities ; //to delete ?
+    public $brotherEntitiesArray = array();
     public $brotherMap ;
 
     public $joinedFactoryArray = array(); /* @var $joinedFactoryArray EntityFactory[] */
@@ -115,6 +116,13 @@ class EntityFactory extends FactoryBase implements Dumpable
         $this->brotherVerb = $this->sc->get($brotherVerb);
         $this->brotherTarget = $this->sc->get($brotherTarget);
 
+    }
+
+    public function X($brotherVerb, $brotherTarget)
+    {
+
+        $this->brotherVerb = $this->sc->get($brotherVerb);
+        $this->brotherTarget = $this->sc->get($brotherTarget);
 
     }
 
@@ -174,21 +182,16 @@ class EntityFactory extends FactoryBase implements Dumpable
 
                     //we are builiding the auto increment index if any
                     if ($refConceptUnid == $this->indexUnid) {
-
-
                         if ($refValue > $this->maxIndex) {
-
                             $indexFound = $refValue;
                             $this->maxIndex = $refValue;
                         }
-
                     }
 
                     $refArray[$refConceptUnid] = $refValue;
 
                     //we add the reference in the factory reference map
                     $sandraReferenceMap[$refConceptUnid] = $this->system->conceptFactory->getConceptFromId($refConceptUnid);
-
                 }
 
                 //there are ref to be merged
@@ -205,7 +208,6 @@ class EntityFactory extends FactoryBase implements Dumpable
                             $sandraReferenceMap[$refConceptUnid] = $this->system->conceptFactory->getConceptFromId($mergeConceptId);
                         }
                     }
-
                 }
                 $classname = $this->generatedEntityClass;
 
@@ -355,13 +357,18 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         if (!is_array($entityArray)) return;
         if (!is_array($referenceMap)) return;
-        if ($entityArray) {
-            $this->entityArray = $this->entityArray + $entityArray;
-            $this->sandraReferenceMap = $this->sandraReferenceMap + $referenceMap;
-        } else {
-            $this->entityArray = $entityArray;
-            $this->sandraReferenceMap = $referenceMap;
+
+        foreach ($entityArray as $entity) {
+            /** @var Entity $entity */
+            $subject = $entity->subjectConcept->idConcept ;
+            $verb = $entity->verbConcept->idConcept ;
+            $target = $entity->targetConcept->idConcept ;
+
+            $this->brotherEntitiesArray[$subject][$verb][$target] = $entity ;
+
         }
+
+
     }
 
     public function foreignPopulate(ForeignEntityAdapter $foreignAdapter = null,$limit = 0)

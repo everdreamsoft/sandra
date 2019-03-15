@@ -89,8 +89,24 @@ class Entity implements Dumpable
         $joinedEntity = $joinedConcept->entityArray[$mainVerb][$mainTarget];
         return $joinedEntity->get($referenceName);
 
+    }
+
+    public function getBrotherReference($brotherVerb,$brotherTarget,$referenceName){
+
+        $verbConceptId = CommonFunctions::somethingToConceptId($brotherVerb,$this->system);
+        $targetConceptId = CommonFunctions::somethingToConceptId($brotherTarget,$this->system);
 
 
+
+        /** @var $factory EntityFactory */
+        $factory = $this->factory ;
+
+        //we find the brother entity
+        if (!isset($factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId][$targetConceptId])) return null ;
+        $entity = $factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId][$targetConceptId];
+
+
+        return $entity->get($referenceName);
 
     }
 
