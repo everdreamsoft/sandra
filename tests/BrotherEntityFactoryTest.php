@@ -26,12 +26,12 @@ final class BrotherEntityFactoryTest extends TestCase
 
        $rocketFactory = new \SandraCore\EntityFactory('rocket','rocketFile',$system);
 
-       $stageOneName = 'S-IC';
+       $stageIName = 'S-IC';
        $hasStageShortname = 'hasStage';
        $stageOneManufacturerName = 'Boeing';
 
        $saturneVEntity = $rocketFactory->createNew(array('name'=>'Saturn V')
-       ,array($hasStageShortname=>array($stageOneName=>array('manufacturer'=>$stageOneManufacturerName,'weight[t]'=>131))));
+       ,array($hasStageShortname=>array($stageIName=>array('manufacturer'=>$stageOneManufacturerName,'weight[t]'=>131))));
 
 
         $rocketFactory->populateLocal();
@@ -39,23 +39,34 @@ final class BrotherEntityFactoryTest extends TestCase
         $rocketFactory->populateBotherEntiies('hasStage','S-IC');
 
        //created concept shortname
-       $conceptId = $system->systemConcept->get($stageOneName);
+       $conceptId = $system->systemConcept->get($stageIName);
 
         //is the brother entity correctly added
         $hasStageUnid = $system->systemConcept->get($hasStageShortname);
-        $stageOneName = $system->systemConcept->get($stageOneName);
+        $stageIName = $system->systemConcept->get($stageIName);
 
         $this->assertInstanceOf(\SandraCore\Entity::class,$rocketFactory->brotherEntitiesArray
         [$saturneVEntity->subjectConcept->idConcept]
-        [$hasStageUnid][$stageOneName]);
+        [$hasStageUnid][$stageIName]);
 
         //Reference manufacturer is correctely added
        $this->assertEquals($stageOneManufacturerName,$rocketFactory->brotherEntitiesArray
        [$saturneVEntity->subjectConcept->idConcept]
-       [$hasStageUnid][$stageOneName]->get('manufacturer'));
+       [$hasStageUnid][$stageIName]->get('manufacturer'));
 
-        $manufacturer = $saturneVEntity->getBrotherReference($hasStageShortname,$stageOneName,'manufacturer');
+       //get on brother works correctly
+        $manufacturer = $saturneVEntity->getBrotherReference($hasStageShortname,$stageIName,'manufacturer');
         $this->assertEquals($stageOneManufacturerName,$manufacturer);
+
+        $stageIIManufacturer = 'North American Aviation';
+        $stageIIName = 'S-II';
+
+        $saturneVEntity->setBrotherEntity($hasStageShortname,$system->systemConcept->get($stageIIName),
+            array('manufacturer'=>$stageIIManufacturer,'weight[t]'=>480));
+
+        $stageIIManVerif = $saturneVEntity->getBrotherReference($hasStageShortname,$stageIIName,'manufacturer');
+
+        $this->assertEquals($stageIIManufacturer,$stageIIManVerif);
 
        $rocketFactory->return2dArray();
 

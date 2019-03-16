@@ -47,8 +47,9 @@ class Entity implements Dumpable
         /** @var $sandraConcept Concept */
 
         $this->subjectConcept = $sandraConcept;
-        $this->verbConcept = $conceptVerb;
-        $this->targetConcept = $conceptTarget;
+        $this->verbConcept = CommonFunctions::somethingToConcept($conceptVerb,$system);
+        $this->targetConcept = CommonFunctions::somethingToConcept($conceptTarget,$system);
+
 
         /** @var $sandraConcept Concept */
 
@@ -96,8 +97,6 @@ class Entity implements Dumpable
         $verbConceptId = CommonFunctions::somethingToConceptId($brotherVerb,$this->system);
         $targetConceptId = CommonFunctions::somethingToConceptId($brotherTarget,$this->system);
 
-
-
         /** @var $factory EntityFactory */
         $factory = $this->factory ;
 
@@ -105,8 +104,24 @@ class Entity implements Dumpable
         if (!isset($factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId][$targetConceptId])) return null ;
         $entity = $factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId][$targetConceptId];
 
-
         return $entity->get($referenceName);
+
+    }
+
+    public function setBrotherEntity($brotherVerb,$brotherTarget,$referenceArray){
+
+        $verbConceptId = CommonFunctions::somethingToConceptId($brotherVerb,$this->system);
+        $targetConceptId = CommonFunctions::somethingToConceptId($brotherTarget,$this->system);
+
+        /** @var $factory EntityFactory */
+        $factory = $this->factory ;
+
+        $brotherEntity = CommonFunctions::createEntity($this->subjectConcept,$brotherVerb,$brotherTarget,$referenceArray,$factory,$this->system,true);
+
+        $factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId][$targetConceptId] = $brotherEntity ;
+
+
+        return $brotherEntity ;
 
     }
 

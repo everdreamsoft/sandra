@@ -40,6 +40,31 @@ class CommonFunctions
         return $concept ;
     }
 
+    public static function createEntity($subject,$verb,$target,$referenceArray,$factory,$system,$autocommit=false){
+
+        $subjectConceptId = self::somethingToConceptId($subject,$system);
+        $verbConceptId = self::somethingToConceptId($verb,$system);
+        $verbConceptTarget = self::somethingToConceptId($verb,$system);
+
+       $entityId = DatabaseAdapter::rawCreateTriplet($subjectConceptId,$verbConceptId,$verbConceptTarget,$system,0,false);
+
+       foreach ($referenceArray as $key => $value){
+
+           $conceptId = self::somethingToConceptId($key,$system);
+           DatabaseAdapter::rawCreateReference($entityId,$conceptId,$value,$system,false);
+       }
+        DatabaseAdapter::rawCreateReference($entityId, $system->systemConcept->get('creationTimestamp'), time(), $system, false);
+
+       if($autocommit){
+           DatabaseAdapter::commit();
+
+       }
+
+        return new Entity($subject,$referenceArray,$factory,$entityId,$verb,$target,$system);
+
+
+    }
+
 
 
 }
