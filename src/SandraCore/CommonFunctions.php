@@ -44,9 +44,9 @@ class CommonFunctions
 
         $subjectConceptId = self::somethingToConceptId($subject,$system);
         $verbConceptId = self::somethingToConceptId($verb,$system);
-        $verbConceptTarget = self::somethingToConceptId($verb,$system);
+        $targetConceptId = self::somethingToConceptId($target,$system);
 
-       $entityId = DatabaseAdapter::rawCreateTriplet($subjectConceptId,$verbConceptId,$verbConceptTarget,$system,0,false);
+       $entityId = DatabaseAdapter::rawCreateTriplet($subjectConceptId,$verbConceptId,$targetConceptId,$system,0,false);
 
        foreach ($referenceArray as $key => $value){
 
