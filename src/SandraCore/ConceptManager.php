@@ -217,16 +217,18 @@ class ConceptManager
     }
 
     //Check the followup if something needs to be done
-    public function getConceptsFromLinkAndTarget($linkConcept, $targetConcept, $limit = 0, $debug = '', $asc = 'ASC')
+    public function getConceptsFromLinkAndTarget($linkConcept, $targetConcept, $limit = 0, $asc = 'ASC',$offset = 0)
     {
         global $tableLink, $tableReference, $deletedUNID, $includeCid, $containsInFileCid, $dbLink;
 
         $hideLinks = "";
 
         if ($limit > 0)
-            $limitSQL = "LIMIT $limit";
+            $limitSQL = "LIMIT $limit ";
         else
             $limitSQL = '';
+
+        $offsetSQL = "OFFSET $offset ";
 
         //sub optimal to remove soon
 
@@ -251,13 +253,11 @@ class ConceptManager
 	WHERE l.idConceptLink = $linkConcept  
 	AND l.idConceptTarget = $targetConcept
 	AND l.flag != $deletedUNID 
-	" . $this->filterCondition . " $hideLinks ORDER BY l.idConceptStart DESC " . $limitSQL;
+	" . $this->filterCondition . " $hideLinks ORDER BY l.idConceptStart $asc " . $limitSQL .$offsetSQL;
 
 
         // echoln( "su = $this->su access to file". $_SESSION['accessToFiles']);
 
-        if ($debug)
-            echoln($sql);
 
         try {
             $pdoResult = $this->pdo->prepare($sql);

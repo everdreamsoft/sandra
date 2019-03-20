@@ -130,7 +130,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     /**
      * @return Entity[]
      */
-    public function populateLocal($limit = 10000)
+    public function populateLocal($limit = 10000,$offset = 0,$asc='ASC')
     {
 
         $entityArray = array();
@@ -146,7 +146,7 @@ class EntityFactory extends FactoryBase implements Dumpable
         //we don't have preselected concept yet
         if(empty($this->conceptArray)){
 
-        $this->conceptManager->getConceptsFromLinkAndTarget($entityReferenceContainer, $this->sc->get($this->entityContainedIn), $limit);
+        $this->conceptManager->getConceptsFromLinkAndTarget($entityReferenceContainer, $this->sc->get($this->entityContainedIn), $limit,$asc,$offset);
         }
         else {
 
