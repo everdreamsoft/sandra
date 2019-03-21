@@ -228,7 +228,15 @@ class ConceptManager
         else
             $limitSQL = '';
 
-        $offsetSQL = "OFFSET $offset ";
+        if (is_numeric($offset)){
+            $offsetSQL = "OFFSET $offset ";
+
+        }
+        else{
+            $offsetSQL = "";
+        }
+
+
 
         //sub optimal to remove soon
 
@@ -463,6 +471,7 @@ class ConceptManager
                     $value = $result['value'];
                     $array[$idConcept][$result['id']][$result['idConcept']] = $value;
                     $array[$idConcept][$result['id']]['linkId'] = $result['id'];
+                    $array[$idConcept][$result['id']]['idConceptTarget'] = $result['idConceptTarget'];
 
                 }
 
@@ -474,7 +483,7 @@ class ConceptManager
                     $idConcept = $result[$masterCondition];
                     $array[$idConcept][$result['idConcept']] = $value;
                     $array[$idConcept]['linkId'] = $result['id'];
-
+                    $array[$idConcept]['idConceptTarget'] = $result['idConceptTarget'];
                 }
 
             }

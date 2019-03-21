@@ -233,57 +233,61 @@ class EntityFactory extends FactoryBase implements Dumpable
     /**
      * @return Entity[]
      */
-    public function populateBotherEntiies($verb,$target)
+    public function populateBrotherEntities($verb,$target=null)
     {
 
         $entityArray = array();
+        if($target===null) $target = 0 ;
 
-        $refs = $this->conceptManager->getReferences($this->sc->get($verb), $this->sc->get($target));
+
+        $refs = $this->conceptManager->getReferences($this->sc->get($verb), $this->sc->get($target),null,0,1);
 
         $sandraReferenceMap = array();
 
         //Each concept
         if (is_array($refs)) {
-            foreach ($refs as $key => $value) {
+            foreach ($refs as $keyConcept => $valueArray) {
+                foreach ($valueArray as $linkId => $value) {
 
-                $concept = $this->system->conceptFactory->getConceptFromId($key);
-                $entityId = $value['linkId'];
-                $refArray = null;
+                    $concept = $this->system->conceptFactory->getConceptFromId($keyConcept);
+                    $entityId = $linkId;
+                    $refArray = null;
+                    $entityData[$entityId]['idConceptTarget'] = $value['idConceptTarget'];
 
-                //each reference
-                foreach ($value as $refConceptUnid => $refValue) {
 
-                    //escape if reference is not a concept id
-                    if (!is_numeric($refConceptUnid))
-                        continue;
+                    //each reference
+                    foreach ($value as $refConceptUnid => $refValue) {
 
-                    //we are builiding the auto increment index if any
-                    if ($refConceptUnid == $this->indexUnid) {
-                        if ($refValue > $this->maxIndex) {
 
-                            $indexFound = $refValue;
-                            $this->maxIndex = $refValue;
-                        }
+
+                        //escape if reference is not a concept id
+                        if (!is_numeric($refConceptUnid))
+                            continue;
+
+
+                        $refArray[$entityId][$refConceptUnid] = $refValue;
+
+                        //we add the reference in the factory reference map
+                        $sandraReferenceMap[$refConceptUnid] = $this->system->conceptFactory->getConceptFromId($refConceptUnid);
                     }
-                    $refArray[$refConceptUnid] = $refValue;
 
-                    //we add the reference in the factory reference map
-                    $sandraReferenceMap[$refConceptUnid] = $this->system->conceptFactory->getConceptFromId($refConceptUnid);
+                    //we build resulting entities
+                    foreach ($refArray as $entityId => $entityRefs) {
+
+                        $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($verb);
+                        $entityTarget = $this->system->conceptFactory->getConceptFromId($entityData[$entityId]['idConceptTarget']);
+
+                        $entity = new Entity($concept, $entityRefs, $this, $entityId, $entityVerb, $entityTarget, $this->system);
+
+
+                        $entityArray[$entityId] = $entity;
+
+
+                    }
                 }
 
-                $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($verb);
-                $entityTarget = $this->system->conceptFactory->getConceptFromShortnameOrId($target);
 
-                $entity = new Entity($concept, $refArray, $this, $entityId, $entityVerb, $entityTarget, $this->system);
-                //$entity = new Entity($concept,$refArray,$this,$entityId,$entityVerb,$entityTarget,$this->system);
 
-                $entityArray[$key] = $entity;
-
-                if (isset($indexFound)) {
-
-                    //if entity of this factory have index
-                    $this->entityIndexMap[$indexFound] = $entity;
-                }
             }
         }
 
