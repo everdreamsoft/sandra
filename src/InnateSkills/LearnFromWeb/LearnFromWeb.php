@@ -35,7 +35,7 @@ class LearnFromWeb extends EntityFactory
 
         $system->systemConcept->get('learnerName');
         $this->populateLocal();
-        $this->populateBotherEntiies('has','vocabulary');
+        $this->populateBrotherEntities('has','vocabulary');
 
 
 

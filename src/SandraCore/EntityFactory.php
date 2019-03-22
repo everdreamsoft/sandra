@@ -61,7 +61,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     public $joinedFactoryArray = array(); /* @var $joinedFactoryArray EntityFactory[] */
     public $conceptArray = array(); /* if we have a list of concept already  */
 
-    public $system;
+
     public $sc;
 
 
@@ -84,6 +84,8 @@ class EntityFactory extends FactoryBase implements Dumpable
     public function __construct($entityIsa, $entityContainedIn, System $system)
     {
 
+        parent::__construct($system);
+
         $this->entityIsa = $entityIsa;
         $this->entityContainedIn = $entityContainedIn;
         $this->factoryTable = $system->tableSuffix;
@@ -98,6 +100,8 @@ class EntityFactory extends FactoryBase implements Dumpable
         $this->initDisplayer();
 
         $this->refMap = array();
+
+
 
     }
 
@@ -134,11 +138,35 @@ class EntityFactory extends FactoryBase implements Dumpable
     {
 
         $entityArray = array();
+        $filter = 0 ;
 
         //do we filter by isa
         if ($this->entityIsa) {
             $filter = array(array('lklk' => $this->sc->get('is_a'), 'lktg' => $this->sc->get($this->entityIsa)));
-            $this->conceptManager->setFilter($filter);
+
+        }
+        //we build a filter in our query
+        if(is_array($this->tripletfilter)) {
+            foreach ($this->tripletfilter as $filterValue) {
+
+                $buildFilter = array();
+                $filterVerb = $filterValue['verbConceptId'];
+                $filterTarget = $filterValue['targetConceptId'];
+
+                $buildFilter['lklk'] = $filterVerb;
+                $buildFilter['lktg'] = $filterTarget;
+
+                if ($filterValue['targetConceptId'] == 'exclusion') {
+
+                    $buildFilter['exclusion'] = 1;
+                }
+
+                $filter[] = $buildFilter;
+            }
+
+            if ($filter !== 0) {
+                $this->conceptManager->setFilter($filter);
+            }
         }
 
         $entityReferenceContainer = $this->sc->get($this->entityReferenceContainer);
@@ -419,6 +447,8 @@ class EntityFactory extends FactoryBase implements Dumpable
         return $returnArray;
 
     }
+
+
 
     public function createNewWithAutoIncrementIndex($dataArray, $linkArray = null)
     {

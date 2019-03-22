@@ -28,20 +28,21 @@ class Entity implements Dumpable
 
         $this->system = $system ;
 
+        if(is_array($sandraReferencesArray)) {
+            foreach ($sandraReferencesArray as $sandraReferenceConceptId => $sandraReferenceValue) {
 
-        foreach ($sandraReferencesArray as $sandraReferenceConceptId => $sandraReferenceValue){
+                //if $sandraReferenceConceptId is not an id then we need to convert it
+                $sandraReferenceConcept = $system->conceptFactory->getConceptFromShortnameOrId($sandraReferenceConceptId);
+                $sandraReferenceConceptId = $sandraReferenceConcept->idConcept;
 
-            //if $sandraReferenceConceptId is not an id then we need to convert it
-            $sandraReferenceConcept = $system->conceptFactory->getConceptFromShortnameOrId($sandraReferenceConceptId);
-            $sandraReferenceConceptId = $sandraReferenceConcept->idConcept ;
+                $referenceConcept = $this->system->conceptFactory->getForeignConceptFromId($sandraReferenceConceptId);
 
-            $referenceConcept = $this->system->conceptFactory->getForeignConceptFromId($sandraReferenceConceptId);
+                $ref = new Reference($referenceConcept, $this, $sandraReferenceValue, $this->system);
+                $this->entityRefs[$sandraReferenceConceptId] = $ref;
+                $this->entityId = $entityId;
+                $this->factory = $factory;
 
-            $ref  = new Reference($referenceConcept,$this,$sandraReferenceValue,$this->system);
-            $this->entityRefs[$sandraReferenceConceptId] = $ref ;
-            $this->entityId = $entityId ;
-            $this->factory = $factory ;
-
+            }
         }
 
         /** @var $sandraConcept Concept */
