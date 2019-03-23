@@ -48,10 +48,12 @@ class CommonFunctions
 
        $entityId = DatabaseAdapter::rawCreateTriplet($subjectConceptId,$verbConceptId,$targetConceptId,$system,0,false);
 
-       foreach ($referenceArray as $key => $value){
+       if (is_array($referenceArray)) {
+           foreach ($referenceArray as $key => $value) {
 
-           $conceptId = self::somethingToConceptId($key,$system);
-           DatabaseAdapter::rawCreateReference($entityId,$conceptId,$value,$system,false);
+               $conceptId = self::somethingToConceptId($key, $system);
+               DatabaseAdapter::rawCreateReference($entityId, $conceptId, $value, $system, false);
+           }
        }
         DatabaseAdapter::rawCreateReference($entityId, $system->systemConcept->get('creationTimestamp'), time(), $system, false);
 

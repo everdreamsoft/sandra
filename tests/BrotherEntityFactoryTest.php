@@ -36,7 +36,7 @@ final class BrotherEntityFactoryTest extends TestCase
 
         $rocketFactory->populateLocal();
         $rocketFactory->getTriplets();
-        $rocketFactory->populateBotherEntities('hasStage','S-IC');
+        $rocketFactory->populateBrotherEntities('hasStage','S-IC');
 
        //created concept shortname
        $conceptId = $system->systemConcept->get($stageIName);
@@ -67,6 +67,34 @@ final class BrotherEntityFactoryTest extends TestCase
         $stageIIManVerif = $saturneVEntity->getBrotherReference($hasStageShortname,$stageIIName,'manufacturer');
 
         $this->assertEquals($stageIIManufacturer,$stageIIManVerif);
+
+
+
+    }
+
+    public function testPartialTriplet()
+    {
+
+        $system = new \SandraCore\System('phpUnit_',true);
+
+        $stageIIManufacturer = 'North American Aviation';
+        $stageIIName = 'S-II';
+        $stage2Unid = $system->systemConcept->get($stageIIName);
+        $rocketFactory = new \SandraCore\EntityFactory('rocket','rocketFile',$system);
+
+        $rocketFactory->populateLocal();
+        $rocketFactory->getTriplets();
+        $rocketFactory->populateBrotherEntities('hasStage');
+
+        $saturnV = $rocketFactory->first('name','Saturn V');
+        $manufacturerList = $saturnV->getBrotherReference('hasStage',null,'manufacturer');
+
+        //did we received an array
+        $this->assertGreaterThan(1,count($manufacturerList));
+
+        $this->assertEquals($manufacturerList[$stage2Unid],$stageIIManufacturer);
+
+
 
 
 

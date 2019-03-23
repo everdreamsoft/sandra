@@ -217,16 +217,26 @@ class ConceptManager
     }
 
     //Check the followup if something needs to be done
-    public function getConceptsFromLinkAndTarget($linkConcept, $targetConcept, $limit = 0, $debug = '', $asc = 'ASC')
+    public function getConceptsFromLinkAndTarget($linkConcept, $targetConcept, $limit = 0, $asc = 'ASC',$offset = 0)
     {
         global $tableLink, $tableReference, $deletedUNID, $includeCid, $containsInFileCid, $dbLink;
 
         $hideLinks = "";
 
         if ($limit > 0)
-            $limitSQL = "LIMIT $limit";
+            $limitSQL = "LIMIT $limit ";
         else
             $limitSQL = '';
+
+        if (is_numeric($offset)){
+            $offsetSQL = "OFFSET $offset ";
+
+        }
+        else{
+            $offsetSQL = "";
+        }
+
+
 
         //sub optimal to remove soon
 
@@ -251,13 +261,11 @@ class ConceptManager
 	WHERE l.idConceptLink = $linkConcept  
 	AND l.idConceptTarget = $targetConcept
 	AND l.flag != $deletedUNID 
-	" . $this->filterCondition . " $hideLinks ORDER BY l.idConceptStart DESC " . $limitSQL;
+	" . $this->filterCondition . " $hideLinks ORDER BY l.idConceptStart $asc " . $limitSQL .$offsetSQL;
 
 
         // echoln( "su = $this->su access to file". $_SESSION['accessToFiles']);
 
-        if ($debug)
-            echoln($sql);
 
         try {
             $pdoResult = $this->pdo->prepare($sql);
@@ -463,6 +471,7 @@ class ConceptManager
                     $value = $result['value'];
                     $array[$idConcept][$result['id']][$result['idConcept']] = $value;
                     $array[$idConcept][$result['id']]['linkId'] = $result['id'];
+                    $array[$idConcept][$result['id']]['idConceptTarget'] = $result['idConceptTarget'];
 
                 }
 
@@ -474,7 +483,7 @@ class ConceptManager
                     $idConcept = $result[$masterCondition];
                     $array[$idConcept][$result['idConcept']] = $value;
                     $array[$idConcept]['linkId'] = $result['id'];
-
+                    $array[$idConcept]['idConceptTarget'] = $result['idConceptTarget'];
                 }
 
             }

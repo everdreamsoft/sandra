@@ -13,9 +13,17 @@ abstract class FactoryBase
 {
 
     public $displayer ;
+    public $tripletfilter ;
+    public $system ;
 
     abstract public function getAllWith($referenceName, $referenceValue);
     abstract public function createNew($dataArray, $linkArray = null);
+
+    public function __construct(System $system)
+    {
+        $this->system = $system ;
+
+    }
 
     public function first($referenceName, $referenceValue) : ?Entity{
 
@@ -62,6 +70,19 @@ abstract class FactoryBase
                }
 
         return $entity ;
+    }
+
+    public function setFilter($verb=0,$target=0,$inclusion='inclusion'):EntityFactory{
+
+        $verbConceptId = CommonFunctions::somethingToConceptId($verb,$this->system);
+        $targetConceptId = CommonFunctions::somethingToConceptId($target,$this->system);
+
+        $this->tripletfilter["$verbConceptId $targetConceptId"]['verbConceptId'] = $verbConceptId;
+        $this->tripletfilter["$verbConceptId $targetConceptId"]['targetConceptId'] = $targetConceptId;
+        $this->tripletfilter["$verbConceptId $targetConceptId"]['inclusion'] = $inclusion;
+
+        return $this ;
+
     }
 
 

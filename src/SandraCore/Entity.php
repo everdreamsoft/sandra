@@ -28,20 +28,21 @@ class Entity implements Dumpable
 
         $this->system = $system ;
 
+        if(is_array($sandraReferencesArray)) {
+            foreach ($sandraReferencesArray as $sandraReferenceConceptId => $sandraReferenceValue) {
 
-        foreach ($sandraReferencesArray as $sandraReferenceConceptId => $sandraReferenceValue){
+                //if $sandraReferenceConceptId is not an id then we need to convert it
+                $sandraReferenceConcept = $system->conceptFactory->getConceptFromShortnameOrId($sandraReferenceConceptId);
+                $sandraReferenceConceptId = $sandraReferenceConcept->idConcept;
 
-            //if $sandraReferenceConceptId is not an id then we need to convert it
-            $sandraReferenceConcept = $system->conceptFactory->getConceptFromShortnameOrId($sandraReferenceConceptId);
-            $sandraReferenceConceptId = $sandraReferenceConcept->idConcept ;
+                $referenceConcept = $this->system->conceptFactory->getForeignConceptFromId($sandraReferenceConceptId);
 
-            $referenceConcept = $this->system->conceptFactory->getForeignConceptFromId($sandraReferenceConceptId);
+                $ref = new Reference($referenceConcept, $this, $sandraReferenceValue, $this->system);
+                $this->entityRefs[$sandraReferenceConceptId] = $ref;
+                $this->entityId = $entityId;
+                $this->factory = $factory;
 
-            $ref  = new Reference($referenceConcept,$this,$sandraReferenceValue,$this->system);
-            $this->entityRefs[$sandraReferenceConceptId] = $ref ;
-            $this->entityId = $entityId ;
-            $this->factory = $factory ;
-
+            }
         }
 
         /** @var $sandraConcept Concept */
@@ -92,31 +93,55 @@ class Entity implements Dumpable
 
     }
 
-    public function getBrotherEntity($brotherVerb,$brotherTarget){
+    public function getBrotherEntity($brotherVerb,$brotherTarget=null){
 
-        $verbConceptId = CommonFunctions::somethingToConceptId($brotherVerb,$this->system);
-        $targetConceptId = CommonFunctions::somethingToConceptId($brotherTarget,$this->system);
+        if(!is_null($brotherTarget)) {
 
-        $factory = $this->factory ;
+            $verbConceptId = CommonFunctions::somethingToConceptId($brotherVerb, $this->system);
+            $targetConceptId = CommonFunctions::somethingToConceptId($brotherTarget, $this->system);
+
+            $factory = $this->factory;
+            //we find the brother entity
+            if (!isset($factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId][$targetConceptId])) return null;
+
+            $entity = $factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId][$targetConceptId];
+            return $entity ;
+        }
+        //target is null then we should have only one target
+        $verbConceptId = CommonFunctions::somethingToConceptId($brotherVerb, $this->system);
+
+
+        $factory = $this->factory;
         //we find the brother entity
-        if (!isset($factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId][$targetConceptId])) return null ;
+        if (!isset($factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId])) return null;
+       // if(count($factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId])>1)
+         //   $this->system->systemError('400','entityFactory','critical',"multiple targets for verb". $brotherVerb) ;
 
-        $entity = $factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId][$targetConceptId];
+        $entity = $factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId];
+
 
         return $entity ;
 
     }
 
-    public function getBrotherReference($brotherVerb,$brotherTarget,$referenceName){
+    public function getBrotherReference($brotherVerb,$brotherTarget=null,$referenceName=null){
 
 
         $entity = $this->getBrotherEntity($brotherVerb,$brotherTarget);
 
         if(is_null($entity)) {return null ;}
-        else {
+        else if(!is_array($entity)){
 
             return $entity->get($referenceName);
         }
+
+        $result = null ;
+
+        foreach ($entity as $entityTarget => $singleEntity){
+            $result[$entityTarget] = $singleEntity->get($referenceName);
+
+        }
+        return $result ;
 
     }
 
