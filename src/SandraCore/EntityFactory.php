@@ -233,8 +233,9 @@ class EntityFactory extends FactoryBase implements Dumpable
     /**
      * @return Entity[]
      */
-    public function populateBotherEntiies($verb,$target)
+    public function populateBotherEntities($verb,$target)
     {
+
 
         $entityArray = array();
 

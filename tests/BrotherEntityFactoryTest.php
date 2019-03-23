@@ -36,7 +36,7 @@ final class BrotherEntityFactoryTest extends TestCase
 
         $rocketFactory->populateLocal();
         $rocketFactory->getTriplets();
-        $rocketFactory->populateBotherEntiies('hasStage','S-IC');
+        $rocketFactory->populateBotherEntities('hasStage','S-IC');
 
        //created concept shortname
        $conceptId = $system->systemConcept->get($stageIName);
@@ -68,7 +68,7 @@ final class BrotherEntityFactoryTest extends TestCase
 
         $this->assertEquals($stageIIManufacturer,$stageIIManVerif);
 
-       $rocketFactory->return2dArray();
+
 
 
 
