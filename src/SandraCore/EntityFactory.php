@@ -31,7 +31,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     protected $generatedEntityClass = '\SandraCore\Entity';
 
     /* @var $entityArray Entity[] */
-    public $entityArray;
+    public $entityArray = array();
     public $entityReferenceContainer = 'contained_in_file';
 
     public $sandraReferenceMap;
@@ -156,17 +156,17 @@ class EntityFactory extends FactoryBase implements Dumpable
                 $buildFilter['lklk'] = $filterVerb;
                 $buildFilter['lktg'] = $filterTarget;
 
-                if ($filterValue['targetConceptId'] == 'exclusion') {
+                if ($filterValue['exclusion'] == true) {
 
                     $buildFilter['exclusion'] = 1;
                 }
 
                 $filter[] = $buildFilter;
             }
+        }
 
-            if ($filter !== 0) {
-                $this->conceptManager->setFilter($filter);
-            }
+        if ($filter !== 0) {
+            $this->conceptManager->setFilter($filter);
         }
 
         $entityReferenceContainer = $this->sc->get($this->entityReferenceContainer);
@@ -781,6 +781,13 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     public function getAllWith($referenceName, $referenceValue)
     {
+
+       if($referenceName == null){
+           $this->system->systemError(400,'EntityFactory','Critical',
+               "getAllWith $referenceValue reference concept is null");
+
+       }
+
         //do we have local concept or a foreign ?
         if ($this instanceof ForeignEntityAdapter) {
             $referenceConcept = $this->system->conceptFactory->getForeignConceptFromId($referenceName);

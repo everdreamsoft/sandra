@@ -61,15 +61,21 @@ final class EntityFactoryTest extends TestCase
 
         $this->assertCount(5,$alphabetFactory->entityArray);
 
-       $allImpliesB = clone $alphabetFactoryEmpty;
-        $factoryWithOtherIsa = new \SandraCore\EntityFactory('somethingElse','algebraFile',$system);
 
-       $allImpliesB->setFilter('implies',$b);
-        $allImpliesB->populateLocal();
+        $factoryWithOtherIsa = new \SandraCore\EntityFactory('somethingElseX','algebraFile',$system);
         $factoryWithOtherIsa->populateLocal();
-
         $this->assertCount(0,$factoryWithOtherIsa->entityArray);
+
+        $allImpliesB = new \SandraCore\EntityFactory('algebra','algebraFile',$system);
+        $allImpliesB->setFilter('implies',$b);
+        $allImpliesB->populateLocal();
         $this->assertCount(3,$allImpliesB->entityArray);
+
+        $notImpliesB = new \SandraCore\EntityFactory('algebra','algebraFile',$system);
+        $notImpliesB->setFilter('implies',$b,true); //we add the exclusion
+        $notImpliesB->populateLocal();
+        $this->assertCount(2,$notImpliesB->entityArray);
+
 
 
 

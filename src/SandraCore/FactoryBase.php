@@ -72,14 +72,14 @@ abstract class FactoryBase
         return $entity ;
     }
 
-    public function setFilter($verb=0,$target=0,$inclusion='inclusion'):EntityFactory{
+    public function setFilter($verb=0,$target=0,$exclusion=false):EntityFactory{
 
         $verbConceptId = CommonFunctions::somethingToConceptId($verb,$this->system);
         $targetConceptId = CommonFunctions::somethingToConceptId($target,$this->system);
 
         $this->tripletfilter["$verbConceptId $targetConceptId"]['verbConceptId'] = $verbConceptId;
         $this->tripletfilter["$verbConceptId $targetConceptId"]['targetConceptId'] = $targetConceptId;
-        $this->tripletfilter["$verbConceptId $targetConceptId"]['inclusion'] = $inclusion;
+        $this->tripletfilter["$verbConceptId $targetConceptId"]['exclusion'] = $exclusion;
 
         return $this ;
 

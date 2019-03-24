@@ -31,7 +31,9 @@ final class BrotherEntityFactoryTest extends TestCase
        $stageOneManufacturerName = 'Boeing';
 
        $saturneVEntity = $rocketFactory->createNew(array('name'=>'Saturn V')
-       ,array($hasStageShortname=>array($stageIName=>array('manufacturer'=>$stageOneManufacturerName,'weight[t]'=>131))));
+       ,array($hasStageShortname=>
+               array($stageIName=>
+                   array('manufacturer'=>$stageOneManufacturerName,'weight[t]'=>131))));
 
 
         $rocketFactory->populateLocal();
