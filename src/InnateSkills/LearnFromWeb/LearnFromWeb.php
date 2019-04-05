@@ -115,7 +115,7 @@ class LearnFromWeb extends EntityFactory
 
 
         //building the vocabulary
-        if(is_array($vocabularyEntity->entityRefs)) {
+        if(!is_null($vocabularyEntity) && is_array($vocabularyEntity->entityRefs)) {
 
             foreach ((array)$vocabularyEntity->entityRefs as $reference) {
 
