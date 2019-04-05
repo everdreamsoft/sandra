@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="PhpDebugIgnoredPathsSettings">
+    <skipped_paths>
+      <skipped_path path="$PROJECT_DIR$/../../../bin/phpMyAdmin" />
+    </skipped_paths>
+  </component>
   <component name="PhpIncludePathManager">
     <include_path>
       <path value="$PROJECT_DIR$/vendor/composer" />

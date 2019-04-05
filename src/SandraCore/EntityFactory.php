@@ -164,9 +164,11 @@ class EntityFactory extends FactoryBase implements Dumpable
                 $filter[] = $buildFilter;
             }
 
-            if ($filter !== 0) {
-                $this->conceptManager->setFilter($filter);
-            }
+
+        }
+
+        if ($filter !== 0) {
+            $this->conceptManager->setFilter($filter);
         }
 
         $entityReferenceContainer = $this->sc->get($this->entityReferenceContainer);

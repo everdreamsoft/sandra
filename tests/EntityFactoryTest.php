@@ -38,7 +38,9 @@ final class EntityFactoryTest extends TestCase
 
         $system = new \SandraCore\System('phpUnit_',true);
         $alphabetFactory = new \SandraCore\EntityFactory('algebra','algebraFile',$system);
+
         $alphabetFactoryEmpty = clone $alphabetFactory ;
+        $allImpliesB =  new \SandraCore\EntityFactory('algebra','algebraFile',$system);
 
         $a = $alphabetFactory->createNew(array('name'=>'a'));
         $b = $alphabetFactory->createNew(array('name'=>'b'));
@@ -61,10 +63,10 @@ final class EntityFactoryTest extends TestCase
 
         $this->assertCount(5,$alphabetFactory->entityArray);
 
-       $allImpliesB = clone $alphabetFactoryEmpty;
+
         $factoryWithOtherIsa = new \SandraCore\EntityFactory('somethingElse','algebraFile',$system);
 
-       $allImpliesB->setFilter('implies',$b);
+        $allImpliesB->setFilter('implies',$b);
         $allImpliesB->populateLocal();
         $factoryWithOtherIsa->populateLocal();
 
