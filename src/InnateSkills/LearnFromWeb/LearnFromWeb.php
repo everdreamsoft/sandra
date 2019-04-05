@@ -113,7 +113,7 @@ class LearnFromWeb extends EntityFactory
 
         $vocabularyEntity = $learnerConcept->subjectConcept->getEntity($hasConcept,$vocabularyConcept);
 
-
+        $vocabulary = null ;
         //building the vocabulary
         if(!is_null($vocabularyEntity) && is_array($vocabularyEntity->entityRefs)) {
 
@@ -141,8 +141,10 @@ class LearnFromWeb extends EntityFactory
 
 
 
+        if(!is_null($vocabulary)) {
 
-        $foreignAdapter->adaptToLocalVocabulary($vocabulary);
+            $foreignAdapter->adaptToLocalVocabulary($vocabulary);
+        }
 
 
         $factory->foreignPopulate($foreignAdapter);
