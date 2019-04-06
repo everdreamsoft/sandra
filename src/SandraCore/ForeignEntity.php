@@ -14,7 +14,7 @@ class ForeignEntity extends Entity
 
     private $entityIsa ;
     private $entityContainedIn ;
-    private $factory ;
+    public $factory ;
     public $entityId ; // The is the id of the table link
     public $entityRefs ; // The is the id of the table link
     public $system ;

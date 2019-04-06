@@ -15,7 +15,7 @@ class Entity implements Dumpable
 
     private $entityIsa ;
     private $entityContainedIn ;
-    private $factory ;
+    public $factory ;
     public $subjectConcept ;  /** @var $subjectConcept Concept */
     public $verbConcept ; /** @var $verbConcept Concept */
     public $targetConcept ; /** @var $targetConcept Concept */
@@ -27,6 +27,9 @@ class Entity implements Dumpable
     public function __construct($sandraConcept,$sandraReferencesArray,$factory,$entityId,$conceptVerb,$conceptTarget,System $system){
 
         $this->system = $system ;
+
+        if(is_string($sandraConcept)) {return new ForeignEntity($sandraConcept,$sandraReferencesArray,$factory,$entityId,$system);}
+
 
         if(is_array($sandraReferencesArray)) {
             foreach ($sandraReferencesArray as $sandraReferenceConceptId => $sandraReferenceValue) {

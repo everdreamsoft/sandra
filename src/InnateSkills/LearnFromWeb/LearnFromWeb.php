@@ -99,7 +99,7 @@ class LearnFromWeb extends EntityFactory
 
     }
 
-    public function learn(Entity $learnerConcept)
+    public function learn(Entity $learnerConcept, $className = null)
     {
 
         //print_r($learnerConcept);
@@ -137,6 +137,12 @@ class LearnFromWeb extends EntityFactory
 
 
         $factory = $this->system->factoryManager->create("$learnerName"."_factory", $isa_a, $contained_in_file);
+
+        if ($className !== null){
+
+            $factory->generatedEntityClass = $className;
+        }
+
         $foreignAdapter = new ForeignEntityAdapter($url, $path, $this->system);
 
 
