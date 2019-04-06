@@ -728,7 +728,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         DatabaseAdapter::commit();
         
-        $createdEntity = new Entity($this->system->conceptFactory->getConceptFromId($conceptId),$dataArray,$this,$link,$conceptContainerConcept,$conceptContainedIn,$this->system);
+        $createdEntity = new $this->generatedEntityClass($this->system->conceptFactory->getConceptFromId($conceptId),$dataArray,$this,$link,$conceptContainerConcept,$conceptContainedIn,$this->system);
         
         return $createdEntity ;
 
