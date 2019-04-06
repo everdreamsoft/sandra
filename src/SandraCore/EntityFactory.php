@@ -668,6 +668,11 @@ class EntityFactory extends FactoryBase implements Dumpable
 
                 $key = $this->sc->get($key);
             }
+
+            if ($value instanceof Reference){
+                $value = $value->refValue ;
+            }
+
             DatabaseAdapter::rawCreateReference($link, $key, $value, $this->system,false);
         }
 

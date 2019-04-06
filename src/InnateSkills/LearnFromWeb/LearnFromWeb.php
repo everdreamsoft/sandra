@@ -152,7 +152,7 @@ class LearnFromWeb extends EntityFactory
             $foreignAdapter->adaptToLocalVocabulary($vocabulary);
         }
 
-
+        $factory->populateLocal();
         $factory->foreignPopulate($foreignAdapter);
 
 

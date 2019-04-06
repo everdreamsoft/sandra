@@ -74,6 +74,20 @@ class ForeignEntity extends Entity
 
     }
 
+    public function createOrUpdateRef($referenceShortname,$value): Reference{
+
+        $referenceConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($referenceShortname);
+
+        $ref  = new Reference($referenceConcept,$this,$value,$this->system);
+        $this->entityRefs[$referenceConcept->idConcept] = $ref ;
+
+        return $ref ;
+
+        //Todo rebuild factory index
+
+
+    }
+
     public function save(EntityFactory $factory){
 
 
