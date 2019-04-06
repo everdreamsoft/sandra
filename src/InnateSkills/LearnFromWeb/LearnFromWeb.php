@@ -186,6 +186,7 @@ class LearnFromWeb extends EntityFactory
 
 
         $factory = $this->system->factoryManager->create("$learnerName"."_factory", $isa_a, $contained_in_file);
+        $factory->populateLocal();
 
         return $factory ;
 
