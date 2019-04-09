@@ -38,7 +38,9 @@ final class EntityFactoryTest extends TestCase
 
         $system = new \SandraCore\System('phpUnit_',true);
         $alphabetFactory = new \SandraCore\EntityFactory('algebra','algebraFile',$system);
+
         $alphabetFactoryEmpty = clone $alphabetFactory ;
+        $allImpliesB =  new \SandraCore\EntityFactory('algebra','algebraFile',$system);
 
         $a = $alphabetFactory->createNew(array('name'=>'a'));
         $b = $alphabetFactory->createNew(array('name'=>'b'));
@@ -62,20 +64,13 @@ final class EntityFactoryTest extends TestCase
         $this->assertCount(5,$alphabetFactory->entityArray);
 
 
-        $factoryWithOtherIsa = new \SandraCore\EntityFactory('somethingElseX','algebraFile',$system);
-        $factoryWithOtherIsa->populateLocal();
-        $this->assertCount(0,$factoryWithOtherIsa->entityArray);
+        $factoryWithOtherIsa = new \SandraCore\EntityFactory('somethingElse','algebraFile',$system);
 
-        $allImpliesB = new \SandraCore\EntityFactory('algebra','algebraFile',$system);
+        $factoryWithOtherIsa->populateLocal();
         $allImpliesB->setFilter('implies',$b);
         $allImpliesB->populateLocal();
+        $this->assertCount(0,$factoryWithOtherIsa->entityArray);
         $this->assertCount(3,$allImpliesB->entityArray);
-
-        $notImpliesB = new \SandraCore\EntityFactory('algebra','algebraFile',$system);
-        $notImpliesB->setFilter('implies',$b,true); //we add the exclusion
-        $notImpliesB->populateLocal();
-        $this->assertCount(2,$notImpliesB->entityArray);
-
 
 
 

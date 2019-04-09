@@ -14,7 +14,7 @@ class ForeignEntity extends Entity
 
     private $entityIsa ;
     private $entityContainedIn ;
-    private $factory ;
+    public $factory ;
     public $entityId ; // The is the id of the table link
     public $entityRefs ; // The is the id of the table link
     public $system ;
@@ -70,6 +70,20 @@ class ForeignEntity extends Entity
         return null ;
 
         return $this->entityRefs[$referenceName]->refValue ;
+
+
+    }
+
+    public function createOrUpdateRef($referenceShortname,$value): Reference{
+
+        $referenceConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($referenceShortname);
+
+        $ref  = new Reference($referenceConcept,$this,$value,$this->system);
+        $this->entityRefs[$referenceConcept->idConcept] = $ref ;
+
+        return $ref ;
+
+        //Todo rebuild factory index
 
 
     }

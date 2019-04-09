@@ -31,7 +31,7 @@ class FactoryManager
     public function create($factoryName,$entityIsa,$entityFile)  {
 
         $factory = new EntityFactory($entityIsa,$entityFile,$this->sandraInstance);
-        $factory->populateLocal();
+
 
 
 

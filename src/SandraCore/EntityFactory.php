@@ -640,6 +640,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     public function createNew($dataArray, $linArray = null)
     {
         $conceptId = DatabaseAdapter::rawCreateConcept("A " . $this->entityIsa, $this->system,false);
+        $addedRefMap = array();
 
         if ($this->entityIsa) {
 
@@ -666,7 +667,13 @@ class EntityFactory extends FactoryBase implements Dumpable
 
                 $key = $this->sc->get($key);
             }
+
+            if ($value instanceof Reference){
+                $value = $value->refValue ;
+            }
+
             DatabaseAdapter::rawCreateReference($link, $key, $value, $this->system,false);
+            $addedRefMap[$key] = $value ;
         }
 
         if (is_array($linArray)) {
@@ -721,7 +728,14 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         DatabaseAdapter::commit();
         
-        $createdEntity = new Entity($this->system->conceptFactory->getConceptFromId($conceptId),$dataArray,$this,$link,$conceptContainerConcept,$conceptContainedIn,$this->system);
+        $createdEntity = new $this->generatedEntityClass($this->system->conceptFactory->getConceptFromId($conceptId),$dataArray,$this,$link,$conceptContainerConcept,$conceptContainedIn,$this->system);
+        $this->entityArray[] = $createdEntity;
+
+        //we need to build refmap
+        foreach ($addedRefMap as $key => $value){
+            $this->refMap[$key][$value][] = $createdEntity ;
+        }
+
         
         return $createdEntity ;
 
@@ -840,6 +854,10 @@ class EntityFactory extends FactoryBase implements Dumpable
                     $this->refMap[$referenceConcept->idConcept][$referenceValue][] = $entity ;
 
                     $this->entityArray[] = $entity;
+
+                    //we need to add the concept in the concept Manager
+                    $this->conceptManager->conceptArray['conceptStartList'][] =  $concept->idConcept ;
+                    $this->conceptManager->concepts[] =  $concept ;
                 }
 
                 $refmap = $this->getRefMap($referenceConcept);
@@ -898,7 +916,7 @@ class EntityFactory extends FactoryBase implements Dumpable
             $concept = $this->system->conceptFactory->getConceptFromId($keyConcept);
             $concept->tripletArray = $triplet;
 
-            //We look at revese triplet
+            //We look at revese triplets
             foreach ($triplet as $verb => $target) {
                 foreach ($target as $idConceptTarget) {
 

@@ -109,6 +109,7 @@ final class ForeignEntityAdapterTest extends TestCase
 
         $sandra = new SandraCore\System('_phpUnit',true);
         $factory = $sandra->factoryManager->create('personnelFactoryTestLocal','person','peopleFile');
+        $factory->populateLocal();
 
 
         $foreignAdapter = new ForeignEntityAdapter("https://script.google.com/macros/s/AKfycbzJWIW1e0rsVx611g4EcYmZ9SJonpnzwmskDsg_A_9j3qGlht0/exec",'user',$sandra);

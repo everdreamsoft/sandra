@@ -99,7 +99,7 @@ class LearnFromWeb extends EntityFactory
 
     }
 
-    public function learn(Entity $learnerConcept)
+    public function learn(Entity $learnerConcept, $className = null)
     {
 
         //print_r($learnerConcept);
@@ -113,9 +113,9 @@ class LearnFromWeb extends EntityFactory
 
         $vocabularyEntity = $learnerConcept->subjectConcept->getEntity($hasConcept,$vocabularyConcept);
 
-
+        $vocabulary = null ;
         //building the vocabulary
-        if(is_array($vocabularyEntity->entityRefs)) {
+        if(!is_null($vocabularyEntity) && is_array($vocabularyEntity->entityRefs)) {
 
             foreach ((array)$vocabularyEntity->entityRefs as $reference) {
 
@@ -137,14 +137,22 @@ class LearnFromWeb extends EntityFactory
 
 
         $factory = $this->system->factoryManager->create("$learnerName"."_factory", $isa_a, $contained_in_file);
+
+        if ($className !== null){
+
+            $factory->generatedEntityClass = $className;
+        }
+
         $foreignAdapter = new ForeignEntityAdapter($url, $path, $this->system);
 
 
 
+        if(!is_null($vocabulary)) {
 
-        $foreignAdapter->adaptToLocalVocabulary($vocabulary);
+            $foreignAdapter->adaptToLocalVocabulary($vocabulary);
+        }
 
-
+        $factory->populateLocal();
         $factory->foreignPopulate($foreignAdapter);
 
 
@@ -178,6 +186,7 @@ class LearnFromWeb extends EntityFactory
 
 
         $factory = $this->system->factoryManager->create("$learnerName"."_factory", $isa_a, $contained_in_file);
+        $factory->populateLocal();
 
         return $factory ;
 
