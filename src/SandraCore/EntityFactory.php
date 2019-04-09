@@ -910,7 +910,7 @@ class EntityFactory extends FactoryBase implements Dumpable
             $concept = $this->system->conceptFactory->getConceptFromId($keyConcept);
             $concept->tripletArray = $triplet;
 
-            //We look at revese triplet
+            //We look at revese triplets
             foreach ($triplet as $verb => $target) {
                 foreach ($target as $idConceptTarget) {
 
