@@ -642,6 +642,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     public function createNew($dataArray, $linArray = null)
     {
         $conceptId = DatabaseAdapter::rawCreateConcept("A " . $this->entityIsa, $this->system,false);
+        $addedRefMap = array();
 
         if ($this->entityIsa) {
 
@@ -674,6 +675,7 @@ class EntityFactory extends FactoryBase implements Dumpable
             }
 
             DatabaseAdapter::rawCreateReference($link, $key, $value, $this->system,false);
+            $addedRefMap[$key] = $value ;
         }
 
         if (is_array($linArray)) {
@@ -729,6 +731,12 @@ class EntityFactory extends FactoryBase implements Dumpable
         DatabaseAdapter::commit();
         
         $createdEntity = new $this->generatedEntityClass($this->system->conceptFactory->getConceptFromId($conceptId),$dataArray,$this,$link,$conceptContainerConcept,$conceptContainedIn,$this->system);
+
+        //we need to build refmap
+        foreach ($addedRefMap as $key => $value){
+            $this->refMap[$key][$value] = $createdEntity ;
+        }
+
         
         return $createdEntity ;
 
