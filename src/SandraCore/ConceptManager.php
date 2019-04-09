@@ -14,7 +14,7 @@ class ConceptManager
     private $system;
     private $pdo;
     private $deletedUnid;
-public $conceptArray = array();
+    public $conceptArray = array();
 
     public function __construct($su = 1, System $system, $tableLinkParam = 'default', $tableReferenceParam = 'default')
     {
@@ -23,7 +23,7 @@ public $conceptArray = array();
         $this->filterJoin = '';
         $this->filterCondition = '';
         $this->concepts = array();
-        $this->conceptArray = (array());
+
         $this->su = $su;
         $this->system = $system;
 

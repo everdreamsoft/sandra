@@ -77,6 +77,9 @@ class Entity implements Dumpable
     public function getJoined($joinVerb,$referenceName){
 
         $verbConceptId = CommonFunctions::somethingToConceptId($joinVerb,$this->system);
+        //No joined data
+        if (!isset($this->subjectConcept->tripletArray[$verbConceptId]))return null ;
+
         $joindedConceptId = reset($this->subjectConcept->tripletArray[$verbConceptId]);
         $joinedConcept = $this->system->conceptFactory->getConceptFromId($joindedConceptId);
 
@@ -91,8 +94,37 @@ class Entity implements Dumpable
         $mainVerb = CommonFunctions::somethingToConceptId($joinedFactory->entityReferenceContainer,$this->system) ;
         $mainTarget = CommonFunctions::somethingToConceptId($joinedFactory->entityContainedIn,$this->system) ;
 
+        //no joined entity
+        if (!isset($joinedConcept->entityArray[$mainVerb][$mainTarget]))return null ;
+
         $joinedEntity = $joinedConcept->entityArray[$mainVerb][$mainTarget];
         return $joinedEntity->get($referenceName);
+
+    }
+
+
+    public function getJoinedEntities($joinVerb){
+
+        $verbConceptId = CommonFunctions::somethingToConceptId($joinVerb,$this->system);
+        //No joined data
+        if (!isset($this->subjectConcept->tripletArray[$verbConceptId]))return null ;
+
+
+        // $joinedConcept = $this->system->conceptFactory->getConceptFromId($joindedConceptId);
+
+        foreach ($this->subjectConcept->tripletArray[$verbConceptId] as $joinedConceptId){
+
+            $joinedConcept = $this->system->conceptFactory->getConceptFromId($joinedConceptId);
+            foreach ($joinedConcept->entityArray as $entVerb=>$entTarget){
+                foreach ($entTarget as $targetKey => $entity){
+                    $return[] = $entity;
+                }
+            }
+
+
+        }
+
+        return $return ;
 
     }
 
@@ -117,8 +149,8 @@ class Entity implements Dumpable
         $factory = $this->factory;
         //we find the brother entity
         if (!isset($factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId])) return null;
-       // if(count($factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId])>1)
-         //   $this->system->systemError('400','entityFactory','critical',"multiple targets for verb". $brotherVerb) ;
+        // if(count($factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId])>1)
+        //   $this->system->systemError('400','entityFactory','critical',"multiple targets for verb". $brotherVerb) ;
 
         $entity = $factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId];
 
@@ -193,14 +225,14 @@ class Entity implements Dumpable
 
     public function getOrInitReference($referenceShortname,$value): Reference{
 
-      $reference = $this->getReference($referenceShortname);
+        $reference = $this->getReference($referenceShortname);
 
-      if(is_null($reference)){
+        if(is_null($reference)){
 
-          $reference = $this->createOrUpdateRef($referenceShortname,$value);
-      }
+            $reference = $this->createOrUpdateRef($referenceShortname,$value);
+        }
 
-      return $reference ;
+        return $reference ;
 
     }
 

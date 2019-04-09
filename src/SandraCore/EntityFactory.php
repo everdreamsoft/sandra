@@ -842,8 +842,8 @@ class EntityFactory extends FactoryBase implements Dumpable
                     $this->entityArray[] = $entity;
 
                     //we need to add the concept in the concept Manager
-                    $this->conceptManager->conceptsArray['conceptStartList'][] =  $concept->idConcept ;
-                    $this->conceptManager->concepts['conceptStartList'][] =  $concept ;
+                    $this->conceptManager->conceptArray['conceptStartList'][] =  $concept->idConcept ;
+                    $this->conceptManager->concepts[] =  $concept ;
                 }
 
                 $refmap = $this->getRefMap($referenceConcept);
