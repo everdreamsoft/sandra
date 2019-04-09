@@ -734,7 +734,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         //we need to build refmap
         foreach ($addedRefMap as $key => $value){
-            $this->refMap[$key][$value] = $createdEntity ;
+            $this->refMap[$key][$value][] = $createdEntity ;
         }
 
         
