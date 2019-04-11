@@ -365,6 +365,8 @@ class EntityFactory extends FactoryBase implements Dumpable
         $conceptIdList = array();
         $this->getTriplets();
         //we cycle trough all entities subject concepts
+        if(!is_array($this->entityArray)) return ;
+
         foreach ($this->entityArray as $key => $entity) {
             $triplets = $entity->subjectConcept->tripletArray ;
 

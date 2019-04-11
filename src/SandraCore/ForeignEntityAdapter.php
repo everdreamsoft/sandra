@@ -75,7 +75,7 @@ class ForeignEntityAdapter extends EntityFactory
 
         }
 
-        
+
 
         $this->foreignRawArray = json_decode($json,1);
 
@@ -83,11 +83,11 @@ class ForeignEntityAdapter extends EntityFactory
 
 
 
-       //echo" X $json $url";
+        //echo" X $json $url";
 
 
 
-       // print_r($this->foreignRawArray);
+        // print_r($this->foreignRawArray);
         //die();
 
 
@@ -137,12 +137,12 @@ class ForeignEntityAdapter extends EntityFactory
                     if (isset($this->foreignToLocalVocabulary[$objectKey])){
 
                         //then return local concept
-                       // $this->refMap[$objectKey] = $entity ;
+                        // $this->refMap[$objectKey] = $entity ;
 
                     }
                     else {
 
-                      //  $this->refMap[$objectKey] = $entity;
+                        //  $this->refMap[$objectKey] = $entity;
                     }
 
                 }
@@ -150,8 +150,8 @@ class ForeignEntityAdapter extends EntityFactory
                 else {
                     //is the children to be flatten ?
                     if (isset($this->flattingArray[$objectKey])){
-                    $flatRef = $this->flatResult($objectValue,$objectKey);
-                    $refArray = $refArray + $flatRef ;}
+                        $flatRef = $this->flatResult($objectValue,$objectKey);
+                        $refArray = $refArray + $flatRef ;}
 
 
 
@@ -203,7 +203,7 @@ class ForeignEntityAdapter extends EntityFactory
         //remove first node
         array_shift($explodedPath);
 
-       return $this->divideForeignPath($pathedArray,implode('/',$explodedPath)) ;
+        return $this->divideForeignPath($pathedArray,implode('/',$explodedPath)) ;
 
 
 
@@ -295,7 +295,7 @@ class ForeignEntityAdapter extends EntityFactory
 
             $refArray["$prefix.".$objectKey] =   $objectValue ;
 
-            if ($this->foreignToLocalVocabulary[$objectKey]){
+            if (isset($this->foreignToLocalVocabulary[$objectKey])){
                 //then return local concept
                 $this->refMap[$objectKey] = $this->system->conceptFactory->getConceptFromShortnameOrId($this->foreignToLocalVocabulary[$objectKey]);
 
