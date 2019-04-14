@@ -34,13 +34,17 @@ class Entity implements Dumpable
         if(is_array($sandraReferencesArray)) {
             foreach ($sandraReferencesArray as $sandraReferenceConceptId => $sandraReferenceValue) {
 
-                //if $sandraReferenceConceptId is not an id then we need to convert it
-                $sandraReferenceConcept = $system->conceptFactory->getConceptFromShortnameOrId($sandraReferenceConceptId);
-                $sandraReferenceConceptId = $sandraReferenceConcept->idConcept;
+                $ref = $sandraReferenceValue ;
+                if(!($sandraReferenceValue instanceof Reference)) { //only if the reference is not already created
 
-                $referenceConcept = $this->system->conceptFactory->getForeignConceptFromId($sandraReferenceConceptId);
+                    //if $sandraReferenceConceptId is not an id then we need to convert it
+                    $sandraReferenceConcept = $system->conceptFactory->getConceptFromShortnameOrId($sandraReferenceConceptId);
+                    $sandraReferenceConceptId = $sandraReferenceConcept->idConcept;
 
-                $ref = new Reference($referenceConcept, $this, $sandraReferenceValue, $this->system);
+                    $referenceConcept = $this->system->conceptFactory->getForeignConceptFromId($sandraReferenceConceptId);
+
+                    $ref = new Reference($referenceConcept, $this, $sandraReferenceValue, $this->system);
+                }
                 $this->entityRefs[$sandraReferenceConceptId] = $ref;
                 $this->entityId = $entityId;
                 $this->factory = $factory;

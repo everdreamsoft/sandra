@@ -258,7 +258,7 @@ class EntityFactory extends FactoryBase implements Dumpable
         return $this->entityArray;
 
     }
-    /**K
+    /**
      * @return Entity[]
      */
     public function populateBrotherEntities($verb,$target=null)
@@ -363,6 +363,8 @@ class EntityFactory extends FactoryBase implements Dumpable
         $conceptIdList = array();
         $this->getTriplets();
         //we cycle trough all entities subject concepts
+        if(!is_array($this->entityArray)) return ;
+
         foreach ($this->entityArray as $key => $entity) {
             $triplets = $entity->subjectConcept->tripletArray ;
 
@@ -729,11 +731,10 @@ class EntityFactory extends FactoryBase implements Dumpable
         DatabaseAdapter::commit();
         
         $createdEntity = new $this->generatedEntityClass($this->system->conceptFactory->getConceptFromId($conceptId),$dataArray,$this,$link,$conceptContainerConcept,$conceptContainedIn,$this->system);
-       // $this->entityArray[] = $createdEntity;
+        //$this->entityArray[] = $createdEntity;
 
-
-        $this->addNewEtities($createdEntity,$addedRefMap);
-
+        //we need to build refmap
+       $this->addNewEtities($createdEntity,$addedRefMap);
         
         return $createdEntity ;
 
