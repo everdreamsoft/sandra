@@ -49,8 +49,6 @@ final class EntityFactoryTest extends TestCase
 
 
 
-
-
     }
 
     public function testSetFilter()
@@ -77,7 +75,7 @@ final class EntityFactoryTest extends TestCase
 
 
 
-                $alphabetFactory->populateLocal();
+               // $alphabetFactory->populateLocal();
                 $alphabetFactory->getTriplets();
                 $alphabetFactory->dumpMeta();
 

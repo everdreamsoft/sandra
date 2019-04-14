@@ -34,7 +34,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     public $entityArray = array();
     public $entityReferenceContainer = 'contained_in_file';
 
-    public $sandraReferenceMap;
+    public $sandraReferenceMap =array();
     public $indexShortname = 'index';
     public $entityIndexMap;
     public $refMap;
@@ -341,7 +341,8 @@ class EntityFactory extends FactoryBase implements Dumpable
 
             $this->entityArray = $this->entityArray + $entityArray;
             if (is_array($referenceMap)) {
-                $this->sandraReferenceMap = $this->sandraReferenceMap + $referenceMap;
+                //reference map should be investigated
+               // $this->sandraReferenceMap = $this->sandraReferenceMap + $referenceMap;
             }
         } else {
 
@@ -734,7 +735,7 @@ class EntityFactory extends FactoryBase implements Dumpable
         //$this->entityArray[] = $createdEntity;
 
         //we need to build refmap
-       $this->addNewEtities($createdEntity,$addedRefMap);
+       $this->addNewEtities(array($link=>$createdEntity),$addedRefMap);
         
         return $createdEntity ;
 
