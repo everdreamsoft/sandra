@@ -38,9 +38,9 @@ class System
     public $conceptFactory ;
     public $foreignConceptFactory ;
 
-    public  function __construct($env = '',$install = false){
+    public  function __construct($env = '',$install = false,$dbHost='localhost',$db='sandra',$dbUsername='root',$dbpassword=''){
 
-        self::$pdo = new PdoConnexionWrapper('localhost', 'sandra','root', '');
+        self::$pdo = new PdoConnexionWrapper($dbHost, $db,$dbUsername, $dbpassword);
         $pdoWrapper = self::$pdo ;
 
         $suffix = $env ;
