@@ -33,6 +33,26 @@ final class EntityFactoryTest extends TestCase
 
     }
 
+
+    public function testCreateNew()
+    {
+
+        $system = new \SandraCore\System('phpUnit_',true);
+
+        //Test unpopulated read write
+        $solarSystemFactory =  new \SandraCore\EntityFactory('planet','solarSystemFile',$system);
+
+        $solarSystemFactory->createNew(array('name'=>'Earth'));
+        $solarSystemFactory->createNew(array('name'=>'Mars'));
+
+        $this->assertCount(2,$solarSystemFactory->entityArray);
+
+
+
+
+
+    }
+
     public function testSetFilter()
     {
 

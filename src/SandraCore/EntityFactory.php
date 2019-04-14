@@ -258,7 +258,7 @@ class EntityFactory extends FactoryBase implements Dumpable
         return $this->entityArray;
 
     }
-    /**
+    /**K
      * @return Entity[]
      */
     public function populateBrotherEntities($verb,$target=null)
@@ -729,12 +729,10 @@ class EntityFactory extends FactoryBase implements Dumpable
         DatabaseAdapter::commit();
         
         $createdEntity = new $this->generatedEntityClass($this->system->conceptFactory->getConceptFromId($conceptId),$dataArray,$this,$link,$conceptContainerConcept,$conceptContainedIn,$this->system);
-        $this->entityArray[] = $createdEntity;
+       // $this->entityArray[] = $createdEntity;
 
-        //we need to build refmap
-        foreach ($addedRefMap as $key => $value){
-            $this->refMap[$key][$value][] = $createdEntity ;
-        }
+
+        $this->addNewEtities($createdEntity,$addedRefMap);
 
         
         return $createdEntity ;
