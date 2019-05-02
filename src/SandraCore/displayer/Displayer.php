@@ -23,7 +23,7 @@ class Displayer
     private $factoryArray;
     private $mainFactory;
     private $displayReferenceArray;
-    private $displayDictionary ;
+    private $displayDictionary ; //this is for foreign entity to map into local concepts
 
     public function __construct(EntityFactory $factory)
     {
@@ -124,9 +124,10 @@ class Displayer
                     $refConceptUnid = $referenceObject->idConcept;
 
                     //we have a concept name matching the dictionary
-                    if (isset ($this->displayDictionary->entityRefs[$referenceObject->getShortname()])){
+                    $existKeyDictionary = array_search($referenceObject->getShortname(),$this->displayDictionary->entityRefs);
+                    if (!is_null ($existKeyDictionary)){
 
-                        $refConceptName = $this->displayDictionary->entityRefs[$referenceObject->getShortname()]->refValue;
+                        $refConceptName = $this->displayDictionary->entityRefs[$existKeyDictionary]->refValue;
 
                     }
                     else {
