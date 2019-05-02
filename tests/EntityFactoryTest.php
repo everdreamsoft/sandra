@@ -33,6 +33,24 @@ final class EntityFactoryTest extends TestCase
 
     }
 
+
+    public function testCreateNew()
+    {
+
+        $system = new \SandraCore\System('phpUnit_',true);
+
+        //Test unpopulated read write
+        $solarSystemFactory =  new \SandraCore\EntityFactory('planet','solarSystemFile',$system);
+
+        $solarSystemFactory->createNew(array('name'=>'Earth'));
+        $solarSystemFactory->createNew(array('name'=>'Mars'));
+
+        $this->assertCount(2,$solarSystemFactory->entityArray);
+
+
+
+    }
+
     public function testSetFilter()
     {
 
@@ -57,7 +75,7 @@ final class EntityFactoryTest extends TestCase
 
 
 
-                $alphabetFactory->populateLocal();
+               // $alphabetFactory->populateLocal();
                 $alphabetFactory->getTriplets();
                 $alphabetFactory->dumpMeta();
 
@@ -66,10 +84,9 @@ final class EntityFactoryTest extends TestCase
 
         $factoryWithOtherIsa = new \SandraCore\EntityFactory('somethingElse','algebraFile',$system);
 
+        $factoryWithOtherIsa->populateLocal();
         $allImpliesB->setFilter('implies',$b);
         $allImpliesB->populateLocal();
-        $factoryWithOtherIsa->populateLocal();
-
         $this->assertCount(0,$factoryWithOtherIsa->entityArray);
         $this->assertCount(3,$allImpliesB->entityArray);
 

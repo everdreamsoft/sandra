@@ -31,10 +31,10 @@ class EntityFactory extends FactoryBase implements Dumpable
     protected $generatedEntityClass = '\SandraCore\Entity';
 
     /* @var $entityArray Entity[] */
-    public $entityArray;
+    public $entityArray = array();
     public $entityReferenceContainer = 'contained_in_file';
 
-    public $sandraReferenceMap;
+    public $sandraReferenceMap =array();
     public $indexShortname = 'index';
     public $entityIndexMap;
     public $refMap;
@@ -156,15 +156,13 @@ class EntityFactory extends FactoryBase implements Dumpable
                 $buildFilter['lklk'] = $filterVerb;
                 $buildFilter['lktg'] = $filterTarget;
 
-                if ($filterValue['targetConceptId'] == 'exclusion') {
+                if ($filterValue['exclusion'] == true) {
 
                     $buildFilter['exclusion'] = 1;
                 }
 
                 $filter[] = $buildFilter;
             }
-
-
         }
 
         if ($filter !== 0) {
@@ -336,7 +334,6 @@ class EntityFactory extends FactoryBase implements Dumpable
     public function addNewEtities($entityArray, $referenceMap)
     {
 
-
         if (!is_array($entityArray)) return;
        // if (!is_array($referenceMap)) return;
 
@@ -344,7 +341,8 @@ class EntityFactory extends FactoryBase implements Dumpable
 
             $this->entityArray = $this->entityArray + $entityArray;
             if (is_array($referenceMap)) {
-                $this->sandraReferenceMap = $this->sandraReferenceMap + $referenceMap;
+                //reference map should be investigated
+               // $this->sandraReferenceMap = $this->sandraReferenceMap + $referenceMap;
             }
         } else {
 
@@ -737,7 +735,7 @@ class EntityFactory extends FactoryBase implements Dumpable
         //$this->entityArray[] = $createdEntity;
 
         //we need to build refmap
-       $this->addNewEtities($createdEntity,$addedRefMap);
+       $this->addNewEtities(array($link=>$createdEntity),$addedRefMap);
         
         return $createdEntity ;
 
@@ -797,6 +795,13 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     public function getAllWith($referenceName, $referenceValue)
     {
+
+       if($referenceName == null){
+           $this->system->systemError(400,'EntityFactory','Critical',
+               "getAllWith $referenceValue reference concept is null");
+
+       }
+
         //do we have local concept or a foreign ?
         if ($this instanceof ForeignEntityAdapter) {
             $referenceConcept = $this->system->conceptFactory->getForeignConceptFromId($referenceName);

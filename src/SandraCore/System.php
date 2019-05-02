@@ -16,6 +16,7 @@ class System
 
     public $env = 'main' ;
     public $tableSuffix = '' ;
+    public $tablePrefix = '' ;
     public $factoryManager ;
 
     public static $pdo ;
@@ -38,19 +39,20 @@ class System
     public $conceptFactory ;
     public $foreignConceptFactory ;
 
-    public  function __construct($env = '',$install = false){
+    public  function __construct($env = '',$install = false,$dbHost='localhost',$db='sandra',$dbUsername='root',$dbpassword=''){
 
-        self::$pdo = new PdoConnexionWrapper('localhost', 'sandra','root', '');
+        self::$pdo = new PdoConnexionWrapper($dbHost, $db,$dbUsername, $dbpassword);
         $pdoWrapper = self::$pdo ;
 
-        $suffix = $env ;
-        $this->tableSuffix = $suffix ;
+        $prefix = $env ;
+        $this->tablePrefix = $prefix ;
+        $suffix = '';
 
-        $this->conceptTable = 'SandraConcept' . $suffix;
-        $this->linkTable = 'SandraTriplets' . $suffix;
-        $this->tableReference = 'SandraReferences' . $suffix;
-        $this->tableStorage = 'SandraDatastorage' . $suffix;
-        $this->tableConf = 'SandraConfig' . $suffix;
+        $this->conceptTable = $prefix .'_SandraConcept' . $suffix;
+        $this->linkTable =  $prefix .'_SandraTriplets' . $suffix;
+        $this->tableReference =  $prefix .'_SandraReferences' . $suffix;
+        $this->tableStorage =  $prefix .'_SandraDatastorage' . $suffix;
+        $this->tableConf =  $prefix .'_SandraConfig' . $suffix;
 
         if ($install) $this->install();
 
