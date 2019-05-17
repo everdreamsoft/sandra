@@ -119,6 +119,7 @@ class Entity implements Dumpable
         foreach ($this->subjectConcept->tripletArray[$verbConceptId] as $joinedConceptId){
 
             $joinedConcept = $this->system->conceptFactory->getConceptFromId($joinedConceptId);
+            if (!is_array($joinedConcept->entityArray )) continue ;
             foreach ($joinedConcept->entityArray as $entVerb=>$entTarget){
                 foreach ($entTarget as $targetKey => $entity){
                     $return[] = $entity;

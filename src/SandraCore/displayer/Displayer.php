@@ -12,6 +12,7 @@ namespace SandraCore\displayer;
 use SandraCore\Concept;
 use SandraCore\EntityFactory;
 use SandraCore\humanLanguage\ConceptDictionary;
+use SandraCore\Reference;
 
 /**
  * Class Displayer
@@ -24,6 +25,7 @@ class Displayer
     private $mainFactory;
     private $displayReferenceArray;
     private $displayDictionary ; //this is for foreign entity to map into local concepts
+    private $displayKeyMap = array();
 
     public function __construct(EntityFactory $factory)
     {
@@ -82,7 +84,10 @@ class Displayer
     {
 
 
-    $this->displayDictionary =  ConceptDictionary::buildForeign($dictionary,$this->mainFactory->system);
+        //$this->displayDictionary =  ConceptDictionary::buildForeign($dictionary,$this->mainFactory->system);
+        //I don't know what this method for commenting it for the moment
+
+        $this->displayDictionary = ConceptDictionary::stringToStringDict($dictionary);
 
 
     }
@@ -124,15 +129,7 @@ class Displayer
                     $refConceptUnid = $referenceObject->idConcept;
 
                     //we have a concept name matching the dictionary
-                    $existKeyDictionary = array_search($referenceObject->getShortname(),$this->displayDictionary->entityRefs);
-                    if (!is_null ($existKeyDictionary)){
-
-                        $refConceptName = $this->displayDictionary->entityRefs[$existKeyDictionary]->refValue;
-
-                    }
-                    else {
-                        $refConceptName = $referenceObject->getDisplayName('system');
-                    }
+                    $refConceptName = $this->getDisplayKey($referenceObject);
 
                     if(!isset( $entity->entityRefs[$refConceptUnid])) continue ;
 
@@ -146,6 +143,29 @@ class Displayer
         }
 
         return $returnArray ;
+
+
+    }
+
+    public function getDisplayKey(Concept $referenceObject){
+
+
+        if (isset($this->displayKeyMap[$referenceObject->idConcept])){
+
+            return $this->displayKeyMap[$referenceObject->idConcept] ;
+
+        }
+
+        $shortname = $referenceObject->getShortname() ;
+
+        $this->displayKeyMap[$referenceObject->idConcept] = $shortname ;
+
+        if (isset ($this->displayDictionary[$shortname])) {
+            $this->displayKeyMap[$referenceObject->idConcept] = $this->displayDictionary[$shortname];
+        }
+
+        return $this->displayKeyMap[$referenceObject->idConcept] ;
+
 
 
     }

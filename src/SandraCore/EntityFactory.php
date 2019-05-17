@@ -17,7 +17,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     // Like concept is a dog
     // 2. concept contained in dogFile
 
-    private $entityIsa;
+    public $entityIsa;
     public $entityContainedIn;
     public $conceptManager;
     /* @var $conceptManager ConceptManager */

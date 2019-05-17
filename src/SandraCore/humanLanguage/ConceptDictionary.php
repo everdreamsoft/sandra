@@ -37,6 +37,15 @@ class ConceptDictionary extends EntityBase
 
     }
 
+    public static function stringToStringDict($dictionary){
+
+
+
+    return $dictionary ;
+
+
+}
+
 
 
 
