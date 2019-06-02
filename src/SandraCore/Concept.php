@@ -168,5 +168,43 @@ class Concept implements Dumpable
         
     }
 
+    public function output(){
+
+        $triplets = array();
+        $natural = array();
+        if (!is_null($this->tripletArray)){
+            $tripletArrayWithoutSelf = reset($this->tripletArray);
+            foreach ($tripletArrayWithoutSelf as $verb => $value){
+                $targetData = array();
+               $verbConcept =  $this->system->conceptFactory->getForeignConceptFromId($verb);
+                $triplets[$verb]['verbName'] = $verbConcept->getShortname();
+                $verbName = $verbConcept->getShortname();
+
+                foreach ($value as $targetKey => $target) {
+
+                    $targetConcept =  $this->system->conceptFactory->getForeignConceptFromId($target);
+                    $targetName = $targetConcept->getShortname();
+                    $targetIteration['targetName'] = $targetName ;
+                    $targetIteration['id'] = $target;
+
+                    $targetData = $targetIteration ;
+                    $natural[$verbName] = $targetName;
+
+
+
+                }
+
+                $triplets[$verb]['targetData'] = $targetData ;
+
+            }
+
+            }
+
+
+            return $natural ;
+        }
+
+
+
 
 }

@@ -2,7 +2,7 @@
 <project version="4">
   <component name="PhpDebugIgnoredPathsSettings">
     <skipped_paths>
-      <skipped_path path="$PROJECT_DIR$/../../../bin/phpMyAdmin" />
+      <skipped_path path="C:/bin/phpMyAdmin" />
     </skipped_paths>
   </component>
   <component name="PhpIncludePathManager">
@@ -38,6 +38,13 @@
       <path value="$PROJECT_DIR$/vendor/phpdocumentor/reflection-common" />
       <path value="$PROJECT_DIR$/vendor/tomwright/json" />
       <path value="$PROJECT_DIR$/vendor/tomwright/php-config" />
+      <path value="$PROJECT_DIR$/vendor/symfony/routing" />
+      <path value="$PROJECT_DIR$/vendor/sebastian/type" />
+      <path value="$PROJECT_DIR$/vendor/symfony/http-foundation" />
+      <path value="$PROJECT_DIR$/vendor/symfony/polyfill-php72" />
+      <path value="$PROJECT_DIR$/vendor/symfony/mime" />
+      <path value="$PROJECT_DIR$/vendor/symfony/polyfill-mbstring" />
+      <path value="$PROJECT_DIR$/vendor/symfony/polyfill-intl-idn" />
     </include_path>
   </component>
   <component name="PhpProjectSharedConfiguration" php_language_level="7.1" />
