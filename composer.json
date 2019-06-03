@@ -18,8 +18,8 @@
 
 
     "require": {
-        "symfony/routing": "^5.0@dev",
-        "symfony/http-foundation": "^5.0@dev"
+        "symfony/routing": "^5.0",
+        "symfony/http-foundation": "^5.0"
     },
     "require-dev": {
         "phpunit/phpunit": "^8"
