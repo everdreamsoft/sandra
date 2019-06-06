@@ -159,9 +159,9 @@ class DatabaseAdapter{
             self::$transactionStarted = true ;
 
         }
-        
 
-            $sql = "INSERT INTO $tableConcept (code) VALUES ('$code');";
+
+        $sql = "INSERT INTO $tableConcept (code) VALUES ('$code');";
 
         try {
             $pdoResult = $pdo->prepare($sql);
@@ -184,6 +184,9 @@ class DatabaseAdapter{
         $limitSQL = '';
         $randomSQL = '';
         $targetConceptSQL = '';
+        $linkConceptSQL = '' ;
+        $randomSQL = '' ;
+        $limitSQL = '' ;
         $tableReference = $system->tableReference ;
 
         $pdo = System::$pdo->get();
@@ -203,18 +206,18 @@ class DatabaseAdapter{
 
                 if (!$initialStatement) {
                     $orStatement .= " OR value = :value_$i";
-                    $bindParamArray[$i] = $uniqueValue ;
+                    $bindParamArray["value_$i"] = $uniqueValue ;
                 }
                 $initialStatement = 0;
                 $i++;
             }
 
             $valueToSearchStatement =  "(value = :value_0".$orStatement  .")";
-            $bindParamArray[0] = $valueToSearch[0] ;
+            $bindParamArray["value_0"] = $valueToSearch[0] ;
         } else {
             //$valueToSearch = mysqli_real_escape_string($dbLink, $valueToSearch);
             $valueToSearchStatement = "value = :value_$i";
-            $bindParamArray[$i] = $valueToSearch ;
+            $bindParamArray["value_$i"] = $valueToSearch ;
         }
 
 
@@ -250,13 +253,21 @@ class DatabaseAdapter{
 	
 	";
 
+
+
+
+
         try {
             $pdoResult = $pdo->prepare($sql);
 
-            foreach ($bindParamArray as $key => $value){
+            foreach ($bindParamArray as $key => &$value){
 
-                $pdoResult->bindParam(":value_$key", $value, PDO::PARAM_STR);
+                $pdoResult->bindParam("$key", $value, PDO::PARAM_STR);
+
             }
+
+
+
             $pdoResult->execute();
         }
         catch(PDOException $exception){
@@ -265,11 +276,11 @@ class DatabaseAdapter{
             return null ;
         }
 
-
+        $results = $pdoResult->fetchAll(PDO::FETCH_ASSOC) ;
 
         $array = null;
 
-        foreach ($pdoResult->fetchAll(PDO::FETCH_ASSOC) as $result) {
+        foreach ($results as $result) {
 
             $conceptStart = $result['idConceptStart'];
 
@@ -291,14 +302,13 @@ class DatabaseAdapter{
         return $array;
 
 
-
-
     }
+
 
 
     public static function commit(){
 
-       self::$pdo->commit() ;
+        self::$pdo->commit() ;
         self::$transactionStarted = false ;
 
 
