@@ -65,6 +65,7 @@ $createdConstellation = 'Cetus';
 
 
 
+
         $dataArray = array('name'=>'Aquarius','distance[ly]'=>11.74);
         //$constellation = $entityFactory->createNew($dataArray);
 
@@ -73,6 +74,40 @@ $createdConstellation = 'Cetus';
 
 
     }
+
+
+    public function testVTables()
+    {
+        $sandraToFlush = new SandraCore\System('phpUnit_', true);
+
+        $system = new \SandraCore\System('phpUnit_',true);
+
+        //the goal of the test is to create concepts with linked concept and beeing able to read off the data in subconcepts
+
+        $planetFactory = new \SandraCore\EntityFactory('planet', 'atlasFile', $system);
+        $constellationsFactory = new \SandraCore\EntityFactory('constellation', 'constellationFile', $system);
+        $starFactory = new \SandraCore\EntityFactory('star', 'atlasFile', $system);
+
+        //setup
+        //https://en.wikipedia.org/wiki/List_of_multiplanetary_systems
+
+        //create 3 constellations
+        $planetFactory->populateLocal();
+        
+
+
+
+
+        $dataArray = array('name'=>'Aquarius','distance[ly]'=>11.74);
+        //$constellation = $entityFactory->createNew($dataArray);
+
+
+
+
+
+    }
+
+
 
 
 

@@ -52,45 +52,43 @@ final class EntityFactoryTest extends TestCase
     }
 
     public function testSetFilter()
-    {
+{
 
-        $system = new \SandraCore\System('phpUnit_',true);
-        $alphabetFactory = new \SandraCore\EntityFactory('algebra','algebraFile',$system);
+    $system = new \SandraCore\System('phpUnit_',true);
+    $alphabetFactory = new \SandraCore\EntityFactory('algebra','algebraFile',$system);
 
-        $alphabetFactoryEmpty = clone $alphabetFactory ;
-        $allImpliesB =  new \SandraCore\EntityFactory('algebra','algebraFile',$system);
+    $alphabetFactoryEmpty = clone $alphabetFactory ;
+    $allImpliesB =  new \SandraCore\EntityFactory('algebra','algebraFile',$system);
 
-        $a = $alphabetFactory->createNew(array('name'=>'a'));
-        $b = $alphabetFactory->createNew(array('name'=>'b'));
-        $c = $alphabetFactory->createNew(array('name'=>'c'));
-        $d = $alphabetFactory->createNew(array('name'=>'d'));
-        $e = $alphabetFactory->createNew(array('name'=>'e'));
+    $a = $alphabetFactory->createNew(array('name'=>'a'));
+    $b = $alphabetFactory->createNew(array('name'=>'b'));
+    $c = $alphabetFactory->createNew(array('name'=>'c'));
+    $d = $alphabetFactory->createNew(array('name'=>'d'));
+    $e = $alphabetFactory->createNew(array('name'=>'e'));
 
-                $a->setBrotherEntity('implies',$b,null);
-                $a->setBrotherEntity('implies',$c,null);
+    $a->setBrotherEntity('implies',$b,null);
+    $a->setBrotherEntity('implies',$c,null);
 
-                $e->setBrotherEntity('implies',$b,null);
-                $d->setBrotherEntity('implies',$b,null);
-
-
+    $e->setBrotherEntity('implies',$b,null);
+    $d->setBrotherEntity('implies',$b,null);
 
 
-               // $alphabetFactory->populateLocal();
-                $alphabetFactory->getTriplets();
-                $alphabetFactory->dumpMeta();
-
-        $this->assertCount(5,$alphabetFactory->entityArray);
 
 
-        $factoryWithOtherIsa = new \SandraCore\EntityFactory('somethingElse','algebraFile',$system);
+    // $alphabetFactory->populateLocal();
+    $alphabetFactory->getTriplets();
+    $alphabetFactory->dumpMeta();
 
-        $factoryWithOtherIsa->populateLocal();
-        $allImpliesB->setFilter('implies',$b);
-        $allImpliesB->populateLocal();
-        $this->assertCount(0,$factoryWithOtherIsa->entityArray);
-        $this->assertCount(3,$allImpliesB->entityArray);
+    $this->assertCount(5,$alphabetFactory->entityArray);
 
 
+    $factoryWithOtherIsa = new \SandraCore\EntityFactory('somethingElse','algebraFile',$system);
+
+    $factoryWithOtherIsa->populateLocal();
+    $allImpliesB->setFilter('implies',$b);
+    $allImpliesB->populateLocal();
+    $this->assertCount(0,$factoryWithOtherIsa->entityArray);
+    $this->assertCount(3,$allImpliesB->entityArray);
 
 
 
@@ -98,7 +96,11 @@ final class EntityFactoryTest extends TestCase
 
 
 
-    }
+
+
+}
+
+
 
 
 

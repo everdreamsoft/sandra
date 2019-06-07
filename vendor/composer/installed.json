@@ -443,12 +443,12 @@
         "source": {
             "type": "git",
             "url": "https://github.com/sebastianbergmann/php-code-coverage.git",
-            "reference": "d720d14ef701c38cc7d50be1843a34d744e919f6"
+            "reference": "062cca8e7e63e9799ae4f940af83ba2fa6bffb1a"
         },
         "dist": {
             "type": "zip",
-            "url": "https://api.github.com/repos/sebastianbergmann/php-code-coverage/zipball/d720d14ef701c38cc7d50be1843a34d744e919f6",
-            "reference": "d720d14ef701c38cc7d50be1843a34d744e919f6",
+            "url": "https://api.github.com/repos/sebastianbergmann/php-code-coverage/zipball/062cca8e7e63e9799ae4f940af83ba2fa6bffb1a",
+            "reference": "062cca8e7e63e9799ae4f940af83ba2fa6bffb1a",
             "shasum": ""
         },
         "require": {
@@ -469,7 +469,7 @@
         "suggest": {
             "ext-xdebug": "^2.6.1"
         },
-        "time": "2019-05-29T11:51:37+00:00",
+        "time": "2019-06-06T19:40:42+00:00",
         "type": "library",
         "extra": {
             "branch-alias": {
@@ -603,12 +603,12 @@
         "source": {
             "type": "git",
             "url": "https://github.com/sebastianbergmann/php-timer.git",
-            "reference": "e826e3ab11b1ca789b10a00b1a2188feb381beb5"
+            "reference": "1038454804406b0b5f5f520358e78c1c2f71501e"
         },
         "dist": {
             "type": "zip",
-            "url": "https://api.github.com/repos/sebastianbergmann/php-timer/zipball/e826e3ab11b1ca789b10a00b1a2188feb381beb5",
-            "reference": "e826e3ab11b1ca789b10a00b1a2188feb381beb5",
+            "url": "https://api.github.com/repos/sebastianbergmann/php-timer/zipball/1038454804406b0b5f5f520358e78c1c2f71501e",
+            "reference": "1038454804406b0b5f5f520358e78c1c2f71501e",
             "shasum": ""
         },
         "require": {
@@ -617,7 +617,7 @@
         "require-dev": {
             "phpunit/phpunit": "^7.0"
         },
-        "time": "2019-05-24T06:37:41+00:00",
+        "time": "2019-06-07T04:22:29+00:00",
         "type": "library",
         "extra": {
             "branch-alias": {
@@ -705,39 +705,39 @@
         "source": {
             "type": "git",
             "url": "https://github.com/sebastianbergmann/phpunit.git",
-            "reference": "04019b9743dd1417d4e537b5d0b96d357f42336c"
+            "reference": "02203a11822af350b6089823845467b1a9fb0973"
         },
         "dist": {
             "type": "zip",
-            "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/04019b9743dd1417d4e537b5d0b96d357f42336c",
-            "reference": "04019b9743dd1417d4e537b5d0b96d357f42336c",
+            "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/02203a11822af350b6089823845467b1a9fb0973",
+            "reference": "02203a11822af350b6089823845467b1a9fb0973",
             "shasum": ""
         },
         "require": {
-            "doctrine/instantiator": "^1.1",
+            "doctrine/instantiator": "^1.2.0",
             "ext-dom": "*",
             "ext-json": "*",
             "ext-libxml": "*",
             "ext-mbstring": "*",
             "ext-xml": "*",
             "ext-xmlwriter": "*",
-            "myclabs/deep-copy": "^1.7",
-            "phar-io/manifest": "^1.0.2",
-            "phar-io/version": "^2.0",
+            "myclabs/deep-copy": "^1.9.1",
+            "phar-io/manifest": "^1.0.3",
+            "phar-io/version": "^2.0.1",
             "php": "^7.2",
-            "phpspec/prophecy": "^1.7",
-            "phpunit/php-code-coverage": "^7.0",
-            "phpunit/php-file-iterator": "^2.0.1",
+            "phpspec/prophecy": "^1.8.0",
+            "phpunit/php-code-coverage": "^7.0.5",
+            "phpunit/php-file-iterator": "^2.0.2",
             "phpunit/php-text-template": "^1.2.1",
-            "phpunit/php-timer": "^2.1",
-            "sebastian/comparator": "^3.0",
-            "sebastian/diff": "^3.0",
-            "sebastian/environment": "^4.2.1",
-            "sebastian/exporter": "^3.1",
-            "sebastian/global-state": "^3.0",
+            "phpunit/php-timer": "^2.1.2",
+            "sebastian/comparator": "^3.0.2",
+            "sebastian/diff": "^3.0.2",
+            "sebastian/environment": "^4.2.2",
+            "sebastian/exporter": "^3.1.0",
+            "sebastian/global-state": "^3.0.0",
             "sebastian/object-enumerator": "^3.0.3",
-            "sebastian/resource-operations": "^2.0",
-            "sebastian/type": "^1.0",
+            "sebastian/resource-operations": "^2.0.1",
+            "sebastian/type": "^1.1.0",
             "sebastian/version": "^2.0.1"
         },
         "require-dev": {
@@ -746,16 +746,16 @@
         "suggest": {
             "ext-soap": "*",
             "ext-xdebug": "*",
-            "phpunit/php-invoker": "^2.0"
+            "phpunit/php-invoker": "^2.0.0"
         },
-        "time": "2019-05-31T08:55:35+00:00",
+        "time": "2019-06-07T14:07:52+00:00",
         "bin": [
             "phpunit"
         ],
         "type": "library",
         "extra": {
             "branch-alias": {
-                "dev-master": "8.2-dev"
+                "dev-master": "8.3-dev"
             }
         },
         "installation-source": "source",
@@ -1336,12 +1336,12 @@
         "source": {
             "type": "git",
             "url": "https://github.com/sebastianbergmann/type.git",
-            "reference": "5de1c9e0753b992b0e6d711a3bb6f8f94ed56d62"
+            "reference": "c32808d4fa4a3da5ec76accc01935587bd841ce4"
         },
         "dist": {
             "type": "zip",
-            "url": "https://api.github.com/repos/sebastianbergmann/type/zipball/5de1c9e0753b992b0e6d711a3bb6f8f94ed56d62",
-            "reference": "5de1c9e0753b992b0e6d711a3bb6f8f94ed56d62",
+            "url": "https://api.github.com/repos/sebastianbergmann/type/zipball/c32808d4fa4a3da5ec76accc01935587bd841ce4",
+            "reference": "c32808d4fa4a3da5ec76accc01935587bd841ce4",
             "shasum": ""
         },
         "require": {
@@ -1350,17 +1350,20 @@
         "require-dev": {
             "phpunit/phpunit": "^8.2"
         },
-        "time": "2019-05-26T06:11:23+00:00",
+        "time": "2019-06-07T11:45:02+00:00",
         "type": "library",
         "extra": {
             "branch-alias": {
-                "dev-master": "1.0-dev"
+                "dev-master": "1.1-dev"
             }
         },
         "installation-source": "source",
         "autoload": {
             "classmap": [
                 "src/"
+            ],
+            "files": [
+                "tests/_fixture/callback_function.php"
             ]
         },
         "notification-url": "https://packagist.org/downloads/",

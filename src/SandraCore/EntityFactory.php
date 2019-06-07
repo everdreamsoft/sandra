@@ -22,9 +22,9 @@ class EntityFactory extends FactoryBase implements Dumpable
     public $conceptManager;
     /* @var $conceptManager ConceptManager */
     private $factoryTable;
-    protected $populated; //is the factory populated from database
-    private $foreignPopulated = false; //is full if we got all the entities without the filter
-    private $populatedFull = false; //is full if we got all the entities without the filter
+    public $populated; //is the factory populated from database
+    public $foreignPopulated = false; //is full if we got all the entities without the filter
+    public $populatedFull = false; //is full if we got all the entities without the filter
     private $su = true; //is the factory super user status
     private $indexUnid;
 
