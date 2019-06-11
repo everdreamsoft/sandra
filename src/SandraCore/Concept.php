@@ -26,6 +26,7 @@ class Concept implements Dumpable
     public $entities;
     public $system;
     public $entityArray;
+    public $referencesArray;
     public $foreignPrefix = 'f:';
 
 
@@ -119,6 +120,21 @@ class Concept implements Dumpable
 
         $this->tripletArray = getLinks($this->idConcept, 0, 0, 0, 1);
 
+    }
+
+    public function getReferences($su = 0)
+    {
+
+//this to be redone because we should use entities
+
+            $conceptManager = new ConceptManager(1,$this->system);
+        $conceptManager->getConceptsFromArray(array($this->idConcept));
+        $refs = $conceptManager->getReferences(null,null,null,null,1);
+
+        $this->referenceArray = $refs ;
+
+        //die(print_r($refs));
+
 
 
     }
@@ -174,10 +190,14 @@ class Concept implements Dumpable
         $natural = array();
         if (!is_null($this->tripletArray)){
             $tripletArrayWithoutSelf = reset($this->tripletArray);
+           // die(print_r($this->tripletArray));
             foreach ($tripletArrayWithoutSelf as $verb => $value){
+                //each verb
+
                 $targetData = array();
-               $verbConcept =  $this->system->conceptFactory->getForeignConceptFromId($verb);
+               $verbConcept =  $this->system->conceptFactory->getConceptFromShortnameOrId($verb);
                 $triplets[$verb]['verbName'] = $verbConcept->getShortname();
+                $triplets[$verb]['id'] = $verbConcept->idConcept ;
                 $verbName = $verbConcept->getShortname();
 
                 foreach ($value as $targetKey => $target) {
@@ -190,18 +210,23 @@ class Concept implements Dumpable
                     $targetData = $targetIteration ;
                     $natural[$verbName] = $targetName;
 
-
-
                 }
 
                 $triplets[$verb]['targetData'] = $targetData ;
 
             }
 
+            $output['triplets'] = $triplets ;
+            $output['natural'] = $natural ;
+
             }
 
+            $output['concept']['id'] = $this->idConcept ;
+             $output['concept']['refs'] = $this->referenceArray ;
 
-            return $natural ;
+
+
+            return $output ;
         }
 
 

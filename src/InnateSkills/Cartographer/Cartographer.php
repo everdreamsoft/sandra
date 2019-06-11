@@ -27,7 +27,7 @@ class Cartographer
 
     public function deployWithMasterKey($key){
 
-echo "pretry";
+
         try
         {
             // Init basic route
@@ -65,10 +65,10 @@ echo "pretry";
             ));
 
             echo '<pre>';
-            print_r($parameters);
+           // print_r($parameters);
             $this->routing($parameters);
 
-            echo 'Generated URL: ' . $url;
+            //echo 'Generated URL: ' . $url;
             exit;
         }
         catch (ResourceNotFoundException  $e)
@@ -82,14 +82,14 @@ echo "pretry";
     {
 
         $sandra = new System(null,true);
-       // die('stop');
+
         $controller = "InnateSkills\Cartographer\\".$parameters['controller'];
         $method = $parameters['method'];
 
         $class = new $controller($sandra);
         $class->$method($parameters);
 
-        //print_r($class);
+
 
 
     }

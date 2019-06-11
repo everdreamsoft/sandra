@@ -6,6 +6,8 @@ $vendorDir = dirname(dirname(__FILE__));
 $baseDir = dirname($vendorDir);
 
 return array(
+    'InnateSkills\\Cartographer\\Cartographer' => $baseDir . '/src/InnateSkills/Cartographer/Cartographer.php',
+    'InnateSkills\\Cartographer\\ConceptController' => $baseDir . '/src/InnateSkills/Cartographer/ConceptController.php',
     'InnateSkills\\Explainer\\SystemDisplayer' => $baseDir . '/src/InnateSkills/Explainer/SystemDisplayer.php',
     'InnateSkills\\LearnFromWeb\\LearnFromWeb' => $baseDir . '/src/InnateSkills/LearnFromWeb/LearnFromWeb.php',
     'InnateSkills\\LearnFromWeb\\WebLearnerFactory' => $baseDir . '/src/InnateSkills/LearnFromWeb/WebLearnerFactory.php',
@@ -179,6 +181,7 @@ return array(
     'PHPUnit\\Runner\\TestSuiteSorter' => $vendorDir . '/phpunit/phpunit/src/Runner/TestSuiteSorter.php',
     'PHPUnit\\Runner\\Version' => $vendorDir . '/phpunit/phpunit/src/Runner/Version.php',
     'PHPUnit\\TextUI\\Command' => $vendorDir . '/phpunit/phpunit/src/TextUI/Command.php',
+    'PHPUnit\\TextUI\\Exception' => $vendorDir . '/phpunit/phpunit/src/TextUI/Exception.php',
     'PHPUnit\\TextUI\\Help' => $vendorDir . '/phpunit/phpunit/src/TextUI/Help.php',
     'PHPUnit\\TextUI\\ResultPrinter' => $vendorDir . '/phpunit/phpunit/src/TextUI/ResultPrinter.php',
     'PHPUnit\\TextUI\\TestRunner' => $vendorDir . '/phpunit/phpunit/src/TextUI/TestRunner.php',
@@ -574,8 +577,12 @@ return array(
     'SebastianBergmann\\Timer\\Exception' => $vendorDir . '/phpunit/php-timer/src/Exception.php',
     'SebastianBergmann\\Timer\\RuntimeException' => $vendorDir . '/phpunit/php-timer/src/RuntimeException.php',
     'SebastianBergmann\\Timer\\Timer' => $vendorDir . '/phpunit/php-timer/src/Timer.php',
+    'SebastianBergmann\\Type\\CallableType' => $vendorDir . '/sebastian/type/src/CallableType.php',
+    'SebastianBergmann\\Type\\Exception' => $vendorDir . '/sebastian/type/src/exception/Exception.php',
+    'SebastianBergmann\\Type\\IterableType' => $vendorDir . '/sebastian/type/src/IterableType.php',
     'SebastianBergmann\\Type\\NullType' => $vendorDir . '/sebastian/type/src/NullType.php',
     'SebastianBergmann\\Type\\ObjectType' => $vendorDir . '/sebastian/type/src/ObjectType.php',
+    'SebastianBergmann\\Type\\RuntimeException' => $vendorDir . '/sebastian/type/src/exception/RuntimeException.php',
     'SebastianBergmann\\Type\\SimpleType' => $vendorDir . '/sebastian/type/src/SimpleType.php',
     'SebastianBergmann\\Type\\Type' => $vendorDir . '/sebastian/type/src/Type.php',
     'SebastianBergmann\\Type\\TypeName' => $vendorDir . '/sebastian/type/src/TypeName.php',

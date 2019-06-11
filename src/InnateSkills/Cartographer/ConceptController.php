@@ -19,22 +19,25 @@ class ConceptController
 
     public function __construct(System $sandra)
     {
-        echo"constructing";
+
         $this->sandra = $sandra ;
 
     }
 
     public function load($parameters)
     {
-        echo"loading";
+
 
         $idConcept = $parameters['id'];
 
        $conceptManager = new ConceptManager(1,$this->sandra);
        $result = $conceptManager->getConceptsFromArray(array($idConcept));
        $triplets = $conceptManager->getTriplets();
-        $conceptManager->getReferences();
+
+
+
         $concept = $this->sandra->conceptFactory->getConceptFromShortnameOrId($idConcept);
+        $concept->getReferences(1);
         $concept->tripletArray = $triplets ;
 
 

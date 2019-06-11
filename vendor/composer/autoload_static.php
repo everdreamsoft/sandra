@@ -115,6 +115,8 @@ class ComposerStaticInitaf125a87073de8f3b61a9f7ec1886a14
     );
 
     public static $classMap = array (
+        'InnateSkills\\Cartographer\\Cartographer' => __DIR__ . '/../..' . '/src/InnateSkills/Cartographer/Cartographer.php',
+        'InnateSkills\\Cartographer\\ConceptController' => __DIR__ . '/../..' . '/src/InnateSkills/Cartographer/ConceptController.php',
         'InnateSkills\\Explainer\\SystemDisplayer' => __DIR__ . '/../..' . '/src/InnateSkills/Explainer/SystemDisplayer.php',
         'InnateSkills\\LearnFromWeb\\LearnFromWeb' => __DIR__ . '/../..' . '/src/InnateSkills/LearnFromWeb/LearnFromWeb.php',
         'InnateSkills\\LearnFromWeb\\WebLearnerFactory' => __DIR__ . '/../..' . '/src/InnateSkills/LearnFromWeb/WebLearnerFactory.php',
@@ -288,6 +290,7 @@ class ComposerStaticInitaf125a87073de8f3b61a9f7ec1886a14
         'PHPUnit\\Runner\\TestSuiteSorter' => __DIR__ . '/..' . '/phpunit/phpunit/src/Runner/TestSuiteSorter.php',
         'PHPUnit\\Runner\\Version' => __DIR__ . '/..' . '/phpunit/phpunit/src/Runner/Version.php',
         'PHPUnit\\TextUI\\Command' => __DIR__ . '/..' . '/phpunit/phpunit/src/TextUI/Command.php',
+        'PHPUnit\\TextUI\\Exception' => __DIR__ . '/..' . '/phpunit/phpunit/src/TextUI/Exception.php',
         'PHPUnit\\TextUI\\Help' => __DIR__ . '/..' . '/phpunit/phpunit/src/TextUI/Help.php',
         'PHPUnit\\TextUI\\ResultPrinter' => __DIR__ . '/..' . '/phpunit/phpunit/src/TextUI/ResultPrinter.php',
         'PHPUnit\\TextUI\\TestRunner' => __DIR__ . '/..' . '/phpunit/phpunit/src/TextUI/TestRunner.php',
@@ -683,8 +686,12 @@ class ComposerStaticInitaf125a87073de8f3b61a9f7ec1886a14
         'SebastianBergmann\\Timer\\Exception' => __DIR__ . '/..' . '/phpunit/php-timer/src/Exception.php',
         'SebastianBergmann\\Timer\\RuntimeException' => __DIR__ . '/..' . '/phpunit/php-timer/src/RuntimeException.php',
         'SebastianBergmann\\Timer\\Timer' => __DIR__ . '/..' . '/phpunit/php-timer/src/Timer.php',
+        'SebastianBergmann\\Type\\CallableType' => __DIR__ . '/..' . '/sebastian/type/src/CallableType.php',
+        'SebastianBergmann\\Type\\Exception' => __DIR__ . '/..' . '/sebastian/type/src/exception/Exception.php',
+        'SebastianBergmann\\Type\\IterableType' => __DIR__ . '/..' . '/sebastian/type/src/IterableType.php',
         'SebastianBergmann\\Type\\NullType' => __DIR__ . '/..' . '/sebastian/type/src/NullType.php',
         'SebastianBergmann\\Type\\ObjectType' => __DIR__ . '/..' . '/sebastian/type/src/ObjectType.php',
+        'SebastianBergmann\\Type\\RuntimeException' => __DIR__ . '/..' . '/sebastian/type/src/exception/RuntimeException.php',
         'SebastianBergmann\\Type\\SimpleType' => __DIR__ . '/..' . '/sebastian/type/src/SimpleType.php',
         'SebastianBergmann\\Type\\Type' => __DIR__ . '/..' . '/sebastian/type/src/Type.php',
         'SebastianBergmann\\Type\\TypeName' => __DIR__ . '/..' . '/sebastian/type/src/TypeName.php',
