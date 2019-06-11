@@ -164,38 +164,7 @@ class ConceptManager
 
     //Check the followup if something needs to be done
 
-    public function getConceptsFromLinkAndTarget2($linkConcept, $targetConcept, $limit = 0)
-    {
-        //Sub optimal request
 
-        global $tableLink, $tableReference, $deletedUNID, $dbLink;
-        //look at the followup object
-
-        if ($limit > 0)
-            $limitSQL = "LIMIT $limit";
-        else
-            $limitSQL = '';
-
-        $sql = "SELECT * FROM  $this->tableLink 
-	WHERE idConceptLink = $linkConcept  
-	AND idConceptTarget = $targetConcept
-	AND flag != $deletedUNID
-	" . $this->filterSQL . " ORDER BY idConceptStart DESC " . $limitSQL;
-        debugConsole($this->filterSQL . "this filter SQL" . $sql);
-
-
-        $resultat = mysqli_query($dbLink, $sql); //action;;
-
-        while ($result = mysqli_fetch_array($resultat)) {
-            $idConceptStart = $result['idConceptStart'];
-            $array[] = $idConceptStart;
-            $this->concepts[] = new Concept($idConceptStart);
-            $this->conceptArray[] = $idConceptStart;
-        }
-
-        if (isset($array))
-            return $array;
-    }
 
     public function getResultsFromLink($linkId)
     {

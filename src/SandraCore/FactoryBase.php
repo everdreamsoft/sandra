@@ -18,6 +18,9 @@ abstract class FactoryBase
 
     abstract public function getAllWith($referenceName, $referenceValue);
     abstract public function createNew($dataArray, $linkArray = null);
+    abstract public function populateLocal($limit = 10000,$offset = 0,$asc='ASC');
+
+    public $populated ;
 
     public function __construct(System $system)
     {
@@ -96,6 +99,34 @@ abstract class FactoryBase
 
         return $this->displayer ;
         
+
+    }
+
+
+    public function createViewTable($name):EntityFactory{
+
+
+        if (!$this->populated){
+            $this->populateLocal(1000,0,'DESC');
+
+        }
+
+        foreach ($this->sandraReferenceMap as $entity){
+
+            //'LEFT JOIN `$tableReference` $refSQLCounter ON l.id = $refSQLCounter.`linkReferenced`"';
+
+
+                    $sql = " CREATE OR REPLACE VIEW view_$name AS SELECT l.idConceptStart unid, $SQLViewField, 
+                    FROM_UNIXTIME(rf.value) updated FROM `$tableReference` rf JOIN  $tableLink l ON l.id = rf.`linkReferenced` 
+                    $SQLviewFilterJoin WHERE $SQLviewFilterCondition AND l.idConceptLink = $tlink AND l.idConceptTarget = $tg";
+
+
+        }
+
+
+
+
+
 
     }
 

@@ -705,12 +705,12 @@
         "source": {
             "type": "git",
             "url": "https://github.com/sebastianbergmann/phpunit.git",
-            "reference": "d4b252c0413b18c2a046932fdef99c0bfc0ae4a3"
+            "reference": "02203a11822af350b6089823845467b1a9fb0973"
         },
         "dist": {
             "type": "zip",
-            "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/d4b252c0413b18c2a046932fdef99c0bfc0ae4a3",
-            "reference": "d4b252c0413b18c2a046932fdef99c0bfc0ae4a3",
+            "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/02203a11822af350b6089823845467b1a9fb0973",
+            "reference": "02203a11822af350b6089823845467b1a9fb0973",
             "shasum": ""
         },
         "require": {
@@ -748,7 +748,7 @@
             "ext-xdebug": "*",
             "phpunit/php-invoker": "^2.0.0"
         },
-        "time": "2019-06-10T04:57:37+00:00",
+        "time": "2019-06-07T14:07:52+00:00",
         "bin": [
             "phpunit"
         ],
@@ -1336,12 +1336,12 @@
         "source": {
             "type": "git",
             "url": "https://github.com/sebastianbergmann/type.git",
-            "reference": "b2a7f9aac51ce18cd7ac8b31e37c8ce5646fc741"
+            "reference": "c32808d4fa4a3da5ec76accc01935587bd841ce4"
         },
         "dist": {
             "type": "zip",
-            "url": "https://api.github.com/repos/sebastianbergmann/type/zipball/b2a7f9aac51ce18cd7ac8b31e37c8ce5646fc741",
-            "reference": "b2a7f9aac51ce18cd7ac8b31e37c8ce5646fc741",
+            "url": "https://api.github.com/repos/sebastianbergmann/type/zipball/c32808d4fa4a3da5ec76accc01935587bd841ce4",
+            "reference": "c32808d4fa4a3da5ec76accc01935587bd841ce4",
             "shasum": ""
         },
         "require": {
@@ -1350,7 +1350,7 @@
         "require-dev": {
             "phpunit/phpunit": "^8.2"
         },
-        "time": "2019-06-08T04:53:27+00:00",
+        "time": "2019-06-07T11:45:02+00:00",
         "type": "library",
         "extra": {
             "branch-alias": {
@@ -1361,6 +1361,9 @@
         "autoload": {
             "classmap": [
                 "src/"
+            ],
+            "files": [
+                "tests/_fixture/callback_function.php"
             ]
         },
         "notification-url": "https://packagist.org/downloads/",
@@ -1423,124 +1426,6 @@
         "homepage": "https://github.com/sebastianbergmann/version"
     },
     {
-        "name": "symfony/http-foundation",
-        "version": "dev-master",
-        "version_normalized": "9999999-dev",
-        "source": {
-            "type": "git",
-            "url": "https://github.com/symfony/http-foundation.git",
-            "reference": "fc58c3d7e5fcf7e1e5d8661126fb31525854a622"
-        },
-        "dist": {
-            "type": "zip",
-            "url": "https://api.github.com/repos/symfony/http-foundation/zipball/fc58c3d7e5fcf7e1e5d8661126fb31525854a622",
-            "reference": "fc58c3d7e5fcf7e1e5d8661126fb31525854a622",
-            "shasum": ""
-        },
-        "require": {
-            "php": "^7.2.9",
-            "symfony/mime": "^4.4|^5.0",
-            "symfony/polyfill-mbstring": "~1.1"
-        },
-        "require-dev": {
-            "predis/predis": "~1.0",
-            "symfony/expression-language": "^4.4|^5.0"
-        },
-        "time": "2019-06-09T14:44:48+00:00",
-        "type": "library",
-        "extra": {
-            "branch-alias": {
-                "dev-master": "5.0-dev"
-            }
-        },
-        "installation-source": "source",
-        "autoload": {
-            "psr-4": {
-                "Symfony\\Component\\HttpFoundation\\": ""
-            },
-            "exclude-from-classmap": [
-                "/Tests/"
-            ]
-        },
-        "notification-url": "https://packagist.org/downloads/",
-        "license": [
-            "MIT"
-        ],
-        "authors": [
-            {
-                "name": "Fabien Potencier",
-                "email": "fabien@symfony.com"
-            },
-            {
-                "name": "Symfony Community",
-                "homepage": "https://symfony.com/contributors"
-            }
-        ],
-        "description": "Symfony HttpFoundation Component",
-        "homepage": "https://symfony.com"
-    },
-    {
-        "name": "symfony/mime",
-        "version": "dev-master",
-        "version_normalized": "9999999-dev",
-        "source": {
-            "type": "git",
-            "url": "https://github.com/symfony/mime.git",
-            "reference": "d39ae861a257ab23b253cee08e55f0b751bdb6e5"
-        },
-        "dist": {
-            "type": "zip",
-            "url": "https://api.github.com/repos/symfony/mime/zipball/d39ae861a257ab23b253cee08e55f0b751bdb6e5",
-            "reference": "d39ae861a257ab23b253cee08e55f0b751bdb6e5",
-            "shasum": ""
-        },
-        "require": {
-            "php": "^7.2.9",
-            "symfony/polyfill-intl-idn": "^1.10",
-            "symfony/polyfill-mbstring": "^1.0"
-        },
-        "require-dev": {
-            "egulias/email-validator": "^2.0",
-            "symfony/dependency-injection": "^4.4|^5.0"
-        },
-        "time": "2019-06-04T12:24:56+00:00",
-        "type": "library",
-        "extra": {
-            "branch-alias": {
-                "dev-master": "5.0-dev"
-            }
-        },
-        "installation-source": "source",
-        "autoload": {
-            "psr-4": {
-                "Symfony\\Component\\Mime\\": ""
-            },
-            "exclude-from-classmap": [
-                "/Tests/"
-            ]
-        },
-        "notification-url": "https://packagist.org/downloads/",
-        "license": [
-            "MIT"
-        ],
-        "authors": [
-            {
-                "name": "Fabien Potencier",
-                "email": "fabien@symfony.com"
-            },
-            {
-                "name": "Symfony Community",
-                "homepage": "https://symfony.com/contributors"
-            }
-        ],
-        "description": "A library to manipulate MIME messages",
-        "homepage": "https://symfony.com",
-        "keywords": [
-            "mime",
-            "mime-type"
-        ]
-    },
-    {
         "name": "symfony/polyfill-ctype",
         "version": "dev-master",
         "version_normalized": "9999999-dev",
@@ -1598,266 +1483,6 @@
             "ctype",
             "polyfill",
             "portable"
-        ]
-    },
-    {
-        "name": "symfony/polyfill-intl-idn",
-        "version": "v1.11.0",
-        "version_normalized": "1.11.0.0",
-        "source": {
-            "type": "git",
-            "url": "https://github.com/symfony/polyfill-intl-idn.git",
-            "reference": "c766e95bec706cdd89903b1eda8afab7d7a6b7af"
-        },
-        "dist": {
-            "type": "zip",
-            "url": "https://api.github.com/repos/symfony/polyfill-intl-idn/zipball/c766e95bec706cdd89903b1eda8afab7d7a6b7af",
-            "reference": "c766e95bec706cdd89903b1eda8afab7d7a6b7af",
-            "shasum": ""
-        },
-        "require": {
-            "php": ">=5.3.3",
-            "symfony/polyfill-mbstring": "^1.3",
-            "symfony/polyfill-php72": "^1.9"
-        },
-        "suggest": {
-            "ext-intl": "For best performance"
-        },
-        "time": "2019-03-04T13:44:35+00:00",
-        "type": "library",
-        "extra": {
-            "branch-alias": {
-                "dev-master": "1.9-dev"
-            }
-        },
-        "installation-source": "dist",
-        "autoload": {
-            "psr-4": {
-                "Symfony\\Polyfill\\Intl\\Idn\\": ""
-            },
-            "files": [
-                "bootstrap.php"
-            ]
-        },
-        "notification-url": "https://packagist.org/downloads/",
-        "license": [
-            "MIT"
-        ],
-        "authors": [
-            {
-                "name": "Symfony Community",
-                "homepage": "https://symfony.com/contributors"
-            },
-            {
-                "name": "Laurent Bassin",
-                "email": "laurent@bassin.info"
-            }
-        ],
-        "description": "Symfony polyfill for intl's idn_to_ascii and idn_to_utf8 functions",
-        "homepage": "https://symfony.com",
-        "keywords": [
-            "compatibility",
-            "idn",
-            "intl",
-            "polyfill",
-            "portable",
-            "shim"
-        ]
-    },
-    {
-        "name": "symfony/polyfill-mbstring",
-        "version": "dev-master",
-        "version_normalized": "9999999-dev",
-        "source": {
-            "type": "git",
-            "url": "https://github.com/symfony/polyfill-mbstring.git",
-            "reference": "fe5e94c604826c35a32fa832f35bd036b6799609"
-        },
-        "dist": {
-            "type": "zip",
-            "url": "https://api.github.com/repos/symfony/polyfill-mbstring/zipball/fe5e94c604826c35a32fa832f35bd036b6799609",
-            "reference": "fe5e94c604826c35a32fa832f35bd036b6799609",
-            "shasum": ""
-        },
-        "require": {
-            "php": ">=5.3.3"
-        },
-        "suggest": {
-            "ext-mbstring": "For best performance"
-        },
-        "time": "2019-02-06T07:57:58+00:00",
-        "type": "library",
-        "extra": {
-            "branch-alias": {
-                "dev-master": "1.11-dev"
-            }
-        },
-        "installation-source": "source",
-        "autoload": {
-            "psr-4": {
-                "Symfony\\Polyfill\\Mbstring\\": ""
-            },
-            "files": [
-                "bootstrap.php"
-            ]
-        },
-        "notification-url": "https://packagist.org/downloads/",
-        "license": [
-            "MIT"
-        ],
-        "authors": [
-            {
-                "name": "Nicolas Grekas",
-                "email": "p@tchwork.com"
-            },
-            {
-                "name": "Symfony Community",
-                "homepage": "https://symfony.com/contributors"
-            }
-        ],
-        "description": "Symfony polyfill for the Mbstring extension",
-        "homepage": "https://symfony.com",
-        "keywords": [
-            "compatibility",
-            "mbstring",
-            "polyfill",
-            "portable",
-            "shim"
-        ]
-    },
-    {
-        "name": "symfony/polyfill-php72",
-        "version": "dev-master",
-        "version_normalized": "9999999-dev",
-        "source": {
-            "type": "git",
-            "url": "https://github.com/symfony/polyfill-php72.git",
-            "reference": "ab50dcf166d5f577978419edd37aa2bb8eabce0c"
-        },
-        "dist": {
-            "type": "zip",
-            "url": "https://api.github.com/repos/symfony/polyfill-php72/zipball/ab50dcf166d5f577978419edd37aa2bb8eabce0c",
-            "reference": "ab50dcf166d5f577978419edd37aa2bb8eabce0c",
-            "shasum": ""
-        },
-        "require": {
-            "php": ">=5.3.3"
-        },
-        "time": "2019-02-06T07:57:58+00:00",
-        "type": "library",
-        "extra": {
-            "branch-alias": {
-                "dev-master": "1.11-dev"
-            }
-        },
-        "installation-source": "source",
-        "autoload": {
-            "psr-4": {
-                "Symfony\\Polyfill\\Php72\\": ""
-            },
-            "files": [
-                "bootstrap.php"
-            ]
-        },
-        "notification-url": "https://packagist.org/downloads/",
-        "license": [
-            "MIT"
-        ],
-        "authors": [
-            {
-                "name": "Nicolas Grekas",
-                "email": "p@tchwork.com"
-            },
-            {
-                "name": "Symfony Community",
-                "homepage": "https://symfony.com/contributors"
-            }
-        ],
-        "description": "Symfony polyfill backporting some PHP 7.2+ features to lower PHP versions",
-        "homepage": "https://symfony.com",
-        "keywords": [
-            "compatibility",
-            "polyfill",
-            "portable",
-            "shim"
-        ]
-    },
-    {
-        "name": "symfony/routing",
-        "version": "dev-master",
-        "version_normalized": "9999999-dev",
-        "source": {
-            "type": "git",
-            "url": "https://github.com/symfony/routing.git",
-            "reference": "6b163d711bd6cc3101d3853c3f9b509ea31d72cd"
-        },
-        "dist": {
-            "type": "zip",
-            "url": "https://api.github.com/repos/symfony/routing/zipball/6b163d711bd6cc3101d3853c3f9b509ea31d72cd",
-            "reference": "6b163d711bd6cc3101d3853c3f9b509ea31d72cd",
-            "shasum": ""
-        },
-        "require": {
-            "php": "^7.2.9"
-        },
-        "conflict": {
-            "symfony/config": "<4.4",
-            "symfony/dependency-injection": "<4.4",
-            "symfony/yaml": "<4.4"
-        },
-        "require-dev": {
-            "doctrine/annotations": "~1.2",
-            "psr/log": "~1.0",
-            "symfony/config": "^4.4|^5.0",
-            "symfony/dependency-injection": "^4.4|^5.0",
-            "symfony/expression-language": "^4.4|^5.0",
-            "symfony/http-foundation": "^4.4|^5.0",
-            "symfony/yaml": "^4.4|^5.0"
-        },
-        "suggest": {
-            "doctrine/annotations": "For using the annotation loader",
-            "symfony/config": "For using the all-in-one router or any loader",
-            "symfony/expression-language": "For using expression matching",
-            "symfony/http-foundation": "For using a Symfony Request object",
-            "symfony/yaml": "For using the YAML loader"
-        },
-        "time": "2019-06-09T14:44:48+00:00",
-        "type": "library",
-        "extra": {
-            "branch-alias": {
-                "dev-master": "5.0-dev"
-            }
-        },
-        "installation-source": "source",
-        "autoload": {
-            "psr-4": {
-                "Symfony\\Component\\Routing\\": ""
-            },
-            "exclude-from-classmap": [
-                "/Tests/"
-            ]
-        },
-        "notification-url": "https://packagist.org/downloads/",
-        "license": [
-            "MIT"
-        ],
-        "authors": [
-            {
-                "name": "Fabien Potencier",
-                "email": "fabien@symfony.com"
-            },
-            {
-                "name": "Symfony Community",
-                "homepage": "https://symfony.com/contributors"
-            }
-        ],
-        "description": "Symfony Routing Component",
-        "homepage": "https://symfony.com",
-        "keywords": [
-            "router",
-            "routing",
-            "uri",
-            "url"
         ]
     },
     {
