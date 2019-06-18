@@ -28,7 +28,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     private $su = true; //is the factory super user status
     private $indexUnid;
 
-    protected $generatedEntityClass = '\SandraCore\Entity';
+
 
     /* @var $entityArray Entity[] */
     public $entityArray = array();

@@ -22,6 +22,8 @@ abstract class FactoryBase
 
     public $populated ;
 
+    protected $generatedEntityClass = '\SandraCore\Entity';
+
     public function __construct(System $system)
     {
         $this->system = $system ;
@@ -101,6 +103,22 @@ abstract class FactoryBase
         
 
     }
+
+    public function setGeneratedClass($class){
+
+        if (class_exists($class)) {
+            $this->generatedEntityClass = $class ;
+            return ;
+        }
+
+        $this->system->systemError('546',self::class,'1',"created class does not exists $class");
+
+
+
+
+
+    }
+
 
 
     public function createViewTable($name):EntityFactory{
