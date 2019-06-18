@@ -351,7 +351,6 @@ class ConceptManager
 
     public function getReferences($idConceptLink = 0, $idConceptTarget = 0, $refIdArray = null, $isTargetList = 0, $byTripletid = 0)
     {
-        global $tableReference, $tableLink, $deletedUNID, $dbLink;
 
         /*Note about $byTripletid. The goal is to patch the system if there are different reference on the same idConcept link the first version overight the changes. By adding the variable $byTripletid whe change the form of the result array
 
@@ -443,6 +442,7 @@ class ConceptManager
                     $array[$idConcept][$result['id']][$result['idConcept']] = $value;
                     $array[$idConcept][$result['id']]['linkId'] = $result['id'];
                     $array[$idConcept][$result['id']]['idConceptTarget'] = $result['idConceptTarget'];
+                    $array[$idConcept][$result['id']]['idConceptLink'] = $result['idConceptLink'];
 
                 }
 
@@ -520,7 +520,7 @@ class ConceptManager
         foreach ($conceptArray as $value) {
             $idConceptStart = $value;
             $array[] = $idConceptStart;
-            $this->concepts[] = new Concept($idConceptStart, $this->system);
+            $this->concepts[] = $this->system->conceptFactory->getConceptFromShortnameOrId($idConceptStart);
             $this->conceptArray['conceptStartList'][] = $idConceptStart;
         }
 
