@@ -38,10 +38,8 @@ class SandraDatabaseDefinition
   `flag` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_name` (`idConceptStart`,`idConceptLink`,`idConceptTarget`),
-  KEY `idConceptStart` (`idConceptStart`,`idConceptLink`,`idConceptTarget`),
-  KEY `idConceptStart_4` (`idConceptStart`),
-  KEY `idConceptTarget` (`idConceptTarget`),
-  KEY `idConceptLink` (`idConceptLink`,`idConceptTarget`)
+  KEY `idConceptTarget` (`idConceptTarget`,`idConceptLink`,`idConceptStart`),
+  KEY `idConceptLink` (`idConceptLink`,`idConceptTarget`,`idConceptStart`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
 
 

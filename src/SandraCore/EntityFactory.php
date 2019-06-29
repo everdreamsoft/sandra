@@ -17,8 +17,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     // Like concept is a dog
     // 2. concept contained in dogFile
 
-    public $entityIsa;
-    public $entityContainedIn;
+
     public $conceptManager;
     /* @var $conceptManager ConceptManager */
     private $factoryTable;
@@ -35,7 +34,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     public $entityReferenceContainer = 'contained_in_file';
 
     public $sandraReferenceMap =array();
-    public $indexShortname = 'index';
+
     public $entityIndexMap;
     public $refMap;
     public $maxIndex;
@@ -49,7 +48,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     public $newEntities = array();
 
-    public $factoryIdentifier = 'noNameFactory';
+
 
     private $brotherVerb;
     private $brotherTarget;
@@ -122,13 +121,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     }
 
-    public function X($brotherVerb, $brotherTarget)
-    {
 
-        $this->brotherVerb = $this->sc->get($brotherVerb);
-        $this->brotherTarget = $this->sc->get($brotherTarget);
-
-    }
 
 
     /**
@@ -765,7 +758,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     public function serializeFactoryTemplate(): String
     {
 
-        $lightFactory = $this;
+        $lightFactory = clone $this;
 
         $lightFactory->entityArray = null;
         $lightFactory->sandraReferenceMap = null;
@@ -776,6 +769,21 @@ class EntityFactory extends FactoryBase implements Dumpable
         $lightFactory->populatedFull = null;
         $lightFactory->conceptManager = null;
         $lightFactory->foreignPopulated = null;
+
+        $lightFactory->system = null;
+
+        $serializedFactories = array();
+
+
+        foreach ($lightFactory->joinedFactoryArray as $factory)
+        {
+            /** @var EntityFactory $factory */
+
+            $serializedFactories[] = $factory->serializeFactoryTemplate();
+
+        }
+
+        $lightFactory->joinedFactoryArray = $serializedFactories ;
 
         return serialize($lightFactory);
     }

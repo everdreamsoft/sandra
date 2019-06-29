@@ -93,6 +93,8 @@ $createdConstellation = 'Cetus';
 
         //create 3 constellations
         $planetFactory->populateLocal();
+
+        $this->assertEquals(1,1);
         
 
 

@@ -12,9 +12,18 @@ namespace SandraCore;
 abstract class FactoryBase
 {
 
+    private $defaultFactoryName = 'noNameFactory';
+
     public $displayer ;
     public $tripletfilter ;
     public $system ;
+
+    public $entityIsa;
+    public $entityContainedIn;
+
+    public $indexShortname = 'index';
+
+    public $factoryIdentifier = '' ;
 
     abstract public function getAllWith($referenceName, $referenceValue);
     abstract public function createNew($dataArray, $linkArray = null);
@@ -27,6 +36,7 @@ abstract class FactoryBase
     public function __construct(System $system)
     {
         $this->system = $system ;
+        $this->factoryIdentifier = $this->defaultFactoryName ;
 
     }
 
@@ -140,6 +150,47 @@ abstract class FactoryBase
 
 
         }
+
+
+
+
+
+
+    }
+
+
+    public function createPortableFactory():EntityFactory{
+
+        //the idea of portable factory is to be able to persist it in the datagraph
+
+        $portableFactory = new EntityFactory($this->entityIsa,$this->entityContainedIn,$this->system);
+
+        $portableFactory->indexShortname = $this->indexShortname ;
+
+
+
+        //if factory has no name we call it factory-isa-file-className
+
+        $lightJoinedFactory = array();
+
+
+        foreach ($this->joinedFactoryArray as $verb => $factory)
+        {
+            /** @var EntityFactory $factory */
+
+            $lightJoinedFactory[$verb] = $factory->createPortableFactory();
+
+        }
+
+        $portableFactory->joinedFactoryArray = $lightJoinedFactory ;
+
+
+
+
+
+        return $portableFactory ;
+
+
 
 
 
