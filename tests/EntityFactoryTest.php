@@ -92,13 +92,43 @@ final class EntityFactoryTest extends TestCase
 
 
 
-
-
-
-
-
-
 }
+
+    public function testStorage()
+    {
+
+        $system = new \SandraCore\System('phpUnit_',true);
+        $bookFactory = new \SandraCore\EntityFactory('book','library',$system);
+        $bookFactoryControl = clone $bookFactory ;
+
+        $jungleBook = $bookFactory->createNew(['title'=>'The Jungle Book']);
+
+        $jungleBookText = $jungleBook->setBrotherEntity('hasStorage','content',null);
+
+        $bookText = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut 
+        labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip
+         ex ea commodo consequat. Duis aute irure dolor in reprehenderit 
+        in voluptate velit esse cillum dolore eu fugiat nulla pariatur. 
+        Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
+
+        $jungleBookText->setStorage($bookText);
+
+        //basic storage variable test
+        $this->assertEquals($bookText,$jungleBookText->getStorage());
+        $bookFactoryControl->populateLocal();
+        $bookFactoryControl->populateBrotherEntities('hasStorage');
+
+        $controlBook = $bookFactoryControl->first('title','The Jungle Book');
+
+        $controlJungleBook = $controlBook->getBrotherEntity('hasStorage','content');
+
+        $this->assertEquals($controlJungleBook->getStorage(),$jungleBookText->getStorage());
+
+
+
+
+
+    }
 
 
 

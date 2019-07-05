@@ -147,6 +147,79 @@ class DatabaseAdapter{
 
     }
 
+
+    public static function setStorage(Entity $entity,$value){
+
+
+        $pdo = System::$pdo->get();
+        $tableStorage = $entity->system->tableStorage ;
+
+
+
+
+        $sql = "INSERT INTO $tableStorage (linkReferenced ,`value` ) VALUES (:linkId,  :storeValue) ON DUPLICATE KEY UPDATE  linkReferenced=LAST_INSERT_ID(linkReferenced)";
+
+
+
+
+        try {
+            $pdoResult = $pdo->prepare($sql);
+            $pdoResult->bindParam(':storeValue', $value, PDO::PARAM_STR);
+            $pdoResult->bindParam(":linkId", $entity->entityId, PDO::PARAM_INT);
+            $pdoResult->execute();
+        }
+        catch(PDOException $exception){
+
+            System::sandraException($exception);
+            return null ;
+        }
+
+
+
+        return $value ;
+
+
+
+    }
+
+    public static function getStorage(Entity $entity){
+
+
+        $pdo = System::$pdo->get();
+        $tableStorage = $entity->system->tableStorage ;
+
+
+
+
+        $sql = "SELECT `value` from $tableStorage WHERE linkReferenced = ".$entity->entityId ." LIMIT 1";
+
+
+        try {
+            $pdoResult = $pdo->prepare($sql);
+            $pdoResult->execute();
+        }
+        catch(PDOException $exception){
+
+            System::sandraException($exception);
+            return ;
+        }
+
+        $results = $pdoResult->fetchAll(PDO::FETCH_ASSOC) ;
+
+
+        $value = null ;
+        foreach ($results as $result) {
+
+            $value = $result['value'];
+
+        }
+
+        return $value ;
+
+
+
+    }
+
     public static function rawCreateConcept($code, System $system,$autocommit = true){
 
 

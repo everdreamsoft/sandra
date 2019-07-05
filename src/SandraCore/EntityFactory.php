@@ -633,7 +633,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     }
 
 
-    public function createNew($dataArray, $linArray = null)
+    public function createNew($dataArray, $linArray = null): Entity
     {
         $conceptId = DatabaseAdapter::rawCreateConcept("A " . $this->entityIsa, $this->system,false);
         $addedRefMap = array();

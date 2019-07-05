@@ -21,6 +21,7 @@ class Entity implements Dumpable
     public $targetConcept ; /** @var $targetConcept Concept */
     public $entityId ; // The is the id of the table link
     public $entityRefs ; /** @var $entityRefs Reference[] */
+    public $dataStorage ;
 
     public $system ;
 
@@ -46,11 +47,13 @@ class Entity implements Dumpable
                     $ref = new Reference($referenceConcept, $this, $sandraReferenceValue, $this->system);
                 }
                 $this->entityRefs[$sandraReferenceConceptId] = $ref;
-                $this->entityId = $entityId;
-                $this->factory = $factory;
+
 
             }
         }
+
+        $this->entityId = $entityId;
+        $this->factory = $factory;
 
         /** @var $sandraConcept Concept */
 
@@ -238,6 +241,21 @@ class Entity implements Dumpable
         }
 
         return $reference ;
+
+    }
+
+    public function getStorage(){
+
+       $this->dataStorage =  DatabaseAdapter::getStorage($this);
+
+       return $this->dataStorage ;
+
+    }
+
+    public function setStorage($value){
+
+         DatabaseAdapter::setStorage($this,$value);
+        $this->dataStorage = $value ;
 
     }
 
