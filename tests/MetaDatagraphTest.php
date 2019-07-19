@@ -89,6 +89,9 @@ final class MetaDatagraphTest extends TestCase
 
        $portableFactory->return2dArray();
 
+       //Do test here
+       $this->assertEquals(1,1);
+
 
 
 

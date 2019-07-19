@@ -638,6 +638,8 @@ class EntityFactory extends FactoryBase implements Dumpable
         $conceptId = DatabaseAdapter::rawCreateConcept("A " . $this->entityIsa, $this->system,false);
         $addedRefMap = array();
 
+        $addedReferenceMap = array();
+
         if ($this->entityIsa) {
 
             DatabaseAdapter::rawCreateTriplet($conceptId, $this->sc->get('is_a'), $this->sc->get($this->entityIsa), $this->system,false);
@@ -670,6 +672,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
             DatabaseAdapter::rawCreateReference($link, $key, $value, $this->system,false);
             $addedRefMap[$key] = $value ;
+            $addedReferenceMap[$key] = $this->system->conceptFactory->getConceptFromId($key) ;
         }
 
         if (is_array($linArray)) {
@@ -733,7 +736,7 @@ class EntityFactory extends FactoryBase implements Dumpable
             $this->refMap[$key][$value][] = $createdEntity ;
         }
 
-        $this->addNewEtities(array($createdEntity->subjectConcept->idConcept=>$createdEntity),$addedRefMap);
+        $this->addNewEtities(array($createdEntity->subjectConcept->idConcept=>$createdEntity),$addedReferenceMap);
 
         return $createdEntity ;
 

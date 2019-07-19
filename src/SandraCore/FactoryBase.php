@@ -1,5 +1,7 @@
 <?php
 namespace SandraCore;
+use SandraCore\displayer\DisplayType;
+
 /**
  * Created by EverdreamSoft.
  * User: Shaban Shaame
@@ -63,9 +65,13 @@ abstract class FactoryBase
     }
     
 
-    public function getDisplay($format,$refToDisplay = null, $dictionnary=null){
+    public function getDisplay($format,$refToDisplay = null, $dictionnary=null, DisplayType $displayType = null){
 
-        $displayer = $this->initDisplayer();
+        $displayer = $this->initDisplayer($displayType);
+
+        if($displayType)
+            $displayer->displayType = $displayType ;
+
        
         $this->displayer = $displayer ;
 
@@ -101,11 +107,11 @@ abstract class FactoryBase
     }
 
 
-    protected function initDisplayer(){
+    protected function initDisplayer(DisplayType $displayType = null){
 
         if (!isset($this->displayer)){
 
-            $this->displayer = new displayer\Displayer($this);
+            $this->displayer = new displayer\Displayer($this,$displayType);
 
         }
 

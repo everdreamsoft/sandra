@@ -21,17 +21,25 @@ use SandraCore\Reference;
 class Displayer
 {
 
-    private $factoryArray;
-    private $mainFactory;
-    private $displayReferenceArray;
-    private $displayDictionary ; //this is for foreign entity to map into local concepts
-    private $displayKeyMap = array();
+    public $factoryArray;
+    public $mainFactory;
+    public $displayReferenceArray;
+    public $displayDictionary ; //this is for foreign entity to map into local concepts
+    public $displayKeyMap = array();
+    public  $displayType ;
 
-    public function __construct(EntityFactory $factory)
+    public function __construct(EntityFactory $factory, DisplayType $displayType = null)
     {
 
         $this->factoryArray[] = $factory;
         $this->mainFactory = $factory ;
+
+        if ($displayType == null) {
+
+            $displayType = new DefaultDisplay();
+        }
+
+        $this->displayType = $displayType ;
 
     }
 
@@ -108,6 +116,8 @@ class Displayer
     {
         $returnArray = array();
 
+
+
         //by default we display all references
         if (!is_array($this->displayReferenceArray)){
 
@@ -116,33 +126,9 @@ class Displayer
         }
 
 
-        //Cycle trough all factories
-        foreach($this->factoryArray as  $factory) {
+        $return = $this->displayType->getDisplay($this);
 
-
-            foreach ($factory->entityArray as $key => $entity) {
-
-
-                foreach ($this->displayReferenceArray as $referenceObject) {
-
-
-                    $refConceptUnid = $referenceObject->idConcept;
-
-                    //we have a concept name matching the dictionary
-                    $refConceptName = $this->getDisplayKey($referenceObject);
-
-                    if(!isset( $entity->entityRefs[$refConceptUnid])) continue ;
-
-                    if(!is_object( $entity->entityRefs[$refConceptUnid])) continue ;
-
-                    $returnArray[$key][$refConceptName] = $entity->entityRefs[$refConceptUnid]->refValue;
-
-                }
-
-            }
-        }
-
-        return $returnArray ;
+        return $return ;
 
 
     }
