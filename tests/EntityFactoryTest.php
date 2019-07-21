@@ -25,6 +25,8 @@ final class EntityFactoryTest extends TestCase
         $system = new \SandraCore\System('phpUnit_',true);
 
 
+
+
        $this->assertEquals('should implement basic tests','should implement basic tests');
 
 
