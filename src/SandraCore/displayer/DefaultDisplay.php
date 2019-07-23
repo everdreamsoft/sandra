@@ -13,8 +13,10 @@ namespace SandraCore\displayer;
 {
 
 
-    function getDisplay(Displayer $displayer): array
+    function getDisplay(): array
     {
+
+        $displayer = $this->displayer ;
 
 
         //Cycle trough all factories
@@ -47,4 +49,6 @@ namespace SandraCore\displayer;
 
 
     }
-}
+
+
+ }

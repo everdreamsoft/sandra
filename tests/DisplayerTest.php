@@ -133,7 +133,12 @@ final class DisplayerTest extends TestCase
 
 
         $employeeFactory->populateLocal();
-        $employeeFirstTwoData = $employeeFactory->getDisplay('array',array_keys($lightData),null,new \SandraCore\displayer\AdvancedDisplay());
+
+        $advancedDisplayer = new \SandraCore\displayer\AdvancedDisplay() ;
+        $advancedDisplayer->conceptDisplayProperty('Email','email');
+        //$advancedDisplayer->setShowUnid();
+
+        $employeeFirstTwoData = $employeeFactory->getDisplay('array',null,null,$advancedDisplayer);
 
         print_r($employeeFirstTwoData);
 

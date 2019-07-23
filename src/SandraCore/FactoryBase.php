@@ -69,8 +69,10 @@ abstract class FactoryBase
 
         $displayer = $this->initDisplayer($displayType);
 
-        if($displayType)
-            $displayer->displayType = $displayType ;
+        if($displayType) {
+            $displayer->displayType = $displayType;
+            $displayType->bindToDisplayer($displayer);
+        }
 
        
         $this->displayer = $displayer ;
@@ -112,6 +114,7 @@ abstract class FactoryBase
         if (!isset($this->displayer)){
 
             $this->displayer = new displayer\Displayer($this,$displayType);
+
 
         }
 

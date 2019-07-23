@@ -11,7 +11,7 @@ namespace SandraCore;
 
 
 
-class Concept implements Dumpable
+class Concept extends DatagraphUnit implements Dumpable
 {
 
     public $idConcept;

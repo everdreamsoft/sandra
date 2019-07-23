@@ -12,7 +12,17 @@ namespace SandraCore\displayer;
  abstract class DisplayType
 {
 
-    abstract function getDisplay(Displayer $displayer):array ;
+     protected $displayer ;
+
+    abstract function getDisplay():array ;
+
+
+
+     function bindToDisplayer(Displayer $displayer)
+     {
+         $this->displayer = $displayer ;
+         /** @var Displayer $displayer */
+     }
 
 
 }
