@@ -38,7 +38,7 @@ namespace SandraCore\displayer;
 
                 //meta
                 if ($this->showUnidBool){
-                    $entityValue['meta']['unid'] = $key ;
+                    $entityValue['unid'] = $key ;
 
                 }
 
@@ -59,8 +59,8 @@ namespace SandraCore\displayer;
 
                     //$returnArray[$arrayKey][$refConceptName]['value'] = $entity->entityRefs[$refConceptUnid]->refValue;
 
-                    $entityValue[$refConceptName]['value'] =  $entity->entityRefs[$refConceptUnid]->refValue;
-                    $entityValue[$refConceptName]['property'] =  $this->getDisplayProperty($refConceptUnid);
+                    $entityValue['values'][$refConceptName]['value'] =  $entity->entityRefs[$refConceptUnid]->refValue;
+                    $entityValue['values'][$refConceptName]['property'] =  $this->getDisplayProperty($refConceptUnid);
 
 
 

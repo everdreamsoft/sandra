@@ -136,7 +136,7 @@ final class DisplayerTest extends TestCase
 
         $advancedDisplayer = new \SandraCore\displayer\AdvancedDisplay() ;
         $advancedDisplayer->conceptDisplayProperty('Email','email');
-        //$advancedDisplayer->setShowUnid();
+        $advancedDisplayer->setShowUnid();
 
         $employeeFirstTwoData = $employeeFactory->getDisplay('array',null,null,$advancedDisplayer);
 
