@@ -59,8 +59,16 @@ namespace SandraCore\displayer;
 
                     //$returnArray[$arrayKey][$refConceptName]['value'] = $entity->entityRefs[$refConceptUnid]->refValue;
 
-                    $entityValue['values'][$refConceptName]['value'] =  $entity->entityRefs[$refConceptUnid]->refValue;
-                    $entityValue['values'][$refConceptName]['property'] =  $this->getDisplayProperty($refConceptUnid);
+                    //$entityValue['properties'][$refConceptName]['value'] =  $entity->entityRefs[$refConceptUnid]->refValue;
+                    //$entityValue['properties'][$refConceptName]['value'] =  $entity->entityRefs[$refConceptUnid]->refValue;
+                    //$entityValue['properties'][$refConceptName]['dataType'] =  $this->getDisplayProperty($refConceptUnid);
+
+                    $properties['name']=$refConceptName ;
+                    $properties['value']=$entity->entityRefs[$refConceptUnid]->refValue;
+                    $properties['dataType']=$this->getDisplayProperty($refConceptUnid);
+
+                    $entityValue['properties'][] = $properties ;
+
 
 
 

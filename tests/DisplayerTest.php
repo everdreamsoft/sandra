@@ -140,6 +140,8 @@ final class DisplayerTest extends TestCase
 
         $employeeFirstTwoData = $employeeFactory->getDisplay('array',null,null,$advancedDisplayer);
 
+        print_r($employeeFirstTwoData);
+
 
 
 
