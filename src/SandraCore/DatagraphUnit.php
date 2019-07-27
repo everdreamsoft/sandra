@@ -2,17 +2,15 @@
 /**
  * Created by EverdreamSoft.
  * User: Shaban Shaame
- * Date: 20.02.19
- * Time: 12:00
+ * Date: 2019-07-23
+ * Time: 08:59
  */
 
 namespace SandraCore;
 
 
-abstract class EntityBase extends DatagraphUnit
+class DatagraphUnit
 {
-
-
 
 
 

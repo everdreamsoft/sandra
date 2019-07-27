@@ -39,6 +39,8 @@ class Displayer
             $displayType = new DefaultDisplay();
         }
 
+        $displayType->bindToDisplayer($this);
+
         $this->displayType = $displayType ;
 
     }
