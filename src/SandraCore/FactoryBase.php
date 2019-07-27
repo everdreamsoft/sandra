@@ -20,6 +20,9 @@ abstract class FactoryBase
     public $tripletfilter ;
     public $system ;
 
+    /* @var $entityArray Entity[] */
+    public $entityArray = array();
+
     public $entityIsa;
     public $entityContainedIn;
 
@@ -39,6 +42,15 @@ abstract class FactoryBase
     {
         $this->system = $system ;
         $this->factoryIdentifier = $this->defaultFactoryName ;
+
+    }
+
+    /**
+     * @return Entity[]
+     */
+    public function getEntities(){
+
+        return $this->entityArray ;
 
     }
 
@@ -174,7 +186,6 @@ abstract class FactoryBase
         $portableFactory->indexShortname = $this->indexShortname ;
 
 
-
         //if factory has no name we call it factory-isa-file-className
 
         $lightJoinedFactory = array();
@@ -191,16 +202,7 @@ abstract class FactoryBase
         $portableFactory->joinedFactoryArray = $lightJoinedFactory ;
 
 
-
-
-
         return $portableFactory ;
-
-
-
-
-
-
 
 
     }

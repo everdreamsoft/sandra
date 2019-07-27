@@ -29,8 +29,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
 
 
-    /* @var $entityArray Entity[] */
-    public $entityArray = array();
+
     public $entityReferenceContainer = 'contained_in_file';
 
     public $sandraReferenceMap =array();
