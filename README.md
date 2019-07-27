@@ -4,7 +4,7 @@ sandra ontologic datagraph
 ### Work in progress
 
 
-##Getting Started
+## Getting Started
 
 Using composer
 
@@ -24,9 +24,9 @@ To instantiate your datagraph
  
     $sandra = new \SandraCore\System('myFirstDatagraph,'true,'127.0.0.1','sandra','root','');
 
-###Writing data
+### Writing data
 
-####Initialization
+#### Initialization
 
     $sandra = new System('AnimalShelter',true);
     $catFactory = new EntityFactory('cat','catFile',$sandra);
@@ -47,7 +47,7 @@ We create 3 cats
         
  Each cat has name reference and birthYear the last cat  Missy has additional "handicap" reference
  
-###Reading data
+### Reading data
  
      $catFactoryForRead = new EntityFactory('cat','AnimalFile',$sandra);
      
