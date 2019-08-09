@@ -1,7 +1,7 @@
 # sandra
 
 <p align="center">
-<img src="resources/SandraBanner.png">
+<img src="resources/images/SandraBanner.png">
 
 
 </p>
