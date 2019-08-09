@@ -1,5 +1,10 @@
 # sandra
-sandra ontologic datagraph
+
+<p align="center">
+<img src="resources/SandraBanner.png">
+
+
+</p>
 
 
 
