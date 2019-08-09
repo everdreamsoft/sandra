@@ -1,4 +1,4 @@
-# sandra
+# Sandra
 
 <p align="center">
 <img src="resources/images/SandraBanner.png">
