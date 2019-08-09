@@ -18,8 +18,7 @@ Using composer
 To instantiate your datagraph
 
     $sandra = new \SandraCore\System('myFirstDatagraph,
-    true,
-    'your_DB_HOST',
+    true,    'your_DB_HOST',
     'your_DB_name',
     'your_DB_username',
     'your_db_password');
@@ -34,6 +33,12 @@ To instantiate your datagraph
 
     $sandra = new System('AnimalShelter',true);
     $catFactory = new EntityFactory('cat','catFile',$sandra);
+    
+    <p align="center">
+    <img src="resources/images/datagraph_1_1.png">
+    
+    
+    </p>
     
 We create 3 cats
     
