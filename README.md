@@ -39,7 +39,7 @@ To instantiate your datagraph
 <p align="center">
     <img src="resources/images/datagraph1_1.png">
     
-    </p>
+  </p>
     
 We create 3 cats
     
@@ -59,10 +59,10 @@ We create 3 cats
  The resulting simplified datagraph will look like this
  
   <p align="center">
-     <img src="resources/images/datagraph_1_2.png">
+     <img src="resources/images/datagraph1_2.png">
      
      
-     </p>
+  </p>
      
  
 ### Reading data
