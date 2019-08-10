@@ -34,9 +34,10 @@ To instantiate your datagraph
     $sandra = new System('AnimalShelter',true);
     $catFactory = new EntityFactory('cat','catFile',$sandra);
     
-    <p align="center">
-    <img src="resources/images/datagraph_1_1.png">
     
+    
+<p align="center">
+    <img src="resources/images/datagraph1_1.png">
     
     </p>
     
