@@ -55,6 +55,14 @@ We create 3 cats
         ]);
         
  Each cat has name reference and birthYear the last cat  Missy has additional "handicap" reference
+ The resulting simplified datagraph will look like this
+ 
+  <p align="center">
+     <img src="resources/images/datagraph_1_2.png">
+     
+     
+     </p>
+     
  
 ### Reading data
  
