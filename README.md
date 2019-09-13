@@ -34,11 +34,12 @@ To instantiate your datagraph
     $sandra = new System('AnimalShelter',true);
     $catFactory = new EntityFactory('cat','catFile',$sandra);
     
-    <p align="center">
-    <img src="resources/images/datagraph_1_1.png">
     
     
-    </p>
+<p align="center">
+    <img src="resources/images/datagraph1_1.png">
+    
+  </p>
     
 We create 3 cats
     
@@ -55,6 +56,14 @@ We create 3 cats
         ]);
         
  Each cat has name reference and birthYear the last cat  Missy has additional "handicap" reference
+ The resulting simplified datagraph will look like this
+ 
+  <p align="center">
+     <img src="resources/images/datagraph1_2.png">
+     
+     
+  </p>
+     
  
 ### Reading data
  
