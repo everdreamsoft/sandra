@@ -10,6 +10,14 @@ namespace sandraCore;
  */
 class DebugStack
 {
+
+    /**
+     * Messages.
+     *
+     * @var array
+     */
+    public $messages = array();
+
     /**
      * Executed SQL queries.
      *
@@ -75,6 +83,21 @@ class DebugStack
         if ($this->enabled) {
             $this->queries[$this->currentQuery]['executionMS'] = (microtime(true) - $this->start) * 1000;
             $this->queries[$this->currentQuery]['error'] = $error;
+        }
+    }
+
+
+    public function registerMessage($message)
+    {
+        if ($this->enabled) {
+            $trace = debug_backtrace();
+            $caller = $trace[2]['function'];
+
+            $this->start = microtime(true);
+            $this->messages[] = array(
+               $message,
+                'executionMS' => 0
+            );
         }
     }
 }

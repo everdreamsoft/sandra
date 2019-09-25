@@ -61,16 +61,18 @@ class DatabaseAdapter{
         try {
             $pdoResult = $pdo->prepare($sql);
             $pdoResult->bindParam(":value", $value, PDO::PARAM_STR, 50);
+            System::logDatabaseStart($sql);
             $pdoResult->execute();
 
         }
         catch(PDOException $exception){
             //die("too havy");
+            System::logDatabaseEnd($exception->getMessage());
             System::sandraException($exception);
             return ;
         }
 
-
+        System::logDatabaseEnd($sql);
 
 
 
@@ -118,7 +120,7 @@ class DatabaseAdapter{
                 $result = $pdo->query($sql);
             }
             catch(PDOException $exception){
-
+                System::logDatabaseEnd($exception->getMessage());
                 System::sandraException($exception);
                 return ;
             }
@@ -132,15 +134,16 @@ class DatabaseAdapter{
 
         try {
             $pdoResult = $pdo->prepare($sql);
+            System::logDatabaseStart($sql);
             $pdoResult->execute();
         }
         catch(PDOException $exception){
-
+            System::logDatabaseEnd($exception->getMessage());
             System::sandraException($exception);
             return ;
         }
 
-
+        System::logDatabaseEnd($sql);
 
         return $pdo->lastInsertId();
 
@@ -166,15 +169,18 @@ class DatabaseAdapter{
             $pdoResult = $pdo->prepare($sql);
             $pdoResult->bindParam(':storeValue', $value, PDO::PARAM_STR);
             $pdoResult->bindParam(":linkId", $entity->entityId, PDO::PARAM_INT);
+            System::logDatabaseStart($sql);
             $pdoResult->execute();
         }
         catch(PDOException $exception){
 
+            System::logDatabaseEnd($exception->getMessage());
             System::sandraException($exception);
+
             return null ;
         }
 
-
+        System::logDatabaseEnd($sql);
 
         return $value ;
 
@@ -196,15 +202,19 @@ class DatabaseAdapter{
 
         try {
             $pdoResult = $pdo->prepare($sql);
+            System::logDatabaseStart($sql);
             $pdoResult->execute();
+
         }
         catch(PDOException $exception){
 
             System::sandraException($exception);
+            System::logDatabaseEnd($exception->getMessage());
             return ;
         }
 
         $results = $pdoResult->fetchAll(PDO::FETCH_ASSOC) ;
+        System::logDatabaseEnd($sql);
 
 
         $value = null ;
@@ -238,13 +248,17 @@ class DatabaseAdapter{
 
         try {
             $pdoResult = $pdo->prepare($sql);
+            System::logDatabaseStart($sql);
             $pdoResult->execute();
         }
         catch(PDOException $exception){
-
+            System::logDatabaseEnd($exception->getMessage());
             System::sandraException($exception);
+
             return ;
         }
+
+        System::logDatabaseEnd($sql);
 
 
         return $pdo->lastInsertId();
@@ -340,14 +354,15 @@ class DatabaseAdapter{
             }
 
 
-
+            System::logDatabaseStart($sql);
             $pdoResult->execute();
         }
         catch(PDOException $exception){
-
+            System::logDatabaseEnd($exception->getMessage());
             System::sandraException($exception);
             return null ;
         }
+        System::logDatabaseEnd($sql);
 
         $results = $pdoResult->fetchAll(PDO::FETCH_ASSOC) ;
 
