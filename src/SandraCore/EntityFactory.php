@@ -166,7 +166,7 @@ class EntityFactory extends FactoryBase implements Dumpable
         //we don't have preselected concept yet
         if(empty($this->conceptArray)){
 
-        $this->conceptManager->getConceptsFromLinkAndTarget($entityReferenceContainer, $this->sc->get($this->entityContainedIn), $limit,$asc,$offset);
+            $this->conceptManager->getConceptsFromLinkAndTarget($entityReferenceContainer, $this->sc->get($this->entityContainedIn), $limit, $asc, $offset);
         }
         else {
 
@@ -327,7 +327,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     {
 
         if (!is_array($entityArray)) return;
-       // if (!is_array($referenceMap)) return;
+        // if (!is_array($referenceMap)) return;
 
         if ($this->entityArray) {
 
@@ -365,11 +365,11 @@ class EntityFactory extends FactoryBase implements Dumpable
                 if (!isset($triplets[$conceptVerbId])){continue;}
                 foreach ($triplets[$conceptVerbId] as $targetConceptId) {
                     $conceptIdList[$conceptVerbId][] = $targetConceptId;
-                    }
+                }
             }
         }
 
-    //then we inject all concept into the joined factories
+        //then we inject all concept into the joined factories
         foreach ($this->joinedFactoryArray as $verbUnid => $factory)
         {
             if (!isset($conceptIdList[$verbUnid])){continue ;}
@@ -715,19 +715,24 @@ class EntityFactory extends FactoryBase implements Dumpable
                         foreach ($extraRef as $refname => $refValue) {
                             DatabaseAdapter::rawCreateReference($linkId, $this->sc->get($refname), $refValue, $this->system, false);
 
-                            }
+                        }
                     }
                 }
             }
         }
-        
+
         $conceptContainedIn = $this->system->conceptFactory->getConceptFromId($this->sc->get($this->entityContainedIn)) ;
         $conceptContainerConcept = $this->system->conceptFactory->getConceptFromId($this->sc->get($this->entityReferenceContainer)) ;
 
         DatabaseAdapter::commit();
-        
+
         $createdEntity = new $this->generatedEntityClass($this->system->conceptFactory->getConceptFromId($conceptId),$dataArray,$this,$link,$conceptContainerConcept,$conceptContainedIn,$this->system);
-        //$this->entityArray[] = $createdEntity;
+        $concept = $createdEntity->subjectConcept;
+
+        //we need to add this new concept in the manager
+        $this->conceptManager->conceptArray['conceptStartList'][] = $concept->idConcept;
+        $this->conceptManager->concepts[] = $concept;
+
 
 
         foreach ($addedRefMap as $key => $value){
@@ -794,7 +799,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     {
         $newEntities = array();
         //we need to verify if everything is polpulated and fused.
-       $this->verifyPopulated(1);
+        $this->verifyPopulated(1);
 
         foreach ($this->entityArray as $key => $value) {
 
@@ -811,11 +816,11 @@ class EntityFactory extends FactoryBase implements Dumpable
     public function getAllWith($referenceName, $referenceValue)
     {
 
-       if($referenceName == null){
-           $this->system->systemError(400,'EntityFactory','Critical',
-               "getAllWith $referenceValue reference concept is null");
+        if ($referenceName == null) {
+            $this->system->systemError(400, 'EntityFactory', 'Critical',
+                "getAllWith $referenceValue reference concept is null");
 
-       }
+        }
 
         //do we have local concept or a foreign ?
         if ($this instanceof ForeignEntityAdapter) {
@@ -887,38 +892,38 @@ class EntityFactory extends FactoryBase implements Dumpable
     {
 
         $factoryData['status']['populated'] = $this->populated ;
-       $factoryData['is_a'] = $this->entityIsa;
-       $factoryData['path'][$this->entityReferenceContainer] = $this->entityContainedIn;
+        $factoryData['is_a'] = $this->entityIsa;
+        $factoryData['path'][$this->entityReferenceContainer] = $this->entityContainedIn;
 
         $entities = array();
-       
-       if (!empty($this->entityArray)) {
-           foreach ($this->entityArray as $key => $entity) {
-               $entities[] = $entity->dumpMeta() ;
-           }
-       }
+
+        if (!empty($this->entityArray)) {
+            foreach ($this->entityArray as $key => $entity) {
+                $entities[] = $entity->dumpMeta();
+            }
+        }
         $factoryData['entities'] = $entities ;
 
-       $refMap = array();
-       //print_r($this->refMap);
+        $refMap = array();
+        //print_r($this->refMap);
 
-       if(is_array($this->refMap)) {
+        if (is_array($this->refMap)) {
 
-           foreach ($this->refMap as $conceptId => $valueArray) {
-               foreach ($valueArray as $valueOfIndex => $entityArray) {
-                   foreach ($entityArray as $entityCounter => $entity) {
+            foreach ($this->refMap as $conceptId => $valueArray) {
+                foreach ($valueArray as $valueOfIndex => $entityArray) {
+                    foreach ($entityArray as $entityCounter => $entity) {
 
-                       $conceptObject = $this->system->conceptFactory->getConceptFromId($conceptId);
-                       $conceptMeta = $conceptObject->dumpMeta();
+                        $conceptObject = $this->system->conceptFactory->getConceptFromId($conceptId);
+                        $conceptMeta = $conceptObject->dumpMeta();
 
-                       $refMap[$conceptMeta][$valueOfIndex][$entityCounter] = $entity->dumpMeta();
-                   }
-               }
-           }
-       }
-       $factoryData['refMap'] = $refMap ;
-       $meta['factory'] =  $factoryData ;
-       return $meta ;
+                        $refMap[$conceptMeta][$valueOfIndex][$entityCounter] = $entity->dumpMeta();
+                    }
+                }
+            }
+        }
+        $factoryData['refMap'] = $refMap;
+        $meta['factory'] = $factoryData;
+        return $meta;
     }
 
     public function getTriplets()
@@ -928,19 +933,19 @@ class EntityFactory extends FactoryBase implements Dumpable
 
             foreach ($tripletArray as $keyConcept => $triplet) {
 
-            $concept = $this->system->conceptFactory->getConceptFromId($keyConcept);
-            $concept->tripletArray = $triplet;
+                $concept = $this->system->conceptFactory->getConceptFromId($keyConcept);
+                $concept->tripletArray = $triplet;
 
-            //We look at revese triplets
-            foreach ($triplet as $verb => $target) {
-                foreach ($target as $idConceptTarget) {
+                //We look at revese triplets
+                foreach ($triplet as $verb => $target) {
+                    foreach ($target as $idConceptTarget) {
 
-                    $conceptTarget = $this->system->conceptFactory->getConceptFromId($idConceptTarget);
-                    $conceptTarget->reverseTriplet[$verb] = $keyConcept;
+                        $conceptTarget = $this->system->conceptFactory->getConceptFromId($idConceptTarget);
+                        $conceptTarget->reverseTriplet[$verb] = $keyConcept;
+                    }
                 }
             }
         }
-    }
     }
 
 
