@@ -26,6 +26,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     public $populatedFull = false; //is full if we got all the entities without the filter
     private $su = true; //is the factory super user status
     private $indexUnid;
+    public $tripletRetreived;
 
 
 
@@ -55,6 +56,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     public $brotherEntities ; //to delete ?
     public $brotherEntitiesArray = array();
     public $brotherMap ;
+    public $brotherEntitiesVerified = null;
 
     public $joinedFactoryArray = array(); /* @var $joinedFactoryArray EntityFactory[] */
     public $conceptArray = array(); /* if we have a list of concept already  */
@@ -260,6 +262,12 @@ class EntityFactory extends FactoryBase implements Dumpable
         if($target===null) $target = 0 ;
 
 
+        //has brother already been verified ?
+        // if (isset($this->brotherEntitiesVerified[$this->sc->get($verb)][$target]))
+        //   return
+
+
+
         $refs = $this->conceptManager->getReferences($this->sc->get($verb), $this->sc->get($target),null,0,1);
 
         $sandraReferenceMap = array();
@@ -312,6 +320,7 @@ class EntityFactory extends FactoryBase implements Dumpable
         }
 
         $this->addBrotherEntities($entityArray, $sandraReferenceMap);
+        $this->brotherEntitiesVerified[$this->sc->get($verb)][$target];
         return $this->entityArray;
 
     }
@@ -341,6 +350,10 @@ class EntityFactory extends FactoryBase implements Dumpable
             $this->entityArray = $entityArray;
             $this->sandraReferenceMap = $referenceMap;
         }
+
+        //we nullify the fact that we loaded triplets
+        $this->tripletRetreived = false;
+
     }
 
     public function joinFactory($verbJoin, EntityFactory $factory)
@@ -928,25 +941,31 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     public function getTriplets()
     {
-        $tripletArray = $this->conceptManager->getTriplets();
-        if(is_array($tripletArray)){
+        if ($this->tripletRetreived == false) {
 
-            foreach ($tripletArray as $keyConcept => $triplet) {
+            $tripletArray = $this->conceptManager->getTriplets();
+            if (is_array($tripletArray)) {
 
-                $concept = $this->system->conceptFactory->getConceptFromId($keyConcept);
-                $concept->tripletArray = $triplet;
+                foreach ($tripletArray as $keyConcept => $triplet) {
 
-                //We look at revese triplets
-                foreach ($triplet as $verb => $target) {
-                    foreach ($target as $idConceptTarget) {
+                    $concept = $this->system->conceptFactory->getConceptFromId($keyConcept);
+                    $concept->tripletArray = $triplet;
 
-                        $conceptTarget = $this->system->conceptFactory->getConceptFromId($idConceptTarget);
-                        $conceptTarget->reverseTriplet[$verb] = $keyConcept;
+                    //We look at revese triplets
+                    foreach ($triplet as $verb => $target) {
+                        foreach ($target as $idConceptTarget) {
+
+                            $conceptTarget = $this->system->conceptFactory->getConceptFromId($idConceptTarget);
+                            $conceptTarget->reverseTriplet[$verb] = $keyConcept;
+                        }
                     }
                 }
             }
         }
+        $this->tripletRetreived = true;
     }
+
+
 
 
 }
