@@ -600,7 +600,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     {
 
         $this->verifyPopulated(true);
-        $referenceObject = $this->system->conceptFactory->getConceptFromId(getSC($refShortname));
+        $referenceObject = $this->system->conceptFactory->getConceptFromId($this->sc->get($refShortname));
         $refmap = $this->getRefMap($referenceObject);
 
         //Now we find if the object exists
