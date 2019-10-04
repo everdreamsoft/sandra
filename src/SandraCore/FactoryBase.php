@@ -43,6 +43,7 @@ abstract class FactoryBase
     {
         $this->system = $system ;
         $this->factoryIdentifier = $this->defaultFactoryName ;
+        $system->registerFactory($this);
 
     }
 
