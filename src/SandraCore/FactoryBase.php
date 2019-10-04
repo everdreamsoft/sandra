@@ -171,6 +171,8 @@ abstract class FactoryBase
         $fieldList = "";
         $SQLviewFilterJoin = "";
         $SQLviewFilterCondition =  "rf.idConcept = rf.idConcept AND " ; //some default data in case to fill out the blannk
+        $additionalFilterCount = 0;
+        $filters = "";
 
         foreach ($this->sandraReferenceMap as $concept){
             /** @var  Concept $concept */
@@ -194,11 +196,20 @@ abstract class FactoryBase
 
         }
 
-        $sql = " CREATE OR REPLACE VIEW view_$name AS SELECT l.idConceptStart unid $fieldList ,
+        //if is_a is specified we add the filter
+        if (!is_null($this->entityIsa)) {
+            $additionalFilterCount++;
+            $isaUnid = $sandra->systemConcept->get("is_a");
+            $isaTargetUnid = $sandra->systemConcept->get($this->entityIsa);
+            $filters .= "\nJOIN  $sandra->linkTable lf$additionalFilterCount ON l.idConceptStart = lf$additionalFilterCount.idConceptStart AND lf$additionalFilterCount.idConceptLink = $isaUnid AND lf$additionalFilterCount.idConceptTarget = $isaTargetUnid \n ";
+        }
+
+
+        $sql = " CREATE OR REPLACE VIEW " . $sandra->tablePrefix . "_view_$name AS SELECT l.idConceptStart unid $fieldList ,
                     FROM_UNIXTIME(rf.value) updated FROM $sandra->linkTable l LEFT JOIN   $sandra->tableReference rf ON l.id = rf.`linkReferenced` AND rf.idConcept = $creationTimestamp
-                     \n $SQLviewFilterJoin
+                     \n $SQLviewFilterJoin $filters
                      WHERE $SQLviewFilterCondition l.idConceptLink = $entityReferenceContainer AND l.idConceptTarget = $containedUnid ";
-        echo "$sql";
+        DatabaseAdapter::executeSQL($sql);
         return $this;
 
 

@@ -393,6 +393,44 @@ class DatabaseAdapter{
     }
 
 
+    public static function executeSQL($sql, $bindParamArray = null, $autocommit = true)
+    {
+
+        $pdo = System::$pdo->get();
+
+        if (!self::$transactionStarted && $autocommit == false) {
+            $pdo->beginTransaction();
+            self::$pdo = $pdo;
+            self::$transactionStarted = true;
+
+        }
+
+        try {
+            $pdoResult = $pdo->prepare($sql);
+
+            if (is_array($bindParamArray)) {
+
+                foreach ($bindParamArray as $key => &$value) {
+
+                    $pdoResult->bindParam("$key", $value, PDO::PARAM_STR);
+
+                }
+            }
+
+
+            System::logDatabaseStart($sql);
+            $pdoResult->execute();
+        } catch (PDOException $exception) {
+            System::logDatabaseEnd($exception->getMessage());
+            System::sandraException($exception);
+            return null;
+        }
+        System::logDatabaseEnd($sql);
+
+
+    }
+
+
 
     public static function commit(){
 
