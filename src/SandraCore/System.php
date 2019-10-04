@@ -39,6 +39,8 @@ class System
     public $conceptFactory ;
     public $foreignConceptFactory ;
     public $errorLevelToKill = 3 ;
+    public $registerStructure = false;
+    public $registerFactory = array();
 
     public  function __construct($env = '',$install = false,$dbHost='127.0.0.1',$db='sandra',$dbUsername='root',$dbpassword=''){
 
@@ -93,6 +95,17 @@ class System
 
         SandraDatabaseDefinition::createEnvTables($this->conceptTable,$this->linkTable,$this->tableReference,$this->tableStorage,$this->tableConf);
 
+
+
+    }
+
+    public function registerFactory(EntityFactory $factory)
+    {
+
+        if ($this->registerStructure) {
+
+            $this->registerFactory[get_class($factory)] = $factory;
+        }
 
 
     }

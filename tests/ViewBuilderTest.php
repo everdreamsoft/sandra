@@ -10,8 +10,8 @@ use PHPUnit\Framework\TestCase;
 
 class ViewBuilderTest extends TestCase
 {
-    
-    
+
+
     public function testViewBuilder(){
 
         $sandraToFlush = new SandraCore\System('phpUnit', true);
@@ -47,9 +47,6 @@ class ViewBuilderTest extends TestCase
         $atlasFactory->createViewTable("atlas");
 
 
-
-
-        
         
         
     }
