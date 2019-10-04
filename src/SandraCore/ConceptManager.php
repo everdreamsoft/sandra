@@ -15,6 +15,7 @@ class ConceptManager
     private $pdo;
     private $deletedUnid;
     public $conceptArray = array();
+    public $mainQuerySQL = null ;
 
     public function __construct($su = 1, System $system, $tableLinkParam = 'default', $tableReferenceParam = 'default')
     {
@@ -236,6 +237,8 @@ class ConceptManager
 
 
         // echoln( "su = $this->su access to file". $_SESSION['accessToFiles']);
+        
+        $this->mainQuerySQL = $sql ;
 
 
         try {
@@ -261,40 +264,6 @@ class ConceptManager
     }
 
 
-    public function getConceptsFromLinkAndTargetWithRef($linkConcept, $targetConcept, $targetFile, $ref, $refValue, $limit = 0, $debug = '')
-    {
-        global $tableLink, $tableReference, $deletedUNID, $includeCid, $containsInFileCid, $dbLink;
-
-        $hideLinks = "";
-
-        if ($limit > 0)
-            $limitSQL = "LIMIT $limit";
-        else
-            $limitSQL = '';
-
-        $sql = "SELECT l.idConceptStart, l.idConceptLink, l.idConceptTarget FROM   $this->tableLink l
-                $this->filterJoin JOIN `$this->tableReference` rf ON link1.id = rf.linkReferenced
-	            WHERE l.idConceptLink = " . $linkConcept . "
-	            AND l.idConceptTarget = $targetConcept
-	            AND link1.idConceptTarget = $targetFile
-	            AND rf.idConcept = " . getSC($ref) . "
-                AND rf.value = '" . $refValue . "'";
-
-        if ($debug)
-            echoln($sql);
-
-        $resultat = mysqli_query($dbLink, $sql);
-
-        while ($result = mysqli_fetch_array($resultat)) {
-            $idConceptStart = $result['idConceptStart'];
-            $array[] = $idConceptStart;
-            $this->concepts[] = new Concept($idConceptStart);
-            $this->conceptArray['conceptStartList'][] = $idConceptStart;
-        }
-
-        if (isset($array))
-            return $array;
-    }
 
     public function getConceptsFromLink($linkConcept, $limit = 0, $debug = '')
     {
@@ -526,6 +495,19 @@ class ConceptManager
 
         if (isset($array))
             return $array;
+    }
+
+    public function createView($conceptArray)
+    {
+
+        $sql = "SELECT  l.idConceptStart, l.idConceptLink, l.`idConceptTarget` FROM  $this->tableLink l " .
+            $this->filterJoin . "
+	WHERE l.idConceptLink = $linkConcept  
+	AND l.idConceptTarget = $targetConcept
+	AND l.flag != $deletedUNID 
+	" . $this->filterCondition . " $hideLink";
+
+
     }
 
 

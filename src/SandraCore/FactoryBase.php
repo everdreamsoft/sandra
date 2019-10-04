@@ -13,8 +13,9 @@ use SandraCore\displayer\DisplayType;
 
 abstract class FactoryBase
 {
-
+    /* @var $conceptManager ConceptManager */
     private $defaultFactoryName = 'noNameFactory';
+    public $conceptManager ;
 
     public $displayer ;
     public $tripletfilter ;
@@ -152,27 +153,53 @@ abstract class FactoryBase
 
 
 
-    public function createViewTable($name):EntityFactory{
+    public function createViewTable($name):FactoryBase{
 
 
         if (!$this->populated){
             $this->populateLocal(1000,0,'DESC');
 
         }
+        $sandra = $this->system;
 
-        foreach ($this->sandraReferenceMap as $entity){
+        $entityReferenceContainer = $sandra->systemConcept->get($this->entityReferenceContainer);
+        $containedUnid = $sandra->systemConcept->get($this->entityContainedIn);
+        $creationTimestamp = $sandra->systemConcept->get("creationTimestamp");
 
-            //'LEFT JOIN `$tableReference` $refSQLCounter ON l.id = $refSQLCounter.`linkReferenced`"';
+        $incrementor = 0 ;
+
+        $fieldList = "";
+        $SQLviewFilterJoin = "";
+        $SQLviewFilterCondition =  "rf.idConcept = rf.idConcept AND " ; //some default data in case to fill out the blannk
+
+        foreach ($this->sandraReferenceMap as $concept){
+            /** @var  Concept $concept */
+
+            //we bypass creationTimestamp as it is by default
+            if ($concept->idConcept == $sandra->systemConcept->get('creationTimestamp')) continue ;
+
+            $incrementor++ ;
+            $concept->idConcept;
+            
+            /** @var System $sandra */
+            $fieldname = $concept->getDisplayName();
 
 
-                    $sql = " CREATE OR REPLACE VIEW view_$name AS SELECT l.idConceptStart unid, $SQLViewField, 
-                    FROM_UNIXTIME(rf.value) updated FROM `$tableReference` rf JOIN  $tableLink l ON l.id = rf.`linkReferenced` 
-                    $SQLviewFilterJoin WHERE $SQLviewFilterCondition AND l.idConceptLink = $tlink AND l.idConceptTarget = $tg";
+            /** @var ConceptManager $conceptManager */
+
+            $fieldList .= ",\n rf$incrementor".".value '$fieldname' ";
+            $SQLviewFilterJoin .= " LEFT JOIN $sandra->tableReference rf$incrementor ON l.id = rf$incrementor.`linkReferenced` AND rf$incrementor.idConcept = $concept->idConcept \n";
+
 
 
         }
 
-
+        $sql = " CREATE OR REPLACE VIEW view_$name AS SELECT l.idConceptStart unid $fieldList ,
+                    FROM_UNIXTIME(rf.value) updated FROM $sandra->linkTable l LEFT JOIN   $sandra->tableReference rf ON l.id = rf.`linkReferenced` AND rf.idConcept = $creationTimestamp
+                     \n $SQLviewFilterJoin
+                     WHERE $SQLviewFilterCondition l.idConceptLink = $entityReferenceContainer AND l.idConceptTarget = $containedUnid ";
+        echo "$sql";
+        return $this;
 
 
 

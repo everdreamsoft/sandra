@@ -18,7 +18,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     // 2. concept contained in dogFile
 
 
-    public $conceptManager;
+
     /* @var $conceptManager ConceptManager */
     private $factoryTable;
     public $populated; //is the factory populated from database
@@ -100,6 +100,7 @@ class EntityFactory extends FactoryBase implements Dumpable
         $this->initDisplayer();
 
         $this->refMap = array();
+
 
 
 
