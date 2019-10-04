@@ -29,7 +29,7 @@ class Entity implements Dumpable
 
         $this->system = $system ;
 
-        if(is_string($sandraConcept)) {return new ForeignEntity($sandraConcept,$sandraReferencesArray,$factory,$entityId,$system);}
+
 
 
         if(is_array($sandraReferencesArray)) {
@@ -63,6 +63,8 @@ class Entity implements Dumpable
 
 
         /** @var $sandraConcept Concept */
+
+        if(is_string($sandraConcept)) {return new ForeignEntity($sandraConcept,$sandraReferencesArray,$factory,$entityId,$system);}
 
         $sandraConcept->addEntity($this);
 
