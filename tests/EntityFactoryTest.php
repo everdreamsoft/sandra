@@ -128,6 +128,25 @@ final class EntityFactoryTest extends TestCase
 
 
 
+    }
+
+    public function testClassLoading()
+    {
+
+        $sandraToFlush = new SandraCore\System('phpUnit_', true);
+        \SandraCore\Setup::flushDatagraph($sandraToFlush);
+        $system = new \SandraCore\System('phpUnit_',true);        $bookFactory = new \SandraCore\EntityFactory('book','library',$system);
+        $bookFactoryControl = clone $bookFactory ;
+
+       $customClassFactory = new \SandraCore\EntityFactory('book','library',$system);
+        $customClassFactory->createNew(['title'=>'Treasure Island',
+            $system->systemConcept->get('class_name')=>\SandraCore\Test\BookEntityForTest::class]);
+
+            $bookFactoryControl->populateLocal();
+            $books = $bookFactoryControl->getEntities();
+
+            $this->assertInstanceOf(\SandraCore\Test\BookEntityForTest::class,reset($books));
+
 
 
     }

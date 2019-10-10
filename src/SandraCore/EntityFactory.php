@@ -234,6 +234,13 @@ class EntityFactory extends FactoryBase implements Dumpable
                 }
                 $classname = $this->generatedEntityClass;
 
+                //do we have a hardcoded class in the datagraph
+                if (isset ($refArray[$this->system->systemConcept->get('class_name')])){
+
+                    $classname = $refArray[$this->system->systemConcept->get('class_name')] ;
+
+                }
+
                 $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($entityReferenceContainer);
                 $entityTarget = $this->system->conceptFactory->getConceptFromShortnameOrId($this->entityContainedIn);
                 $entity = new $classname($concept, $refArray, $this, $entityId, $entityVerb, $entityTarget, $this->system);
