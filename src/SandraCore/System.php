@@ -41,6 +41,7 @@ class System
     public $errorLevelToKill = 3 ;
     public $registerStructure = false;
     public $registerFactory = array();
+    public $instanceId ;
 
     public  function __construct($env = '',$install = false,$dbHost='127.0.0.1',$db='sandra',$dbUsername='root',$dbpassword=''){
 
@@ -71,6 +72,8 @@ class System
 
         $this->factoryManager = new FactoryManager($this);
         $this->conceptFactory = new ConceptFactory($this);
+
+        $this->instanceId = rand(0,999)."-".rand(0,9999)."-".rand(0,999);
 
 
 
