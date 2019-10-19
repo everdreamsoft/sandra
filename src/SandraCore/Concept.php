@@ -118,7 +118,7 @@ class Concept extends DatagraphUnit implements Dumpable
         //look at the followup object
 
 
-        $this->tripletArray = getLinks($this->idConcept, 0, 0, 0, 1);
+        $this->tripletArray = DatabaseAdapter::rawGetTriplets($this->idConcept, 0, 0, 0, 1);
 
     }
 

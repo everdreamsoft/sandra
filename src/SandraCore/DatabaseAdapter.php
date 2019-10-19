@@ -266,6 +266,92 @@ class DatabaseAdapter{
 
     }
 
+    public static function rawGetTriplets(System $system,$conceptStart, $conceptLink = 0, $conceptTarget = 0, $getIds = 0, $su = 0)
+    {
+
+        //force into super user
+        $su = 1;
+
+        $pdo = System::$pdo->get();
+        $tableLink = $system->linkTable;
+
+
+        $comma_separated = implode(",", $_SESSION['accessToFiles']);
+
+
+//echoln($comma_separated.'comme separated');
+
+
+        if ($conceptLink != 0)
+            $linkSQL = " AND idConceptLink = $conceptLink";
+        else
+            $linkSQL = "";
+
+        if ($conceptTarget != 0)
+            $targetSQL = " AND idConceptTarget = $conceptTarget";
+        else
+            $targetSQL = "";
+
+//hide links for non Super users
+        if ($su == 0) {
+            $hideLinks = "AND 
+(
+idConceptLink IN(SELECT idConceptStart FROM $tableLink WHERE idConceptTarget IN($comma_separated) AND idConceptLink IN ($includeCid, $containsInFileCid ) ) 
+OR idConceptLink NOT IN ( SELECT idConceptStart FROM `$tableLink` WHERE idConceptLink IN ($includeCid, $containsInFileCid) )
+)";
+        } else
+            $hideLinks = '';
+
+
+        $sql = "SELECT * FROM `$tableLink` WHERE  idConceptStart = $conceptStart" . $linkSQL . $targetSQL .
+            " AND flag = 0 
+" . $hideLinks;
+
+
+        try {
+            $pdoResult = $pdo->prepare($sql);
+            System::logDatabaseStart($sql);
+            $pdoResult->execute();
+
+        } catch (PDOException $exception) {
+
+            System::sandraException($exception);
+            System::logDatabaseEnd($exception->getMessage());
+            return;
+        }
+
+        $results = $pdoResult->fetchAll(PDO::FETCH_ASSOC);
+        System::logDatabaseEnd($sql);
+
+
+        $value = null;
+        $array = array();
+        foreach ($results as $result) {
+
+            $idLink = $result['id'];
+            $idConceptTarget = $result['idConceptTarget'];
+
+            $link = $result['idConceptLink'];
+            if ($getIds) {
+
+                $array[$link][]['value'] = $idConceptTarget;
+
+//get the last insterted key
+                $keys = array_keys($array[$link]);
+                $key = end($keys);
+
+                $array[$link][$key]['linkId'] = $idLink;
+            } else {
+                $array[$link][] = $idConceptTarget;
+            }
+
+        }
+
+        return $array;
+
+    }
+
+
     public static function searchConcept($valueToSearch, $referenceUNID = 'IS NOT NULL', System $system, $conceptLinkConcept = '',
                                          $conceptTargetConcept = '', $limit = '', $random = '', $advanced = null){
         $limitSQL = '';
