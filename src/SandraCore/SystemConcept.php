@@ -195,6 +195,7 @@ class SystemConcept
 
             if($concept != null)
             {
+                $concept = reset($concept);
                 //self::write($table);	//reload all things from db and update json file
                 $this->_conceptsByTable[$table][$shortname] = $concept->id;
                 $this->_conceptsByTableUnsensitive[$table][$shortnameCaseUnsensitive] = $concept->id;

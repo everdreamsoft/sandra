@@ -6,6 +6,8 @@
     <mapping directory="$PROJECT_DIR$/vendor/doctrine/instantiator" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/vendor/myclabs/deep-copy" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/vendor/phar-io/manifest" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/vendor/phpdocumentor/reflection-docblock" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/vendor/phpdocumentor/type-resolver" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/vendor/phpspec/prophecy" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/vendor/phpunit/php-code-coverage" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/vendor/phpunit/php-file-iterator" vcs="Git" />

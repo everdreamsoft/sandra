@@ -234,6 +234,13 @@ class EntityFactory extends FactoryBase implements Dumpable
                 }
                 $classname = $this->generatedEntityClass;
 
+                //do we have a hardcoded class in the datagraph
+                if (isset ($refArray[$this->system->systemConcept->get('class_name')])){
+
+                    $classname = $refArray[$this->system->systemConcept->get('class_name')] ;
+
+                }
+
                 $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($entityReferenceContainer);
                 $entityTarget = $this->system->conceptFactory->getConceptFromShortnameOrId($this->entityContainedIn);
                 $entity = new $classname($concept, $refArray, $this, $entityId, $entityVerb, $entityTarget, $this->system);
@@ -740,7 +747,16 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         DatabaseAdapter::commit();
 
-        $createdEntity = new $this->generatedEntityClass($this->system->conceptFactory->getConceptFromId($conceptId),$dataArray,$this,$link,$conceptContainerConcept,$conceptContainedIn,$this->system);
+        $classname = $this->generatedEntityClass ;
+
+        //do we have a hardcoded class in the datagraph
+        if (isset ($addedRefMap[$this->system->systemConcept->get('class_name')])){
+
+            $classname = $addedRefMap[$this->system->systemConcept->get('class_name')] ;
+
+        }
+
+        $createdEntity = new $classname($this->system->conceptFactory->getConceptFromId($conceptId),$dataArray,$this,$link,$conceptContainerConcept,$conceptContainedIn,$this->system);
         $concept = $createdEntity->subjectConcept;
 
         //we need to add this new concept in the manager
