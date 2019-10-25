@@ -114,6 +114,8 @@ class Entity implements Dumpable
 
     public function getJoinedEntities($joinVerb){
 
+        $return = null;
+
         $verbConceptId = CommonFunctions::somethingToConceptId($joinVerb,$this->system);
         //No joined data
         if (!isset($this->subjectConcept->tripletArray[$verbConceptId]))return null ;
