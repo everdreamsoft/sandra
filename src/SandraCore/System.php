@@ -179,6 +179,7 @@ class System
 
     }
 
+    //Have to manually realease the memorfy since it seems not to do it automatically
     public function destroy() {
 
 
