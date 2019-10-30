@@ -179,5 +179,14 @@ class System
 
     }
 
+    public function destroy() {
+
+
+        unset($this->conceptFactory);
+        unset($this->factoryManager);
+
+
+    }
+
 
 }

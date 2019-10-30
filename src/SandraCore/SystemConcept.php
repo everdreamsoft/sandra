@@ -26,12 +26,12 @@ class SystemConcept
     private static $_includePath = '';
     private  $conceptTable = '';
 
-    private  $_instance;
+
 
 
     public function __construct(PdoConnexionWrapper $pdoConnexionWrapper,  $logger, $conceptTable)
     {
-        $this->_instance = $this;
+
 
         $this->pdo = $pdoConnexionWrapper->get();
         $this->logger = $logger;
@@ -45,12 +45,9 @@ class SystemConcept
 
     public  function getInstance()
     {
-        if(null === self::$_instance)
-        {
-            $this->_instance = new SystemConcept();
-        }
 
-        return $this->_instance;
+
+        return $this ;
     }
 
     //List every system concept from table
