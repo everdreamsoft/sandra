@@ -135,7 +135,7 @@ class Concept extends DatagraphUnit implements Dumpable
 
         $this->referenceArray = $refs ;
 
-        //die(print_r($refs));
+        return $refs;
 
 
 
