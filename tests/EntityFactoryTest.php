@@ -151,6 +151,67 @@ final class EntityFactoryTest extends TestCase
 
     }
 
+    public function testUpdate()
+    {
+
+        $sandraToFlush = new SandraCore\System('phpUnit_', true);
+        \SandraCore\Setup::flushDatagraph($sandraToFlush);
+        $system = new \SandraCore\System('phpUnit_', true);
+
+        $rocketFactory = new \SandraCore\EntityFactory('rocket', 'rocketFile', $system);
+        $coldRocketFactory = clone $rocketFactory;
+        $rocketFactory->populateLocal();
+
+        $stageIName = 'S-IC';
+        $hasStageShortname = 'hasStage';
+        $stageOneManufacturerName = 'Boeing';
+
+        $saturneVEntityFirst = $rocketFactory->createOrUpdateOnReference('instance', 'myRocket', array('name' => 'Saturn V')
+            , array($hasStageShortname =>
+                array($stageIName =>
+                    array('manufacturer' => $stageOneManufacturerName, 'weight[t]' => 131)),
+                "managedBy" => "john"
+            ));
+
+        $saturneVEntitySecond = $rocketFactory->createOrUpdateOnReference('instance', 'myRocket', array('name' => 'Saturn V 2')
+            , array($hasStageShortname =>
+                array($stageIName =>
+                    array('manufacturer' => $stageOneManufacturerName, 'weight[t]' => 2)),
+                "managedBy" => "Jack"
+            ));
+
+
+        $firstRocket = $rocketFactory->first('instance', 'myRocket');
+        $lastRocket = $rocketFactory->last('instance', 'myRocket');
+
+        //We should have only one rocket
+        $this->assertInstanceOf(\SandraCore\Entity::class, $lastRocket);
+        $this->assertEquals($firstRocket, $lastRocket);
+
+        //With only the updated values
+        $updatedName = $firstRocket->get('name');
+        $this->assertEquals('Saturn V 2', $updatedName);
+
+        //we should have two manager
+        $manager = $firstRocket->getBrotherEntity("managedBy");
+
+
+        $coldRocketFactory->populateLocal();
+
+        $firstRocket = $coldRocketFactory->first('instance', 'myRocket');
+        $lastRocket = $coldRocketFactory->last('instance', 'myRocket');
+
+        //We should have only one rocket
+        $this->assertInstanceOf(\SandraCore\Entity::class, $lastRocket);
+        $this->assertEquals($firstRocket, $lastRocket);
+
+        //With only the updated values
+        $updatedName = $firstRocket->get('name');
+        $this->assertEquals('Saturn V 2', $updatedName);
+
+
+    }
+
 
 
 

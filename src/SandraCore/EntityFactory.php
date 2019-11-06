@@ -598,9 +598,60 @@ class EntityFactory extends FactoryBase implements Dumpable
     }
 
 
-    public function update($entity, $dataArray)
+    public function update(Entity $entity, $dataArray, $linkArray = null)
     {
-        //if()
+        foreach ($dataArray ? $dataArray : array() as $keyData => $valueData) {
+
+
+            $localData = $entity->get($keyData);
+            if ($localData != $valueData) {
+                echo "local data = $localData for key : $keyData";
+                $entity->createOrUpdateRef($keyData, $valueData);
+
+
+            }
+
+        }
+
+        //do we have brother entities ?
+        foreach ($linkArray ? $linkArray : array() as $verb => $valueToTarget) {
+
+            $valueTargetArray = array();
+
+            if ($valueToTarget instanceof Entity) {
+                $valueToTarget = $valueToTarget->subjectConcept->idConcept;
+
+            }
+
+            //Each target
+            if (!is_array($valueToTarget)) {
+                //in case we have only one target for a link
+                $valueTargetArray[$valueToTarget] = $valueToTarget;
+            } else {
+                $valueTargetArray = $valueToTarget;
+            }
+
+            foreach ($valueTargetArray ? $valueTargetArray : array() as $targetConcept => $target) {
+                if (!($this->tripletRetreived)) $this->getTriplets();
+
+
+                if (is_array($target)) {
+
+                    //TODO update brother reference
+
+                    $this->system->systemError(777, $this, '2', 'Update on brother entity reference not supported');
+
+                } else {
+                    $targetConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($target);
+
+                    if (!isset($entity->subjectConcept->tripletArray[$targetConcept->idConcept]))
+                        //it's a simple data link without refrence
+                        $entity->setBrotherEntity($verb, $targetConcept, null);
+
+                }
+
+            }
+        }
 
     }
 
@@ -614,10 +665,17 @@ class EntityFactory extends FactoryBase implements Dumpable
         //Now we find if the object exists
 
         if ($refmap[$refValue]) {
+            /** @var Entity $foundEntity */
+
+            $foundEntity = end($refmap[$refValue]);
+
+
+            $this->update($foundEntity, $dataArray, $linkArray);
 
 
         } //concept doens't exists
         else {
+            $dataArray[$refShortname] = $refValue;
 
             $this->createNewWithAutoIncrementIndex($dataArray, $linkArray);
         }
