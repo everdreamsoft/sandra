@@ -605,7 +605,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
             $localData = $entity->get($keyData);
             if ($localData != $valueData) {
-                echo "local data = $localData for key : $keyData";
+
                 $entity->createOrUpdateRef($keyData, $valueData);
 
 
