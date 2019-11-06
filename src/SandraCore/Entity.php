@@ -232,16 +232,18 @@ class Entity implements Dumpable
         $this->entityRefs[$referenceConcept->idConcept] = $ref ;
 
         $factory = $this->factory;
-        $currentRefmap = $factory->refMap[$referenceConcept->idConcept][$old];
+        if (isset($factory->refMap[$referenceConcept->idConcept][$old])) {
+            $currentRefmap = $factory->refMap[$referenceConcept->idConcept][$old];
 
-        /** @var EntityFactory $factory */
-        foreach ($currentRefmap ? $currentRefmap : array() as $index => $entity) {
+            /** @var EntityFactory $factory */
+            foreach ($currentRefmap ? $currentRefmap : array() as $index => $entity) {
 
-            if ($entity == $this) {
-                unset($factory->refMap[$referenceConcept->idConcept][$old][$index]);
-                //if none existing anymore remove this reference
-                if (empty($factory->refMap[$referenceConcept->idConcept][$old])) {
-                    unset($factory->refMap[$referenceConcept->idConcept][$old]);
+                if ($entity == $this) {
+                    unset($factory->refMap[$referenceConcept->idConcept][$old][$index]);
+                    //if none existing anymore remove this reference
+                    if (empty($factory->refMap[$referenceConcept->idConcept][$old])) {
+                        unset($factory->refMap[$referenceConcept->idConcept][$old]);
+                    }
                 }
             }
         }

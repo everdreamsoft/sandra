@@ -631,23 +631,33 @@ class EntityFactory extends FactoryBase implements Dumpable
                 $valueTargetArray = $valueToTarget;
             }
 
-            foreach ($valueTargetArray ? $valueTargetArray : array() as $targetConcept => $target) {
+            foreach ($valueTargetArray ? $valueTargetArray : array() as $targetConcept => $targetArray) {
                 if (!($this->tripletRetreived)) $this->getTriplets();
 
 
-                if (is_array($target)) {
+                if (!is_array($targetArray)) {
 
-                    //TODO update brother reference
 
-                    $this->system->systemError(777, $this, '2', 'Update on brother entity reference not supported');
+                    $targetArray = [$targetArray];
 
-                } else {
-                    $targetConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($target);
 
-                    if (!isset($entity->subjectConcept->tripletArray[$targetConcept->idConcept]))
-                        //it's a simple data link without refrence
-                        $entity->setBrotherEntity($verb, $targetConcept, null);
+                }
 
+                foreach ($targetArray as $singleTarget) {
+
+
+                    if (is_array($targetArray)) {
+                        $this->system->systemError(777, 'entityFactory', '2', 'Update on brother entity reference not supported');
+                        //TODO update brother reference
+
+                    } else {
+                        $targetConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($singleTarget);
+
+                        if (!isset($entity->subjectConcept->tripletArray[$targetConcept->idConcept]))
+                            //it's a simple data link without refrence
+                            $entity->setBrotherEntity($verb, $targetConcept, null);
+
+                    }
                 }
 
             }

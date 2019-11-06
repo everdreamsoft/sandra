@@ -173,7 +173,7 @@ final class EntityFactoryTest extends TestCase
                 "managedBy" => "john"
             ));
 
-        $saturneVEntitySecond = $rocketFactory->createOrUpdateOnReference('instance', 'myRocket', array('name' => 'Saturn V 2')
+        $saturneVEntitySecond = $rocketFactory->createOrUpdateOnReference('instance', 'myRocket', array('name' => 'Saturn V 2', 'aNewUnexistingRef' => 'hello')
             , array($hasStageShortname =>
                 array($stageIName =>
                     array('manufacturer' => $stageOneManufacturerName, 'weight[t]' => 2)),
