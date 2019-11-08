@@ -111,12 +111,36 @@ abstract class FactoryBase
 
     public function setFilter($verb=0,$target=0,$exclusion=false):EntityFactory{
 
-        $verbConceptId = CommonFunctions::somethingToConceptId($verb,$this->system);
-        $targetConceptId = CommonFunctions::somethingToConceptId($target,$this->system);
+        $verbArray = array();
+        $targetArray = array();
 
-        $this->tripletfilter["$verbConceptId $targetConceptId"]['verbConceptId'] = $verbConceptId;
-        $this->tripletfilter["$verbConceptId $targetConceptId"]['targetConceptId'] = $targetConceptId;
-        $this->tripletfilter["$verbConceptId $targetConceptId"]['exclusion'] = $exclusion;
+        if (is_array($verb)) {
+            foreach ($verb as $currentVerb) {
+                $verbConceptId = CommonFunctions::somethingToConceptId($currentVerb, $this->system);
+                $verbArray[] = $verbConceptId;
+
+            }
+        } else {
+            $verbArray[] = CommonFunctions::somethingToConceptId($verb, $this->system);
+        }
+
+        if (is_array($target)) {
+            foreach ($target as $currentTarget) {
+                $targetConceptId = CommonFunctions::somethingToConceptId($currentTarget, $this->system);
+                $targetArray[] = $targetConceptId;
+
+            }
+        } else {
+            $targetArray[] = CommonFunctions::somethingToConceptId($target, $this->system);
+        }
+
+        $implodeVerbs = implode(",", $verbArray);
+        $implodeTargets = implode(",", $targetArray);
+
+
+        $this->tripletfilter[implode(",", $verbArray) . implode(",", $targetArray)]['verbConceptId'] = $implodeVerbs;
+        $this->tripletfilter[implode(",", $verbArray) . implode(",", $targetArray)]['targetConceptId'] = $implodeTargets;
+        $this->tripletfilter[implode(",", $verbArray) . implode(",", $targetArray)]['exclusion'] = $exclusion;
 
         return $this ;
 

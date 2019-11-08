@@ -79,7 +79,7 @@ final class EntityFactoryTest extends TestCase
 
     // $alphabetFactory->populateLocal();
     $alphabetFactory->getTriplets();
-    $alphabetFactory->dumpMeta();
+
 
     $this->assertCount(5,$alphabetFactory->entityArray);
 
@@ -91,6 +91,22 @@ final class EntityFactoryTest extends TestCase
     $allImpliesB->populateLocal();
     $this->assertCount(0,$factoryWithOtherIsa->entityArray);
     $this->assertCount(3,$allImpliesB->entityArray);
+
+
+    //advanced filters
+    $impliesBorC = new \SandraCore\EntityFactory('algebra', 'algebraFile', $system);
+
+    $f = $alphabetFactory->createNew(array('name' => 'f'));
+    $f->setBrotherEntity('implies', $d, null);
+
+    $impliesBorC->setFilter('implies', array($b, $d));
+    $impliesBorC->populateLocal();
+
+    //we should have a,d,e,f
+    $impliesBorC->dumpMeta();
+
+
+
 
 
 

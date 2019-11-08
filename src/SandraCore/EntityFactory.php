@@ -133,7 +133,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     {
 
         $entityArray = array();
-        $filter = 0 ;
+        $filter = array();
 
         //do we filter by isa
         if ($this->entityIsa) {
