@@ -174,10 +174,8 @@ class System
 
     }
 
-    public function entityToClassStore(Entity $entityClass, EntityFactory $factory)
+    public function entityToClassStore($className, EntityFactory $factory)
     {
-
-        $className = get_class($entityClass);
 
 
         if (!isset($this->entityClassStore[$className])) {

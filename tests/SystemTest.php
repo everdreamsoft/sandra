@@ -21,6 +21,7 @@ final class SystemTest extends TestCase
     public function testLogger()
     {
 
+
         $sandraToFlush = new SandraCore\System('_phpUnit', true);
         \SandraCore\Setup::flushDatagraph($sandraToFlush);
 
@@ -30,6 +31,10 @@ final class SystemTest extends TestCase
 
         $sandra->systemError(1,self::class,2,"my jmessage");
         $logger = $sandra::$logger;
+
+
+        //TODO implement the tests
+        $this->assertEquals(1, 1);
 
 
 
