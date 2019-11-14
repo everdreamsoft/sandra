@@ -182,7 +182,7 @@ class System
 
 
             $factory->populateLocal();
-            $this->entityClassStore[$className] = $factory->getOrCreateFromRef('class_name', static::class);
+            $this->entityClassStore[$className] = $factory->getOrCreateFromRef('class_name', $className);
 
 
         }
