@@ -32,6 +32,8 @@ class Entity implements Dumpable
 
 
 
+
+
         if(is_array($sandraReferencesArray)) {
             foreach ($sandraReferencesArray as $sandraReferenceConceptId => $sandraReferenceValue) {
 
@@ -55,6 +57,8 @@ class Entity implements Dumpable
         $this->entityId = $entityId;
         $this->factory = $factory;
 
+
+
         /** @var $sandraConcept Concept */
 
         $this->subjectConcept = $sandraConcept;
@@ -65,6 +69,7 @@ class Entity implements Dumpable
         /** @var $sandraConcept Concept */
 
         if(is_string($sandraConcept)) {return new ForeignEntity($sandraConcept,$sandraReferencesArray,$factory,$entityId,$system);}
+
 
         $sandraConcept->addEntity($this);
 
@@ -282,6 +287,27 @@ class Entity implements Dumpable
         $meta['references'] = $references ;
 
         return $meta ;
+
+    }
+
+    public function destroy(){
+
+        $this->system = null ;
+        $this->factory = null ;
+
+
+
+        $this->subjectConcept = null ;
+        $this->verbConcept = null ;
+        $this->targetConcept = null ;
+
+        foreach ($this->entityRefs as $ref){
+
+            $ref->destroy();
+            $ref = null ;
+
+        }
+
 
     }
 

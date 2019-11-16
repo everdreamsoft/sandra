@@ -19,9 +19,14 @@ namespace SandraCore\displayer;
 
 
      function bindToDisplayer(Displayer $displayer)
+ {
+     $this->displayer = $displayer ;
+     /** @var Displayer $displayer */
+ }
+
+     function destroy()
      {
-         $this->displayer = $displayer ;
-         /** @var Displayer $displayer */
+         $this->displayer = null ;
      }
 
 

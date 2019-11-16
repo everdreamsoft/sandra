@@ -1,5 +1,6 @@
 <?php
 namespace SandraCore;
+use SandraCore\displayer\Displayer;
 use SandraCore\displayer\DisplayType;
 
 /**
@@ -20,6 +21,7 @@ abstract class FactoryBase
     public $displayer ;
     public $tripletfilter ;
     public $system ;
+    private $su = true; //is the factory super user status
 
     /* @var $entityArray Entity[] */
     public $entityArray = array();
@@ -44,6 +46,9 @@ abstract class FactoryBase
         $this->system = $system ;
         $this->factoryIdentifier = $this->defaultFactoryName ;
         $system->registerFactory($this);
+        $system->factoryManager->register($this);
+
+        $this->conceptManager = new ConceptManager($this->su, $this->system);
 
     }
 
@@ -127,7 +132,7 @@ abstract class FactoryBase
 
         if (!isset($this->displayer)){
 
-            $this->displayer = new displayer\Displayer($this,$displayType);
+            $this->displayer = new Displayer($this,$displayType);
 
 
         }
@@ -246,6 +251,32 @@ abstract class FactoryBase
 
         return $portableFactory ;
 
+
+    }
+
+    public function setSuperUser($boolean)
+    {
+
+        $this->su = $boolean;
+        $this->conceptManager = new ConceptManager($this->su, $this->system);
+
+    }
+
+    public function destroy(){
+
+       unset($this->system);
+       $this->conceptManager->destroy();
+       unset($this->conceptManager);
+
+        /** @var Displayer $displayer */
+        $displayer = $this->displayer;
+        $displayer->mainFactory = null ;
+
+        foreach ($displayer->factoryArray as $key=> $factory){
+
+            if ($factory == $this) $displayer->factoryArray[$key] = null ;
+        }
+        $displayer->displayType->destroy();
 
     }
 

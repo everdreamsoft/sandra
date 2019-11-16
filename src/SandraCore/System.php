@@ -45,13 +45,18 @@ class System
 
     public  function __construct($env = '',$install = false,$dbHost='127.0.0.1',$db='sandra',$dbUsername='root',$dbpassword=''){
 
+
+
         self::initDebugStack();
+
         self::$pdo = new PdoConnexionWrapper($dbHost, $db,$dbUsername, $dbpassword);
+
         $pdoWrapper = self::$pdo ;
 
         $prefix = $env ;
         $this->tablePrefix = $prefix ;
         $suffix = '';
+
 
         $this->conceptTable = $prefix .'_SandraConcept' . $suffix;
         $this->linkTable =  $prefix .'_SandraTriplets' . $suffix;
@@ -65,8 +70,10 @@ class System
 
         $this->systemConcept = new SystemConcept($pdoWrapper, self::$logger, $this->conceptTable);
 
+
         $this->deletedUNID = $this->systemConcept->get('deleted');
         //die("on system deleted ".$this->deletedUNID);
+
 
         self::$logger->connectionInfo = array('Host' => $pdoWrapper->host, 'Database' => $pdoWrapper->database, 'Sandra environment' => $env);
 
@@ -176,6 +183,17 @@ class System
 
 
         die($message);
+
+    }
+
+    public function destroy(){
+
+        $this->factoryManager->destroy();
+        $this->conceptFactory->destroy();
+        $this->conceptFactory->system = null ;
+        $this->registerStructure = null ;
+
+
 
     }
 

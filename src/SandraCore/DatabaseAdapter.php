@@ -276,7 +276,7 @@ class DatabaseAdapter{
         $tableLink = $system->linkTable;
 
 
-        $comma_separated = implode(",", $_SESSION['accessToFiles']);
+        //$comma_separated = implode(",", $_SESSION['accessToFiles']);
 
 
 //echoln($comma_separated.'comme separated');

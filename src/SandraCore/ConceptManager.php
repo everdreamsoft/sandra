@@ -510,6 +510,13 @@ class ConceptManager
 
     }
 
+    public function destroy(){
+
+        unset ($this->system) ;
+        unset ($this->pdo) ;
+
+    }
+
 
 
 

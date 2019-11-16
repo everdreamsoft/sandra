@@ -24,7 +24,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     public $populated; //is the factory populated from database
     public $foreignPopulated = false; //is full if we got all the entities without the filter
     public $populatedFull = false; //is full if we got all the entities without the filter
-    private $su = true; //is the factory super user status
+
     private $indexUnid;
     public $tripletRetreived;
 
@@ -86,6 +86,8 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         parent::__construct($system);
 
+
+
         $this->entityIsa = $entityIsa;
         $this->entityContainedIn = $entityContainedIn;
         $this->factoryTable = $system->tableSuffix;
@@ -95,24 +97,23 @@ class EntityFactory extends FactoryBase implements Dumpable
         $this->system = $system;
         $this->sc = $system->systemConcept;
 
-        $this->conceptManager = new ConceptManager($this->su, $this->system);
+
+
+
 
         $this->initDisplayer();
+
 
         $this->refMap = array();
 
 
 
 
-    }
 
-    public function setSuperUser($boolean)
-    {
-
-        $this->su = $boolean;
-        $this->conceptManager = new ConceptManager($this->su, $this->system);
 
     }
+
+
 
 
     public function mergeRefFromBrotherEntities($brotherVerb, $brotherTarget)
@@ -982,7 +983,19 @@ class EntityFactory extends FactoryBase implements Dumpable
         $this->tripletRetreived = true;
     }
 
+    public function destroy()
+    {
+        parent::destroy();
 
+        //unlink entities
+        foreach ($this->entityArray as $entity){
+
+            $entity->destroy();
+
+        }
+
+
+    }
 
 
 }

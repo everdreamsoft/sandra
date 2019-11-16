@@ -31,16 +31,22 @@ class SystemConcept
 
     public function __construct(PdoConnexionWrapper $pdoConnexionWrapper,  $logger, $conceptTable)
     {
-        $this->_instance = $this;
+
+
+
 
         $this->pdo = $pdoConnexionWrapper->get();
+
         $this->logger = $logger;
+
         $this->conceptTable = $conceptTable;
+
 
 
 
         if(defined('SANDRA_INCLUDE_PATH'))
             self::$_includePath = SANDRA_INCLUDE_PATH;
+
     }
 
     public  function getInstance()

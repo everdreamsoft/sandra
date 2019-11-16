@@ -118,7 +118,9 @@ class Concept extends DatagraphUnit implements Dumpable
         //look at the followup object
 
 
-        $this->tripletArray = DatabaseAdapter::rawGetTriplets($this->idConcept, 0, 0, 0, 1);
+        $this->tripletArray = DatabaseAdapter::rawGetTriplets($this->system,$this->idConcept, 0, 0, 0, 1);
+
+        return $this->tripletArray ;
 
     }
 
@@ -132,6 +134,8 @@ class Concept extends DatagraphUnit implements Dumpable
         $refs = $conceptManager->getReferences(null,null,null,null,1);
 
         $this->referenceArray = $refs ;
+
+        return $this->referenceArray ;
 
         //die(print_r($refs));
 
@@ -228,6 +232,14 @@ class Concept extends DatagraphUnit implements Dumpable
 
             return $output ;
         }
+
+    /**
+     * @return mixed
+     */
+    public function destroy()
+    {
+        $this->system = null ;
+    }
 
 
 
