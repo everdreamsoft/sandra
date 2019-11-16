@@ -119,6 +119,8 @@ class Entity implements Dumpable
 
     public function getJoinedEntities($joinVerb){
 
+        $return = null;
+
         $verbConceptId = CommonFunctions::somethingToConceptId($joinVerb,$this->system);
         //No joined data
         if (!isset($this->subjectConcept->tripletArray[$verbConceptId]))return null ;
@@ -226,14 +228,35 @@ class Entity implements Dumpable
 
     public function createOrUpdateRef($referenceShortname,$value): Reference{
 
+        //get old ref
+        $old = $this->get($referenceShortname);
+
         $referenceConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($referenceShortname);
         DatabaseAdapter::rawCreateReference($this->entityId,$referenceConcept->idConcept,$value,$this->system);
         $ref  = new Reference($referenceConcept,$this,$value,$this->system);
         $this->entityRefs[$referenceConcept->idConcept] = $ref ;
 
-        return $ref ;
+        $factory = $this->factory;
+        if (isset($factory->refMap[$referenceConcept->idConcept][$old])) {
+            $currentRefmap = $factory->refMap[$referenceConcept->idConcept][$old];
 
-        //Todo rebuild factory index
+            /** @var EntityFactory $factory */
+            foreach ($currentRefmap ? $currentRefmap : array() as $index => $entity) {
+
+                if ($entity == $this) {
+                    unset($factory->refMap[$referenceConcept->idConcept][$old][$index]);
+                    //if none existing anymore remove this reference
+                    if (empty($factory->refMap[$referenceConcept->idConcept][$old])) {
+                        unset($factory->refMap[$referenceConcept->idConcept][$old]);
+                    }
+                }
+            }
+        }
+
+        $factory->refMap[$referenceConcept->idConcept][$value][] = $this;
+
+
+        return $ref ;
 
 
     }

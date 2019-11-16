@@ -35,6 +35,8 @@ class Concept extends DatagraphUnit implements Dumpable
 
        $this->system = $system ;
         $this->setConceptId($value);
+
+
     }
 
     public function getShortname()
@@ -135,9 +137,7 @@ class Concept extends DatagraphUnit implements Dumpable
 
         $this->referenceArray = $refs ;
 
-        return $this->referenceArray ;
-
-        //die(print_r($refs));
+        return $refs;
 
 
 

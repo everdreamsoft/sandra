@@ -17,6 +17,7 @@ namespace SandraCore\displayer;
     {
 
         $displayer = $this->displayer ;
+        $returnArray = array();
 
 
         //Cycle trough all factories

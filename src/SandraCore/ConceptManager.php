@@ -106,19 +106,19 @@ class ConceptManager
 
 
                     $join .= " JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
-                    $conditionnalClause .= " AND link$tableCounter.flag != $deletedUNID AND link$tableCounter.idConceptLink = $targetConcept[lklk]";
+                    $conditionnalClause .= " AND link$tableCounter.flag != $deletedUNID AND link$tableCounter.idConceptLink  IN($targetConcept[lklk])";
                 } //any filter if the link equal 0 then make the filter on ANY link
                 else if ($targetConcept['lklk'] == 0) {
 
 
                     $join .= " JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
-                    $conditionnalClause .= " AND link$tableCounter.flag != $deletedUNID AND link$tableCounter.$secondaryConcept =$targetConcept[lktg]";
+                    $conditionnalClause .= " AND link$tableCounter.flag != $deletedUNID AND link$tableCounter.$secondaryConcept IN($targetConcept[lktg])";
                 } else {
 
 
                     $join .= " JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
                     $conditionnalClause .= " AND link$tableCounter.flag != $deletedUNID AND 
-			link$tableCounter.$secondaryConcept =$targetConcept[lktg] AND link$tableCounter.idConceptLink = $targetConcept[lklk]";
+			link$tableCounter.$secondaryConcept IN($targetConcept[lktg]) AND link$tableCounter.idConceptLink IN($targetConcept[lklk])";
                 }
             } else {
                 //eclusion filter
@@ -127,7 +127,7 @@ class ConceptManager
 
                     $join .= " LEFT JOIN  $this->tableLink link$tableCounter ON link$tableCounter.idConceptStart = l.idConceptStart 
 			 						  AND link$tableCounter.flag != $deletedUNID
-			 						  AND link$tableCounter.idConceptLink = $targetConcept[lklk]";
+			 						  AND link$tableCounter.idConceptLink IN($targetConcept[lklk])";
                     $conditionnalClause .= " 
 									  AND link$tableCounter.idConceptLink IS NULL";
                 } //any filter if the link equal 0 then make the filter on ANY link
@@ -136,7 +136,7 @@ class ConceptManager
 
                     $join .= " LEFT JOIN  $this->tableLink link$tableCounter ON link$tableCounter.idConceptStart = l.idConceptStart 
 					  AND link$tableCounter.flag != $deletedUNID
-					  AND link$tableCounter.idConceptTarget =$targetConcept[lktg] ";
+					  AND link$tableCounter.idConceptTarget IN($targetConcept[lktg]) ";
                     $conditionnalClause .= " 
 									 AND link$tableCounter.idConceptTarget IS NULL";
                 } else {
@@ -144,8 +144,8 @@ class ConceptManager
 
                     $join .= " LEFT JOIN  $this->tableLink link$tableCounter ON link$tableCounter.idConceptStart = l.idConceptStart 
 	 AND link$tableCounter.flag != $deletedUNID 
-			AND link$tableCounter.idConceptTarget = $targetConcept[lktg] 
-			AND link$tableCounter.idConceptLink = $targetConcept[lklk]";
+			AND link$tableCounter.idConceptTarget IN ($targetConcept[lktg]) 
+			AND link$tableCounter.idConceptLink = IN( $targetConcept[lklk])";
                     $conditionnalClause .= "
 			AND link$tableCounter.idConceptTarget IS NULL";
                 }

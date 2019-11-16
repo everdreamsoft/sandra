@@ -134,7 +134,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     {
 
         $entityArray = array();
-        $filter = 0 ;
+        $filter = array();
 
         //do we filter by isa
         if ($this->entityIsa) {
@@ -599,9 +599,70 @@ class EntityFactory extends FactoryBase implements Dumpable
     }
 
 
-    public function update($entity, $dataArray)
+    public function update(Entity $entity, $dataArray, $linkArray = null)
     {
-        //if()
+        foreach ($dataArray ? $dataArray : array() as $keyData => $valueData) {
+
+
+            $localData = $entity->get($keyData);
+            if ($localData != $valueData) {
+
+                $entity->createOrUpdateRef($keyData, $valueData);
+
+
+            }
+
+        }
+
+        //do we have brother entities ?
+        foreach ($linkArray ? $linkArray : array() as $verb => $valueToTarget) {
+
+            $valueTargetArray = array();
+
+            if ($valueToTarget instanceof Entity) {
+                $valueToTarget = $valueToTarget->subjectConcept->idConcept;
+
+            }
+
+            //Each target
+            if (!is_array($valueToTarget)) {
+                //in case we have only one target for a link
+                $valueTargetArray[$valueToTarget] = $valueToTarget;
+            } else {
+                $valueTargetArray = $valueToTarget;
+            }
+
+            foreach ($valueTargetArray ? $valueTargetArray : array() as $targetConcept => $targetArray) {
+                if (!($this->tripletRetreived)) $this->getTriplets();
+
+
+                if (!is_array($targetArray)) {
+
+
+                    $targetArray = [$targetArray];
+
+
+                }
+
+                foreach ($targetArray as $singleTarget) {
+
+
+                    if (is_array($targetArray)) {
+                        $this->system->systemError(777, 'entityFactory', '2', 'Update on brother entity reference not supported');
+                        //TODO update brother reference
+
+                    } else {
+                        $targetConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($singleTarget);
+
+                        if (!isset($entity->subjectConcept->tripletArray[$targetConcept->idConcept]))
+                            //it's a simple data link without refrence
+                            $entity->setBrotherEntity($verb, $targetConcept, null);
+
+                    }
+                }
+
+            }
+        }
 
     }
 
@@ -615,10 +676,17 @@ class EntityFactory extends FactoryBase implements Dumpable
         //Now we find if the object exists
 
         if ($refmap[$refValue]) {
+            /** @var Entity $foundEntity */
+
+            $foundEntity = end($refmap[$refValue]);
+
+
+            $this->update($foundEntity, $dataArray, $linkArray);
 
 
         } //concept doens't exists
         else {
+            $dataArray[$refShortname] = $refValue;
 
             $this->createNewWithAutoIncrementIndex($dataArray, $linkArray);
         }

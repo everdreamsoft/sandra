@@ -10,7 +10,6 @@ namespace SandraCore;
 use PDO;
 
 
-
 class System
 {
 
@@ -42,21 +41,17 @@ class System
     public $registerStructure = false;
     public $registerFactory = array();
     public $instanceId ;
+    private $entityClassStore;
 
-    public  function __construct($env = '',$install = false,$dbHost='127.0.0.1',$db='sandra',$dbUsername='root',$dbpassword=''){
-
-
+    public  function __construct($env = '', $install = false, $dbHost='127.0.0.1', $db='sandra', $dbUsername='root', $dbpassword=''){
 
         self::initDebugStack();
-
         self::$pdo = new PdoConnexionWrapper($dbHost, $db,$dbUsername, $dbpassword);
-
         $pdoWrapper = self::$pdo ;
 
         $prefix = $env ;
         $this->tablePrefix = $prefix ;
         $suffix = '';
-
 
         $this->conceptTable = $prefix .'_SandraConcept' . $suffix;
         $this->linkTable =  $prefix .'_SandraTriplets' . $suffix;
@@ -67,13 +62,10 @@ class System
         if ($install) $this->install();
 
 
-
         $this->systemConcept = new SystemConcept($pdoWrapper, self::$logger, $this->conceptTable);
-
 
         $this->deletedUNID = $this->systemConcept->get('deleted');
         //die("on system deleted ".$this->deletedUNID);
-
 
         self::$logger->connectionInfo = array('Host' => $pdoWrapper->host, 'Database' => $pdoWrapper->database, 'Sandra environment' => $env);
 
@@ -81,7 +73,6 @@ class System
         $this->conceptFactory = new ConceptFactory($this);
 
         $this->instanceId = rand(0,999)."-".rand(0,9999)."-".rand(0,999);
-
 
 
         //$this->logger->info('[Sandra] Started sandra ' . $env . ' environment successfully.');
@@ -98,13 +89,11 @@ class System
         }
 
 
-
     }
 
     public function install(){
 
         SandraDatabaseDefinition::createEnvTables($this->conceptTable,$this->linkTable,$this->tableReference,$this->tableStorage,$this->tableConf);
-
 
 
     }
@@ -125,13 +114,11 @@ class System
         self::$logger->startQuery($query,$params,$types);
 
 
-
     }
 
     public static function logDatabaseEnd($error=null){
 
         self::$logger->stopQuery();
-
 
 
     }
@@ -154,13 +141,12 @@ class System
         //print_r($exception);
 
 
-
         die();
 
 
     }
 
-    public function systemError($code,$source,$level,$message){
+    public function systemError($code, $source, $level, $message){
 
         //Level 1 Simple notice
         //Level 2 Caution
@@ -178,21 +164,37 @@ class System
 
     }
 
-    public function killingProcessLevel($code,$source,$level,$message){
-
+    public function killingProcessLevel($code, $source, $level, $message){
 
 
         die($message);
 
     }
 
-    public function destroy(){
+    public function entityToClassStore($className, EntityFactory $factory)
+    {
+
+
+        if (!isset($this->entityClassStore[$className])) {
+
+
+            $factory->populateLocal();
+            $this->entityClassStore[$className] = $factory->getOrCreateFromRef('class_name', $className);
+
+
+        }
+        return $this->entityClassStore[$className];
+
+
+    }
+
+    public function destroy() {
+
 
         $this->factoryManager->destroy();
         $this->conceptFactory->destroy();
         $this->conceptFactory->system = null ;
         $this->registerStructure = null ;
-
 
 
     }

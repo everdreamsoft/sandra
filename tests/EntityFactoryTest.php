@@ -79,7 +79,7 @@ final class EntityFactoryTest extends TestCase
 
     // $alphabetFactory->populateLocal();
     $alphabetFactory->getTriplets();
-    $alphabetFactory->dumpMeta();
+
 
     $this->assertCount(5,$alphabetFactory->entityArray);
 
@@ -91,6 +91,22 @@ final class EntityFactoryTest extends TestCase
     $allImpliesB->populateLocal();
     $this->assertCount(0,$factoryWithOtherIsa->entityArray);
     $this->assertCount(3,$allImpliesB->entityArray);
+
+
+    //advanced filters
+    $impliesBorC = new \SandraCore\EntityFactory('algebra', 'algebraFile', $system);
+
+    $f = $alphabetFactory->createNew(array('name' => 'f'));
+    $f->setBrotherEntity('implies', $d, null);
+
+    $impliesBorC->setFilter('implies', array($b, $d));
+    $impliesBorC->populateLocal();
+
+    //we should have a,d,e,f
+    $impliesBorC->dumpMeta();
+
+
+
 
 
 
@@ -147,6 +163,67 @@ final class EntityFactoryTest extends TestCase
 
             $this->assertInstanceOf(\SandraCore\Test\BookEntityForTest::class,reset($books));
 
+
+
+    }
+
+    public function testUpdate()
+    {
+
+        $sandraToFlush = new SandraCore\System('phpUnit_', true);
+        \SandraCore\Setup::flushDatagraph($sandraToFlush);
+        $system = new \SandraCore\System('phpUnit_', true);
+
+        $rocketFactory = new \SandraCore\EntityFactory('rocket', 'rocketFile', $system);
+        $coldRocketFactory = clone $rocketFactory;
+        $rocketFactory->populateLocal();
+
+        $stageIName = 'S-IC';
+        $hasStageShortname = 'hasStage';
+        $stageOneManufacturerName = 'Boeing';
+
+        $saturneVEntityFirst = $rocketFactory->createOrUpdateOnReference('instance', 'myRocket', array('name' => 'Saturn V')
+            , array($hasStageShortname =>
+                array($stageIName =>
+                    array('manufacturer' => $stageOneManufacturerName, 'weight[t]' => 131)),
+                "managedBy" => "john"
+            ));
+
+        $saturneVEntitySecond = $rocketFactory->createOrUpdateOnReference('instance', 'myRocket', array('name' => 'Saturn V 2', 'aNewUnexistingRef' => 'hello')
+            , array($hasStageShortname =>
+                array($stageIName =>
+                    array('manufacturer' => $stageOneManufacturerName, 'weight[t]' => 2)),
+                "managedBy" => "Jack"
+            ));
+
+
+        $firstRocket = $rocketFactory->first('instance', 'myRocket');
+        $lastRocket = $rocketFactory->last('instance', 'myRocket');
+
+        //We should have only one rocket
+        $this->assertInstanceOf(\SandraCore\Entity::class, $lastRocket);
+        $this->assertEquals($firstRocket, $lastRocket);
+
+        //With only the updated values
+        $updatedName = $firstRocket->get('name');
+        $this->assertEquals('Saturn V 2', $updatedName);
+
+        //we should have two manager
+        $manager = $firstRocket->getBrotherEntity("managedBy");
+
+
+        $coldRocketFactory->populateLocal();
+
+        $firstRocket = $coldRocketFactory->first('instance', 'myRocket');
+        $lastRocket = $coldRocketFactory->last('instance', 'myRocket');
+
+        //We should have only one rocket
+        $this->assertInstanceOf(\SandraCore\Entity::class, $lastRocket);
+        $this->assertEquals($firstRocket, $lastRocket);
+
+        //With only the updated values
+        $updatedName = $firstRocket->get('name');
+        $this->assertEquals('Saturn V 2', $updatedName);
 
 
     }
