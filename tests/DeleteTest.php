@@ -44,6 +44,13 @@ class DeleteTest extends TestCase
 
         $this->assertEmpty($emptyMercury);
 
+        $entityFactory = new \SandraCore\EntityFactory('planet', 'atlasFile', $system);
+        $entityFactory->populateLocal();
+
+        $this->assertCount(2, $entityFactory->getEntities());
+
+
+
 
     }
 
