@@ -313,6 +313,36 @@ class Entity implements Dumpable
 
     }
 
+
+    /**
+     * @param bool $hard
+     */
+    public function delete($hard = false)
+    {
+
+
+        if (!$hard) {
+
+            $deletedConcept = CommonFunctions::somethingToConcept($this->system->deletedUNID, $this->system);
+
+            $this->flag($deletedConcept);
+
+        }
+
+
+    }
+
+
+    public function flag(Concept $flagConcept, $autocommit = true)
+    {
+
+
+        DatabaseAdapter::rawFlag($this, $flagConcept, $this->system, $autocommit);
+
+
+    }
+
+
     public function destroy(){
 
         $this->system = null ;
