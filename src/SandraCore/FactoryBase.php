@@ -238,7 +238,7 @@ abstract class FactoryBase
         $sql = " CREATE OR REPLACE VIEW `" . $sandra->tablePrefix . "_view_$name` AS SELECT l.idConceptStart unid $fieldList ,
                     FROM_UNIXTIME(rf.value) updated FROM $sandra->linkTable l LEFT JOIN   $sandra->tableReference rf ON l.id = rf.`linkReferenced` AND rf.idConcept = $creationTimestamp
                      \n $SQLviewFilterJoin $filters
-                     WHERE $SQLviewFilterCondition l.idConceptLink = $entityReferenceContainer AND l.idConceptTarget = $containedUnid ";
+                     WHERE $SQLviewFilterCondition l.idConceptLink = $entityReferenceContainer AND l.idConceptTarget = $containedUnid AND l.flag != $sandra->deletedUNID";
         DatabaseAdapter::executeSQL($sql);
         return $this;
 

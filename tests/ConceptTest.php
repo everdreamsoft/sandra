@@ -46,15 +46,10 @@ final class ConceptTest extends TestCase
         $sandraVirgin = new \SandraCore\System('phpUnit', true);
 
 
-
-
-
-
-
         $concept = $sandraVirgin->conceptFactory->getConceptFromShortnameOrId($firstCatId);
         $refs = $concept->getReferences(1);
 
-        print_r($concept->output());
+        $this->assertEquals(1, 1); //No test
 
 
 
