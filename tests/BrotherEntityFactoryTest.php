@@ -96,12 +96,39 @@ final class BrotherEntityFactoryTest extends TestCase
 
         $this->assertEquals($manufacturerList[$stage2Unid],$stageIIManufacturer);
 
+    }
+
+    public function testFindWithBrother()
+    {
+
+        $system = new \SandraCore\System('phpUnit_', true);
+        $alphabetFactory = new \SandraCore\EntityFactory('algebra', 'algebraFile', $system);
+
+        $alphabetFactoryEmpty = clone $alphabetFactory;
+        $allImpliesB = new \SandraCore\EntityFactory('algebra', 'algebraFile', $system);
+
+        $a = $alphabetFactory->createNew(array('name' => 'a'));
+        $b = $alphabetFactory->createNew(array('name' => 'b'));
+        $c = $alphabetFactory->createNew(array('name' => 'c'));
+        $d = $alphabetFactory->createNew(array('name' => 'd'));
+        $e = $alphabetFactory->createNew(array('name' => 'e'));
+
+        $a->setBrotherEntity('implies', $b, null);
+        $a->setBrotherEntity('implies', $c, null);
+
+        $e->setBrotherEntity('implies', $b, null);
+        $d->setBrotherEntity('implies', $b, null);
 
 
+        $alphabetFactory->populateLocal();
+        $alphabetFactory->populateBrotherEntities();
 
+        //we are looking for all alebra implying b
+        $allImpliesB = $alphabetFactory->getEntitiesWithBrother('implies', $b);
+        $allImplies = $alphabetFactory->getEntitiesWithBrother('implies');
 
-
-
+        $this->assertCount(3, $allImpliesB);
+        $this->assertCount(3, $allImplies);
 
 
     }

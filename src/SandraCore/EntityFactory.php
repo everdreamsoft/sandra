@@ -55,7 +55,8 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     public $brotherEntities ; //to delete ?
     public $brotherEntitiesArray = array();
-    public $brotherMap ;
+    public $brotherMap; // in order to store the the path from source entities with their verb and target for example Simon is friend with Alexis and we want to get every entity friend with alexis
+    public $brotherByTarget;
     public $brotherEntitiesVerified = null;
 
     public $joinedFactoryArray = array(); /* @var $joinedFactoryArray EntityFactory[] */
@@ -264,7 +265,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     /**
      * @return Entity[]
      */
-    public function populateBrotherEntities($verb,$target=null)
+    public function populateBrotherEntities($verb = 0, $target = null)
     {
 
         $entityArray = array();
@@ -286,10 +287,16 @@ class EntityFactory extends FactoryBase implements Dumpable
             foreach ($refs as $keyConcept => $valueArray) {
                 foreach ($valueArray as $linkId => $value) {
 
+
                     $concept = $this->system->conceptFactory->getConceptFromId($keyConcept);
                     $entityId = $linkId;
                     $refArray = null;
+
+                    //do we have this factory brother
+                    if ($value['idConceptTarget'] == $this->system->systemConcept->get($this->entityContainedIn)) continue;
+
                     $entityData[$entityId]['idConceptTarget'] = $value['idConceptTarget'];
+                    $entityData[$entityId]['idConceptLink'] = $value['idConceptLink'];
 
 
                     //each reference
@@ -311,7 +318,8 @@ class EntityFactory extends FactoryBase implements Dumpable
                     //we build resulting entities
                     foreach ($refArray as $entityId => $entityRefs) {
 
-                        $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($verb);
+
+                        $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($entityData[$entityId]['idConceptLink']);
                         $entityTarget = $this->system->conceptFactory->getConceptFromId($entityData[$entityId]['idConceptTarget']);
 
                         $entity = new Entity($concept, $entityRefs, $this, $entityId, $entityVerb, $entityTarget, $this->system);
@@ -335,8 +343,26 @@ class EntityFactory extends FactoryBase implements Dumpable
     }
 
 
-    public function populatePartialEntity($referenceOnVerb, $referenceOnTarget)
+    /**
+     * @param int $brotherVerb
+     * @param int $brotherTarget
+     * @return Entity[]
+     */
+    public function getEntitiesWithBrother($brotherVerb = 0, $brotherTarget = 0)
     {
+
+        $brotherVerb = CommonFunctions::somethingToConceptId($brotherVerb, $this->system);
+        $brotherTarget = CommonFunctions::somethingToConceptId($brotherTarget, $this->system);
+
+        if ($brotherTarget)
+            return $this->brotherMap[$brotherVerb][$brotherTarget];
+        else if ($brotherVerb && isset ($this->brotherMap[$brotherVerb]))
+            return $this->brotherMap[$brotherVerb][0];
+
+        return null;
+
+
+
 
 
     }
@@ -414,6 +440,12 @@ class EntityFactory extends FactoryBase implements Dumpable
             $target = $entity->targetConcept->idConcept ;
 
             $this->brotherEntitiesArray[$subject][$verb][$target] = $entity ;
+            //build map
+            $this->brotherMap[$verb][$target][$subject] = $this->entityArray[$subject];
+            $this->brotherMap[0][$target][$subject] = $this->entityArray[$subject]; // With any verb to target
+            $this->brotherMap[$verb][0][$subject] = $this->entityArray[$subject]; //With a verb with any target
+            $this->brotherByTarget[$target][0][$subject] = $this->entityArray[$subject];
+            $this->brotherByTarget[$target][$verb][$subject] = $this->entityArray[$subject];
 
         }
 
@@ -929,6 +961,7 @@ class EntityFactory extends FactoryBase implements Dumpable
         }
 
         $refmap = $this->getRefMap($referenceConcept);
+
 
         if (is_array($refmap) && key_exists($referenceValue, $refmap)) {
 

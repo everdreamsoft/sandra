@@ -106,7 +106,8 @@ abstract class FactoryBase
 
     public function getOrCreateFromRef($refname,$refvalue):Entity{
 
-       $entity = $this->first($refname,$refvalue);
+
+        $entity = $this->first($refname,$refvalue);
        if(!$entity) {
         $entity =   $this->createNew(array($refname=>$refvalue));
                }
