@@ -119,6 +119,8 @@ final class BrotherEntityFactoryTest extends TestCase
         $e->setBrotherEntity('implies', $b, null);
         $d->setBrotherEntity('implies', $b, null);
 
+        $c->setBrotherEntity('something', $b, null);
+
 
         $alphabetFactory->populateLocal();
         $alphabetFactory->populateBrotherEntities();
@@ -126,9 +128,11 @@ final class BrotherEntityFactoryTest extends TestCase
         //we are looking for all alebra implying b
         $allImpliesB = $alphabetFactory->getEntitiesWithBrother('implies', $b);
         $allImplies = $alphabetFactory->getEntitiesWithBrother('implies');
+        $anythingToB = $alphabetFactory->getEntitiesWithBrother(0, $b);
 
         $this->assertCount(3, $allImpliesB);
         $this->assertCount(3, $allImplies);
+        $this->assertCount(4, $anythingToB);
 
 
     }
