@@ -832,6 +832,8 @@ class EntityFactory extends FactoryBase implements Dumpable
                     }
 
                     $linkId = DatabaseAdapter::rawCreateTriplet($conceptId, $this->sc->get($verb), $this->sc->get($targetName), $this->system,false);
+                    
+                    
                     //Now we will add reference on additional links if any
                     if (!empty($extraRef)) {
                         foreach ($extraRef as $refname => $refValue) {
