@@ -51,6 +51,23 @@ class DeleteTest extends TestCase
 
 
 
+    }
+
+    public function testFlags()
+    {
+
+        $system = new \SandraCore\System('phpUnit', true);
+
+        $entityFactory = new \SandraCore\EntityFactory('planet', 'atlasFile', $system);
+        $entityFactory->populateLocal();
+        $this->assertCount(2, $entityFactory->getEntities());
+
+        $entityFactory2 = new \SandraCore\EntityFactory('planet', 'atlasFile', $system);
+        $entityFactory2->setBypassFlag(true);
+        $entityFactory2->populateLocal();
+
+        $this->assertCount(3, $entityFactory2->getEntities());
+
 
     }
 

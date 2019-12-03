@@ -18,6 +18,8 @@ abstract class FactoryBase
     private $defaultFactoryName = 'noNameFactory';
     public $conceptManager ;
 
+    public $bypassFlags = false; //in large database the flags seems to cause an issue in the query optimization we allow to bypass them
+
     public $displayer ;
     public $tripletfilter ;
     public $system ;
@@ -49,6 +51,14 @@ abstract class FactoryBase
         $system->factoryManager->register($this);
 
         $this->conceptManager = new ConceptManager($this->su, $this->system);
+
+
+    }
+
+    public function setBypassFlag(bool $bypass)
+    {
+
+        $this->conceptManager->bypassFlags($bypass);
 
     }
 
