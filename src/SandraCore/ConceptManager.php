@@ -105,18 +105,18 @@ class ConceptManager
                 if ($targetConcept['lktg'] == 0) {
 
 
-                    $join .= " JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
+                    $join .= "STRAIGHT_JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
                     $conditionnalClause .= " AND link$tableCounter.flag != $deletedUNID AND link$tableCounter.idConceptLink  IN($targetConcept[lklk])";
                 } //any filter if the link equal 0 then make the filter on ANY link
                 else if ($targetConcept['lklk'] == 0) {
 
 
-                    $join .= " JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
+                    $join .= " STRAIGHT_JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
                     $conditionnalClause .= " AND link$tableCounter.flag != $deletedUNID AND link$tableCounter.$secondaryConcept IN($targetConcept[lktg])";
                 } else {
 
 
-                    $join .= " JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
+                    $join .= " STRAIGHT_JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
                     $conditionnalClause .= " AND link$tableCounter.flag != $deletedUNID AND 
 			link$tableCounter.$secondaryConcept IN($targetConcept[lktg]) AND link$tableCounter.idConceptLink IN($targetConcept[lklk])";
                 }
@@ -380,9 +380,9 @@ class ConceptManager
             $sql = "
 			SELECT *
   FROM `$this->tableReference` r
-  JOIN  $this->tableLink x
+  STRAIGHT_JOIN  $this->tableLink x
     ON x.id = r.linkreferenced
-  JOIN  $this->tableLink y
+  STRAIGHT_JOIN  $this->tableLink y
     ON y.id = r.linkReferenced 
    $refsFilter
    AND y.$masterCondition IN ($concepts) 
