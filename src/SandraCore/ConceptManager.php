@@ -252,6 +252,14 @@ class ConceptManager
         //Due to a supposed MySQL optimizer bug we order by the last joined table
         $orderBy = "ORDER BY $lastLinkJoined.idConceptStart";
 
+        $flag = '';
+
+        if (!$this->bypassFlags)
+            $flag = "AND l.flag != $deletedUNID";
+
+
+
+
 
 
 
@@ -259,7 +267,7 @@ class ConceptManager
             $this->filterJoin . "
 	WHERE l.idConceptLink = $linkConcept  
 	AND l.idConceptTarget = $targetConcept
-	AND l.flag != $deletedUNID 
+	$flag
 	" . $this->filterCondition . " $hideLinks ORDER BY l.idConceptStart $asc " . $limitSQL .$offsetSQL;
 
 
@@ -315,11 +323,17 @@ class ConceptManager
         }
 
 
+        $flag = '';
+
+        if (!$this->bypassFlags)
+            $flag = "AND l.flag != $deletedUNID";
+
+
         $sql = "SELECT  l.idConceptStart, l.idConceptLink, l.`idConceptTarget` FROM  $this->tableLink l " .
             $this->filterJoin . "
 	
 	AND l.idConceptLink = $linkConcept
-	AND l.flag != $deletedUNID 
+	$flag 
 	" . $this->filterCondition . " $hideLinks ORDER BY l.idConceptStart DESC " . $limitSQL;
 
         if ($debug)
