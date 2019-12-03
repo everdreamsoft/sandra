@@ -422,9 +422,9 @@ class ConceptManager
             $sql = "
 			SELECT *
   FROM `$this->tableReference` r
-  STRAIGHT_JOIN  $this->tableLink x
+  JOIN  $this->tableLink x
     ON x.id = r.linkreferenced
-  STRAIGHT_JOIN  $this->tableLink y
+  JOIN  $this->tableLink y
     ON y.id = r.linkReferenced 
    $refsFilter
    AND y.$masterCondition IN ($concepts) 
