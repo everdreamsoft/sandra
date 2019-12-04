@@ -3,6 +3,7 @@
 namespace SandraCore;
 
 use PDO;
+use phpDocumentor\Reflection\Types\Boolean;
 
 class ConceptManager
 {
@@ -16,6 +17,8 @@ class ConceptManager
     private $deletedUnid;
     public $conceptArray = array();
     public $mainQuerySQL = null ;
+    private $bypassFlags = false;
+    private $lastLinkJoined = null;
 
     public function __construct($su = 1, System $system, $tableLinkParam = 'default', $tableReferenceParam = 'default')
     {
@@ -55,6 +58,12 @@ class ConceptManager
 
     }
 
+    public function bypassFlags(bool $boolean)
+    {
+        $this->bypassFlags = $boolean;
+
+    }
+
     public function setFilter($value, $limit = 0)
     {
         if (!is_array($value)) {
@@ -82,6 +91,12 @@ class ConceptManager
 
             $tableCounter++;
 
+            $this->lastLinkJoined = 'link' . $tableCounter;
+
+            if (!$this->bypassFlags)
+                $flag = "AND link$tableCounter.flag != $deletedUNID";
+            else $flag = '';
+
 
             if ($targetConcept['lktg'] == 0 && $targetConcept['lklk'] == 0)
                 continue;
@@ -101,23 +116,24 @@ class ConceptManager
                 else
                     $logic = 'AND';
 
+
                 //it's an inclusion filter
                 if ($targetConcept['lktg'] == 0) {
 
 
-                    $join .= " JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
-                    $conditionnalClause .= " AND link$tableCounter.flag != $deletedUNID AND link$tableCounter.idConceptLink  IN($targetConcept[lklk])";
+                    $join .= "JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
+                    $conditionnalClause .= "  $flag  IN($targetConcept[lklk])";
                 } //any filter if the link equal 0 then make the filter on ANY link
                 else if ($targetConcept['lklk'] == 0) {
 
 
                     $join .= " JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
-                    $conditionnalClause .= " AND link$tableCounter.flag != $deletedUNID AND link$tableCounter.$secondaryConcept IN($targetConcept[lktg])";
+                    $conditionnalClause .= " $flag AND link$tableCounter.$secondaryConcept IN($targetConcept[lktg])";
                 } else {
 
 
                     $join .= " JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
-                    $conditionnalClause .= " AND link$tableCounter.flag != $deletedUNID AND 
+                    $conditionnalClause .= " $flag AND 
 			link$tableCounter.$secondaryConcept IN($targetConcept[lktg]) AND link$tableCounter.idConceptLink IN($targetConcept[lklk])";
                 }
             } else {
@@ -126,7 +142,7 @@ class ConceptManager
                 if ($targetConcept['lktg'] == 0) {
 
                     $join .= " LEFT JOIN  $this->tableLink link$tableCounter ON link$tableCounter.idConceptStart = l.idConceptStart 
-			 						  AND link$tableCounter.flag != $deletedUNID
+			 						  $flag
 			 						  AND link$tableCounter.idConceptLink IN($targetConcept[lklk])";
                     $conditionnalClause .= " 
 									  AND link$tableCounter.idConceptLink IS NULL";
@@ -135,7 +151,7 @@ class ConceptManager
 
 
                     $join .= " LEFT JOIN  $this->tableLink link$tableCounter ON link$tableCounter.idConceptStart = l.idConceptStart 
-					  AND link$tableCounter.flag != $deletedUNID
+					  $flag
 					  AND link$tableCounter.idConceptTarget IN($targetConcept[lktg]) ";
                     $conditionnalClause .= " 
 									 AND link$tableCounter.idConceptTarget IS NULL";
@@ -143,7 +159,7 @@ class ConceptManager
 
 
                     $join .= " LEFT JOIN  $this->tableLink link$tableCounter ON link$tableCounter.idConceptStart = l.idConceptStart 
-	 AND link$tableCounter.flag != $deletedUNID 
+	 $flag 
 			AND link$tableCounter.idConceptTarget IN ($targetConcept[lktg]) 
 			AND link$tableCounter.idConceptLink = IN( $targetConcept[lklk])";
                     $conditionnalClause .= "
@@ -227,12 +243,31 @@ class ConceptManager
             )";
         }
 
+        $lastLinkJoined = $this->lastLinkJoined;
+
+        if (!$this->lastLinkJoined) {
+            $lastLinkJoined = 'l';
+        }
+
+        //Due to a supposed MySQL optimizer bug we order by the last joined table
+        $orderBy = "ORDER BY $lastLinkJoined.idConceptStart";
+
+        $flag = '';
+
+        if (!$this->bypassFlags)
+            $flag = "AND l.flag != $deletedUNID";
+
+
+
+
+
+
 
         $sql = "SELECT  l.idConceptStart, l.idConceptLink, l.`idConceptTarget` FROM  $this->tableLink l " .
             $this->filterJoin . "
 	WHERE l.idConceptLink = $linkConcept  
 	AND l.idConceptTarget = $targetConcept
-	AND l.flag != $deletedUNID 
+	$flag
 	" . $this->filterCondition . " $hideLinks ORDER BY l.idConceptStart $asc " . $limitSQL .$offsetSQL;
 
 
@@ -287,11 +322,18 @@ class ConceptManager
             )";
         }
 
+
+        $flag = '';
+
+        if (!$this->bypassFlags)
+            $flag = "AND l.flag != $deletedUNID";
+
+
         $sql = "SELECT  l.idConceptStart, l.idConceptLink, l.`idConceptTarget` FROM  $this->tableLink l " .
             $this->filterJoin . "
 	
 	AND l.idConceptLink = $linkConcept
-	AND l.flag != $deletedUNID 
+	$flag 
 	" . $this->filterCondition . " $hideLinks ORDER BY l.idConceptStart DESC " . $limitSQL;
 
         if ($debug)

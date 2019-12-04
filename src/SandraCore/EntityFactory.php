@@ -29,8 +29,6 @@ class EntityFactory extends FactoryBase implements Dumpable
     public $tripletRetreived;
 
 
-
-
     public $entityReferenceContainer = 'contained_in_file';
 
     public $sandraReferenceMap =array();

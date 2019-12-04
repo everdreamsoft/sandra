@@ -30,7 +30,7 @@ class MemoryTest extends TestCase
        // $system = new \SandraCore\System('phpUnit', true);
         //$system = null ;
         $x='';
-        for ($i = 0; $i < 200; $i++) {
+        for ($i = 0; $i < 20; $i++) {
            $system = new System();
 
             $me = CommonFunctions::somethingToConceptId("me",$system);
