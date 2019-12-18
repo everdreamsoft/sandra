@@ -19,6 +19,8 @@ class CommonFunctions
         return $concept->idConcept ;
 
     }
+    
+    
 
     public static function somethingToConcept($something,System $system):Concept{
 
