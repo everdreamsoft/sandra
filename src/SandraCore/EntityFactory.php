@@ -705,7 +705,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         //Now we find if the object exists
 
-        if ($refmap[$refValue]) {
+        if (isset($refmap[$refValue])) {
             /** @var Entity $foundEntity */
 
             $foundEntity = end($refmap[$refValue]);
