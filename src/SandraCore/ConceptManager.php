@@ -268,7 +268,7 @@ class ConceptManager
 	WHERE l.idConceptLink = $linkConcept  
 	AND l.idConceptTarget = $targetConcept
 	$flag
-	" . $this->filterCondition . " $hideLinks ORDER BY l.idConceptStart $asc " . $limitSQL .$offsetSQL;
+	" . $this->filterCondition . " $hideLinks $orderBy $asc " . $limitSQL .$offsetSQL;
 
 
         // echoln( "su = $this->su access to file". $_SESSION['accessToFiles']);
