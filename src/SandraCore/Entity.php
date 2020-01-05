@@ -205,7 +205,7 @@ class Entity implements Dumpable
         /** @var $factory EntityFactory */
         $factory = $this->factory ;
 
-        $brotherEntity = CommonFunctions::createEntity($this->subjectConcept,$brotherVerb,$brotherTarget,$referenceArray,$factory,$this->system,$autocommit);
+        $brotherEntity = CommonFunctions::createEntity($this->subjectConcept,$brotherVerb,$brotherTarget,$referenceArray,$factory,$this->system,$autocommit,$updateOnExistingVerb);
 
         $factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId][$targetConceptId] = $brotherEntity ;
 

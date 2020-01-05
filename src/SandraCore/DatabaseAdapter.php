@@ -102,7 +102,7 @@ class DatabaseAdapter{
         if ($udateOnExistingLK == 1) {
 
 
-            $sql = "SELECT id FROM $tableLink WHERE idConceptStart = $conceptSubject AND idConceptLink = $conceptVerb AND flag != $deletedUNID";
+            $sql = "SELECT id FROM $tableLink WHERE idConceptStart = $conceptSubject AND idConceptLink = $conceptVerb AND flag != $system->deletedUNID";
 
             $result = $pdo->query($sql);
 
