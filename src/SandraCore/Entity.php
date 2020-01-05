@@ -197,7 +197,7 @@ class Entity implements Dumpable
 
     }
 
-    public function setBrotherEntity($brotherVerb,$brotherTarget,$referenceArray){
+    public function setBrotherEntity($brotherVerb,$brotherTarget,$referenceArray,$autocommit=true,$updateOnExistingVerb =false){
 
         $verbConceptId = CommonFunctions::somethingToConceptId($brotherVerb,$this->system);
         $targetConceptId = CommonFunctions::somethingToConceptId($brotherTarget,$this->system);
@@ -205,7 +205,7 @@ class Entity implements Dumpable
         /** @var $factory EntityFactory */
         $factory = $this->factory ;
 
-        $brotherEntity = CommonFunctions::createEntity($this->subjectConcept,$brotherVerb,$brotherTarget,$referenceArray,$factory,$this->system,true);
+        $brotherEntity = CommonFunctions::createEntity($this->subjectConcept,$brotherVerb,$brotherTarget,$referenceArray,$factory,$this->system,$autocommit);
 
         $factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId][$targetConceptId] = $brotherEntity ;
 
@@ -276,15 +276,15 @@ class Entity implements Dumpable
 
     public function getStorage(){
 
-       $this->dataStorage =  DatabaseAdapter::getStorage($this);
+        $this->dataStorage =  DatabaseAdapter::getStorage($this);
 
-       return $this->dataStorage ;
+        return $this->dataStorage ;
 
     }
 
     public function setStorage($value){
 
-         DatabaseAdapter::setStorage($this,$value);
+        DatabaseAdapter::setStorage($this,$value);
         $this->dataStorage = $value ;
 
     }

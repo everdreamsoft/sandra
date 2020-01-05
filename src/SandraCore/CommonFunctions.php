@@ -42,13 +42,13 @@ class CommonFunctions
         return $concept ;
     }
 
-    public static function createEntity($subject,$verb,$target,$referenceArray,$factory,$system,$autocommit=false){
+    public static function createEntity($subject,$verb,$target,$referenceArray,$factory,$system,$autocommit=false,$updateOnExistingVerb=0){
 
         $subjectConceptId = self::somethingToConceptId($subject,$system);
         $verbConceptId = self::somethingToConceptId($verb,$system);
         $targetConceptId = self::somethingToConceptId($target,$system);
 
-       $entityId = DatabaseAdapter::rawCreateTriplet($subjectConceptId,$verbConceptId,$targetConceptId,$system,0,false);
+       $entityId = DatabaseAdapter::rawCreateTriplet($subjectConceptId,$verbConceptId,$targetConceptId,$system,$updateOnExistingVerb,false);
 
        if (is_array($referenceArray)) {
            foreach ($referenceArray as $key => $value) {

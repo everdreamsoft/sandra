@@ -161,7 +161,7 @@ class ConceptManager
                     $join .= " LEFT JOIN  $this->tableLink link$tableCounter ON link$tableCounter.idConceptStart = l.idConceptStart 
 	 $flag 
 			AND link$tableCounter.idConceptTarget IN ($targetConcept[lktg]) 
-			AND link$tableCounter.idConceptLink = IN( $targetConcept[lklk])";
+			AND link$tableCounter.idConceptLink  IN( $targetConcept[lklk])";
                     $conditionnalClause .= "
 			AND link$tableCounter.idConceptTarget IS NULL";
                 }
