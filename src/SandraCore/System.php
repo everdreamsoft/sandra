@@ -52,6 +52,7 @@ class System
         $prefix = $env ;
         $this->tablePrefix = $prefix ;
         $suffix = '';
+        $this->env = $env;
 
         $this->conceptTable = $prefix .'_SandraConcept' . $suffix;
         $this->linkTable =  $prefix .'_SandraTriplets' . $suffix;

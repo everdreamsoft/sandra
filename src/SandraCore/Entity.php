@@ -120,28 +120,34 @@ class Entity implements Dumpable
     public function getJoinedEntities($joinVerb){
 
         $return = null;
+        $entities = array();
 
         $verbConceptId = CommonFunctions::somethingToConceptId($joinVerb,$this->system);
         //No joined data
         if (!isset($this->subjectConcept->tripletArray[$verbConceptId]))return null ;
 
+        $joindedConceptIds = $this->subjectConcept->tripletArray[$verbConceptId];
 
-        // $joinedConcept = $this->system->conceptFactory->getConceptFromId($joindedConceptId);
 
-        foreach ($this->subjectConcept->tripletArray[$verbConceptId] as $joinedConceptId){
+        /** @var $factory EntityFactory */
 
-            $joinedConcept = $this->system->conceptFactory->getConceptFromId($joinedConceptId);
-            if (!is_array($joinedConcept->entityArray )) continue ;
-            foreach ($joinedConcept->entityArray as $entVerb=>$entTarget){
-                foreach ($entTarget as $targetKey => $entity){
-                    $return[] = $entity;
-                }
+        $factory = $this->factory;
+
+        //we find the joined factory
+        $joinedFactory = $factory->joinedFactoryArray[$verbConceptId];
+        /** @var $joinedFactory EntityFactory */
+        foreach ($joindedConceptIds ? $joindedConceptIds : array() as $conceptId) {
+
+            if (isset($joinedFactory->entityArray[$conceptId])) {
+                $entities[] = $joinedFactory->entityArray[$conceptId];
             }
-
-
         }
 
-        return $return ;
+        return $entities;
+
+
+
+
 
     }
 
