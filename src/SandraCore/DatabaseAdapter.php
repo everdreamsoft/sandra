@@ -106,28 +106,32 @@ class DatabaseAdapter{
 
             $result = $pdo->query($sql);
 
-            $row = $result->fetchAll(PDO::FETCH_ASSOC) ;
+            $rows = $result->fetchAll(PDO::FETCH_ASSOC);
 
-            $updateID = $row['id'];
+            //$updateID = $row['id'];
+
+            if ($rows) {
+                $lastRow = end($rows);
+                $updateID = $lastRow['id'];
+
+                $sql = "UPDATE $tableLink SET idConceptTarget = $conceptTarget  WHERE id = $updateID";
+
+
+                try {
+                    $result = $pdo->query($sql);
+                } catch (PDOException $exception) {
+                    System::logDatabaseEnd($exception->getMessage());
+                    System::sandraException($exception);
+                    return;
+                }
+
+
+                return $updateID;
+            }
+
         }
 
-        if ($updateID) {
 
-            $sql = "UPDATE $tableLink SET idConceptTarget = $conceptTarget  WHERE id = $updateID";
-
-
-            try {
-                $result = $pdo->query($sql);
-            }
-            catch(PDOException $exception){
-                System::logDatabaseEnd($exception->getMessage());
-                System::sandraException($exception);
-                return ;
-            }
-
-
-            return $updateID;
-        }
 
         $sql = "INSERT INTO $tableLink (idConceptStart ,idConceptLink ,idConceptTarget,flag) VALUES ('$conceptSubject', '$conceptVerb', '$conceptTarget',0) ON DUPLICATE KEY UPDATE flag = 0, id=LAST_INSERT_ID(id)";
 

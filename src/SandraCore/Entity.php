@@ -207,6 +207,12 @@ class Entity implements Dumpable
 
         $brotherEntity = CommonFunctions::createEntity($this->subjectConcept,$brotherVerb,$brotherTarget,$referenceArray,$factory,$this->system,$autocommit,$updateOnExistingVerb);
 
+        //we need to remove in the factory the replaced update
+        if ($updateOnExistingVerb && isset($factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId])) {
+
+            array_pop($factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId]);
+        }
+
         $factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId][$targetConceptId] = $brotherEntity ;
 
 
