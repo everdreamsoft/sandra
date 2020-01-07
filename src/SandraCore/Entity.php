@@ -133,8 +133,12 @@ class Entity implements Dumpable
 
         $factory = $this->factory;
 
+        if (!isset($factory->joinedFactoryArray[$verbConceptId])) return null;
+
         //we find the joined factory
         $joinedFactory = $factory->joinedFactoryArray[$verbConceptId];
+
+
         /** @var $joinedFactory EntityFactory */
         foreach ($joindedConceptIds ? $joindedConceptIds : array() as $conceptId) {
 

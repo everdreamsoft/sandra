@@ -41,6 +41,20 @@ final class SystemTest extends TestCase
 
     }
 
+    public function testConnections()
+    {
+
+
+        /*while(1) {
+            $sandra = new SandraCore\System('_phpUnit', true);
+        sleep(2);
+        }*/
+
+        $this->assertEquals(1, 1);
+
+
+    }
+
 
 
 

@@ -67,6 +67,8 @@ $createdConstellation = 'Cetus';
         $constellationsOfCeti = $yzCeti->getJoinedEntities("belongToConstellation");
         $planetOfCeti = $yzCeti->getJoinedEntities("illuminePlanet");
 
+        $empty = $yzCeti->getJoinedEntities("shouldBeEmpty");
+
         $this->assertCount(1, $constellationsOfCeti, 'cannot get joined entities');
         $this->assertCount(2, $planetOfCeti, 'cannot get joined entities');
 

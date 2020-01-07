@@ -46,8 +46,11 @@ class System
     public  function __construct($env = '', $install = false, $dbHost='127.0.0.1', $db='sandra', $dbUsername='root', $dbpassword=''){
 
         self::initDebugStack();
-        self::$pdo = new PdoConnexionWrapper($dbHost, $db,$dbUsername, $dbpassword);
+        if (!self::$pdo)
+            self::$pdo = new PdoConnexionWrapper($dbHost, $db,$dbUsername, $dbpassword);
+
         $pdoWrapper = self::$pdo ;
+        // $this->pdo =
 
         $prefix = $env ;
         $this->tablePrefix = $prefix ;
