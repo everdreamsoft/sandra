@@ -145,7 +145,7 @@ class System
         //print_r($exception);
 
 
-        die();
+        throw new $exception;
 
 
     }
