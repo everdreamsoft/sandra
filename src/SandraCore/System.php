@@ -140,9 +140,12 @@ class System
 
 
         }
+
         print_r($exception->getMessage());
 
-        //print_r($exception);
+        $response['sandraErrorReported'] = $exception->getMessage();
+
+        //print_r($response);
 
 
         throw new $exception;
