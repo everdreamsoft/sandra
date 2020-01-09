@@ -401,6 +401,7 @@ OR idConceptLink NOT IN ( SELECT idConceptStart FROM `$tableLink` WHERE idConcep
         $limitSQL = '' ;
         $tableReference = $system->tableReference ;
 
+
         $pdo = System::$pdo->get();
 
 
@@ -409,6 +410,7 @@ OR idConceptLink NOT IN ( SELECT idConceptStart FROM `$tableLink` WHERE idConcep
 
         //we are building an OR statement if the re are different value to search
         if (is_array($valueToSearch)) {
+            if (empty($valueToSearch)) return array();
 
             $initialStatement = true;
             $orStatement = '';
