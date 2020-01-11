@@ -46,12 +46,16 @@ class System
     public  function __construct($env = '', $install = false, $dbHost='127.0.0.1', $db='sandra', $dbUsername='root', $dbpassword=''){
 
         self::initDebugStack();
-        self::$pdo = new PdoConnexionWrapper($dbHost, $db,$dbUsername, $dbpassword);
+        if (!self::$pdo)
+            self::$pdo = new PdoConnexionWrapper($dbHost, $db,$dbUsername, $dbpassword);
+
         $pdoWrapper = self::$pdo ;
+        // $this->pdo =
 
         $prefix = $env ;
         $this->tablePrefix = $prefix ;
         $suffix = '';
+        $this->env = $env;
 
         $this->conceptTable = $prefix .'_SandraConcept' . $suffix;
         $this->linkTable =  $prefix .'_SandraTriplets' . $suffix;
@@ -136,12 +140,15 @@ class System
 
 
         }
+
         print_r($exception->getMessage());
 
-        //print_r($exception);
+        $response['sandraErrorReported'] = $exception->getMessage();
+
+        //print_r($response);
 
 
-        die();
+        throw new $exception;
 
 
     }

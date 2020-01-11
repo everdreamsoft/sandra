@@ -11,6 +11,7 @@ class PdoConnexionWrapper
     
     public function __construct($host, $database, $user, $password)
     {
+        if ($this->pdo) $this->pdo = null;
         $pdo = new PDO("mysql:host=$host;dbname=$database", $user, $password);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $this->pdo = $pdo;

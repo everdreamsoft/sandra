@@ -106,28 +106,32 @@ class DatabaseAdapter{
 
             $result = $pdo->query($sql);
 
-            $row = $result->fetchAll(PDO::FETCH_ASSOC) ;
+            $rows = $result->fetchAll(PDO::FETCH_ASSOC);
 
-            $updateID = $row['id'];
+            //$updateID = $row['id'];
+
+            if ($rows) {
+                $lastRow = end($rows);
+                $updateID = $lastRow['id'];
+
+                $sql = "UPDATE $tableLink SET idConceptTarget = $conceptTarget  WHERE id = $updateID";
+
+
+                try {
+                    $result = $pdo->query($sql);
+                } catch (PDOException $exception) {
+                    System::logDatabaseEnd($exception->getMessage());
+                    System::sandraException($exception);
+                    return;
+                }
+
+
+                return $updateID;
+            }
+
         }
 
-        if ($updateID) {
 
-            $sql = "UPDATE $tableLink SET idConceptTarget = $conceptTarget  WHERE id = $updateID";
-
-
-            try {
-                $result = $pdo->query($sql);
-            }
-            catch(PDOException $exception){
-                System::logDatabaseEnd($exception->getMessage());
-                System::sandraException($exception);
-                return ;
-            }
-
-
-            return $updateID;
-        }
 
         $sql = "INSERT INTO $tableLink (idConceptStart ,idConceptLink ,idConceptTarget,flag) VALUES ('$conceptSubject', '$conceptVerb', '$conceptTarget',0) ON DUPLICATE KEY UPDATE flag = 0, id=LAST_INSERT_ID(id)";
 
@@ -397,6 +401,7 @@ OR idConceptLink NOT IN ( SELECT idConceptStart FROM `$tableLink` WHERE idConcep
         $limitSQL = '' ;
         $tableReference = $system->tableReference ;
 
+
         $pdo = System::$pdo->get();
 
 
@@ -405,6 +410,7 @@ OR idConceptLink NOT IN ( SELECT idConceptStart FROM `$tableLink` WHERE idConcep
 
         //we are building an OR statement if the re are different value to search
         if (is_array($valueToSearch)) {
+            if (empty($valueToSearch)) return array();
 
             $initialStatement = true;
             $orStatement = '';

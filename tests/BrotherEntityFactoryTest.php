@@ -137,6 +137,45 @@ final class BrotherEntityFactoryTest extends TestCase
 
     }
 
+    public function testOnExistVerbUpdate()
+    {
+
+        $system = new \SandraCore\System('phpUnit_', true);
+        $switchesFactory = new \SandraCore\EntityFactory('switch', 'switchFile', $system);
+
+        $switchesFactoryTest = clone $switchesFactory;
+
+        $lightSwitch = $switchesFactory->createNew(['name' => 'lightSwitch']);
+        //our switch has two status installed and plugged
+        $lightSwitch->setBrotherEntity('status', 'installed', null);
+        $lightSwitch->setBrotherEntity('status', 'plugged', null);
+
+        //but our switch can only have one "switch" on or off
+        $lightSwitch->setBrotherEntity('switch', 'on', null, true, true);
+        $lightSwitch->setBrotherEntity('switch', 'off', null, true, true);
+        $lightSwitch->setBrotherEntity('switch', 'on', null, true, true);
+
+        $switchesFactoryTest->populateLocal();
+        $switchesFactoryTest->populateBrotherEntities('switch');
+        $coldPlugSwitch = $switchesFactoryTest->first('name', 'lightSwitch');
+
+        $statuses = $lightSwitch->getBrotherEntity('status', null);
+
+        $this->assertCount(2, $statuses);
+
+        //the switch should have only one position
+
+        //hotplug
+        $position = $statuses = $lightSwitch->getBrotherEntity('switch', null);
+        $this->assertCount(1, $position, 'hotplug brother on update failing');
+
+        //coldplug
+        $positionCold = $statuses = $coldPlugSwitch->getBrotherEntity('switch', null);
+        $this->assertCount(1, $positionCold, 'coldplug brother on update failing');
+
+
+    }
+
 
 
 
