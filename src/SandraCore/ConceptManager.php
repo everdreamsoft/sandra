@@ -205,7 +205,7 @@ class ConceptManager
     }
 
     //Check the followup if something needs to be done
-    public function getConceptsFromLinkAndTarget($linkConcept, $targetConcept, $limit = 0, $asc = 'ASC',$offset = 0)
+    public function getConceptsFromLinkAndTarget($linkConcept, $targetConcept, $limit = 0, $asc = 'ASC',$offset = 0, $countOnly = false)
     {
         global $tableLink, $tableReference, $deletedUNID, $includeCid, $containsInFileCid, $dbLink;
 
@@ -257,13 +257,20 @@ class ConceptManager
         if (!$this->bypassFlags)
             $flag = "AND l.flag != $deletedUNID";
 
+        //build selector
+        $selector = "SELECT  l.idConceptStart, l.idConceptLink, l.`idConceptTarget` ";
+
+        if ($countOnly)
+            $selector = "SELECT  COUNT(l.idConceptStart) AS result";
 
 
 
 
 
 
-        $sql = "SELECT  l.idConceptStart, l.idConceptLink, l.`idConceptTarget` FROM  $this->tableLink l " .
+
+
+        $sql = "$selector FROM  $this->tableLink l " .
             $this->filterJoin . "
 	WHERE l.idConceptLink = $linkConcept  
 	AND l.idConceptTarget = $targetConcept
@@ -288,6 +295,10 @@ class ConceptManager
 
 
         foreach ($pdoResult->fetchAll(PDO::FETCH_ASSOC) as $result) {
+
+            if ($countOnly)
+                return $result['result'] ;
+
             $idConceptStart = $result['idConceptStart'];
             $array[] = $idConceptStart;
             $this->concepts[] = new Concept($idConceptStart, $this->system);

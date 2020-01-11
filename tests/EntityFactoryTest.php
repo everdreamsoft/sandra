@@ -228,6 +228,39 @@ final class EntityFactoryTest extends TestCase
 
     }
 
+    public function testCountRequest(){
+
+        $system = new SandraCore\System('phpUnit_');
+
+        $alphabetFactory = new \SandraCore\EntityFactory('algebra','algebraFile',$system);
+
+         $alphabetFactory->createNew(array('name'=>'x'));
+         $alphabetFactory->createNew(array('name'=>'y'));
+         $alphabetFactory->createNew(array('name'=>'z'));
+        $a = $alphabetFactory->createNew(array('name'=>'a'));
+        $b = $alphabetFactory->createNew(array('name'=>'b'));
+        $c = $alphabetFactory->createNew(array('name'=>'c'));
+        $d = $alphabetFactory->createNew(array('name'=>'d'));
+        $e = $alphabetFactory->createNew(array('name'=>'e'));
+
+        $a->setBrotherEntity('implies',$b,null);
+        $a->setBrotherEntity('implies',$c,null);
+
+        $e->setBrotherEntity('implies',$b,null);
+        $d->setBrotherEntity('implies',$b,null);
+
+       $count =  $alphabetFactory->countEntitiesOnRequest();
+       $this->assertEquals(8,$count,'error while counting SQL request');
+
+        $allImpliesB =  new \SandraCore\EntityFactory('algebra','algebraFile',$system);
+        $allImpliesB->setFilter('implies',$b);
+        $this->assertEquals(3,$allImpliesB->countEntitiesOnRequest(),'error while counting SQL request');
+
+
+
+
+    }
+
 
 
 

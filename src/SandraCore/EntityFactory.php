@@ -97,21 +97,12 @@ class EntityFactory extends FactoryBase implements Dumpable
         $this->sc = $system->systemConcept;
 
 
-
-
-
         $this->initDisplayer();
 
 
         $this->refMap = array();
 
-
-
-
-
-
     }
-
 
 
 
@@ -123,13 +114,17 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     }
 
+    public function countEntitiesOnRequest():int {
+
+        $entityReferenceContainer = $this->sc->get($this->entityReferenceContainer);
+        $this->buildFilters();
+       $count = $this->conceptManager->getConceptsFromLinkAndTarget($entityReferenceContainer, $this->sc->get($this->entityContainedIn), null, null, null, true);
+
+       return $count ;
+    }
 
 
-
-    /**
-     * @return Entity[]
-     */
-    public function populateLocal($limit = 10000,$offset = 0,$asc='ASC')
+    private function buildFilters()
     {
 
         $entityArray = array();
@@ -163,6 +158,20 @@ class EntityFactory extends FactoryBase implements Dumpable
         if ($filter !== 0) {
             $this->conceptManager->setFilter($filter);
         }
+
+
+
+    }
+
+    /**
+     * @return Entity[]
+     */
+    public function populateLocal($limit = 10000,$offset = 0,$asc='ASC')
+    {
+
+        $entityArray = array();
+
+        $this->buildFilters();
 
         $entityReferenceContainer = $this->sc->get($this->entityReferenceContainer);
 
