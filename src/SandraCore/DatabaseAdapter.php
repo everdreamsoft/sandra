@@ -404,6 +404,8 @@ OR idConceptLink NOT IN ( SELECT idConceptStart FROM `$tableLink` WHERE idConcep
 
         $pdo = System::$pdo->get();
 
+        
+
 
         $tableLink = $system->linkTable ;
         $i=0;
