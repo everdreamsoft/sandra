@@ -282,10 +282,11 @@ class EntityFactory extends FactoryBase implements Dumpable
         //has brother already been verified ?
         // if (isset($this->brotherEntitiesVerified[$this->sc->get($verb)][$target]))
         //   return
+        $verb = CommonFunctions::somethingToConceptId($verb,$this->system);
 
 
 
-        $refs = $this->conceptManager->getReferences($this->sc->get($verb), $this->sc->get($target),null,0,1);
+        $refs = $this->conceptManager->getReferences($verb, $this->sc->get($target),null,0,1);
 
         $sandraReferenceMap = array();
 
