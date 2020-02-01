@@ -361,9 +361,9 @@ class EntityFactory extends FactoryBase implements Dumpable
         $brotherVerb = CommonFunctions::somethingToConceptId($brotherVerb, $this->system);
         $brotherTarget = CommonFunctions::somethingToConceptId($brotherTarget, $this->system);
 
-        if ($brotherTarget)
+        if ($brotherTarget && isset ($this->brotherMap[$brotherVerb][$brotherTarget]))
             return $this->brotherMap[$brotherVerb][$brotherTarget];
-        else if ($brotherVerb && isset ($this->brotherMap[$brotherVerb]))
+        else if ($brotherVerb && isset ($this->brotherMap[$brotherVerb]) && $brotherTarget == 0)
             return $this->brotherMap[$brotherVerb][0];
 
         return null;
