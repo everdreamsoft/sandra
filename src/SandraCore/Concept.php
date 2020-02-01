@@ -148,7 +148,7 @@ class Concept extends DatagraphUnit implements Dumpable
     {
 
         //Todo add the reference
-        $link = createLink($this->idConcept,$verb->idConcept,$target->idConcept);
+        $link = DatabaseAdapter::rawCreateTriplet($this->idConcept,$verb->idConcept,$target->idConcept,$this->system);
 
     }
 
