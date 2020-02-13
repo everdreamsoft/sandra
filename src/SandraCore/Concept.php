@@ -136,7 +136,6 @@ class Concept extends DatagraphUnit implements Dumpable
         $refs = $conceptManager->getReferences(null,null,null,null,1);
 
         $this->referenceArray = $refs ;
-
         return $refs;
 
 
