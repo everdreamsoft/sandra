@@ -404,6 +404,8 @@ OR idConceptLink NOT IN ( SELECT idConceptStart FROM `$tableLink` WHERE idConcep
 
         $pdo = System::$pdo->get();
 
+        if (!$referenceUNID) $referenceUNID = 'IS NOT NULL';
+
         
 
 
