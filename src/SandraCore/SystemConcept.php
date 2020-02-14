@@ -298,10 +298,10 @@ class SystemConcept
 
         $table = $this->assignDefaultTable($table);
 
+        $shortname = $this->pdo->quote($shortname);
 
 
-
-        $sql = "SELECT id,shortname FROM $this->conceptTable WHERE shortname = '$shortname'";
+        $sql = "SELECT id,shortname FROM $this->conceptTable WHERE shortname = $shortname";
 
 
         try {
@@ -332,13 +332,13 @@ class SystemConcept
         $table = $this->assignDefaultTable($table);
 
 
-
-        $sql = "INSERT INTO $this->conceptTable (id, code, shortname) VALUES (null, 'system concept $shortname', '$shortname');";
+        // $sql = "INSERT INTO $this->conceptTable id, code, shortname) VALUES (null, 'system concept $shortname', $shortname);";
+        $sql = "INSERT INTO $this->conceptTable (id, code, shortname) VALUES (?, ?, ?)";
 
         try {
 
             $result = $this->pdo->prepare($sql);
-            $result->execute();
+            $result->execute([null, "system concept $shortname", $shortname]);
         }
         catch(PDOException $exception){
 

@@ -401,19 +401,20 @@ OR idConceptLink NOT IN ( SELECT idConceptStart FROM `$tableLink` WHERE idConcep
         $limitSQL = '' ;
         $tableReference = $system->tableReference ;
 
+        if (!$referenceUNID) $referenceUNID = 'IS NOT NULL';
+
         if ($conceptLinkConcept != '')
             $conceptLinkConcept = CommonFunctions::somethingToConceptId($conceptLinkConcept, $system);
 
         if ($conceptTargetConcept != '')
             $conceptTargetConcept = CommonFunctions::somethingToConceptId($conceptTargetConcept, $system);
 
+        if ($referenceUNID != 'IS NOT NULL')
+            $referenceUNID = CommonFunctions::somethingToConceptId($referenceUNID, $system);
+
 
 
         $pdo = System::$pdo->get();
-
-        if (!$referenceUNID) $referenceUNID = 'IS NOT NULL';
-
-        
 
 
         $tableLink = $system->linkTable ;
