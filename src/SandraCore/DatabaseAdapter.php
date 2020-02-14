@@ -401,6 +401,13 @@ OR idConceptLink NOT IN ( SELECT idConceptStart FROM `$tableLink` WHERE idConcep
         $limitSQL = '' ;
         $tableReference = $system->tableReference ;
 
+        if ($conceptLinkConcept != '')
+            $conceptLinkConcept = CommonFunctions::somethingToConceptId($conceptLinkConcept, $system);
+
+        if ($conceptTargetConcept != '')
+            $conceptTargetConcept = CommonFunctions::somethingToConceptId($conceptTargetConcept, $system);
+
+
 
         $pdo = System::$pdo->get();
 
