@@ -419,6 +419,7 @@ OR idConceptLink NOT IN ( SELECT idConceptStart FROM `$tableLink` WHERE idConcep
 
         $tableLink = $system->linkTable ;
         $i=0;
+        $bindParamArray = array();
 
         //we are building an OR statement if the re are different value to search
         if (is_array($valueToSearch)) {
@@ -440,7 +441,11 @@ OR idConceptLink NOT IN ( SELECT idConceptStart FROM `$tableLink` WHERE idConcep
 
             $valueToSearchStatement =  "(value = :value_0".$orStatement  .")";
             $bindParamArray["value_0"] = $valueToSearch[0] ;
-        } else {
+        }else if ($valueToSearch === true){
+            $valueToSearchStatement = 'value IS NOT NULL';
+        }
+
+        else {
             //$valueToSearch = mysqli_real_escape_string($dbLink, $valueToSearch);
             $valueToSearchStatement = "value = :value_$i";
             $bindParamArray["value_$i"] = $valueToSearch ;
