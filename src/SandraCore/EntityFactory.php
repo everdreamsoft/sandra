@@ -284,6 +284,8 @@ class EntityFactory extends FactoryBase implements Dumpable
         //   return
         $verb = CommonFunctions::somethingToConceptId($verb,$this->system);
 
+        if ($target) $target = CommonFunctions::somethingToConceptId($target, $this->system);
+
 
 
         $refs = $this->conceptManager->getReferences($verb, $this->sc->get($target),null,0,1);
