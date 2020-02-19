@@ -278,7 +278,6 @@ class EntityFactory extends FactoryBase implements Dumpable
         $entityArray = array();
         if($target===null) $target = 0 ;
 
-
         //has brother already been verified ?
         // if (isset($this->brotherEntitiesVerified[$this->sc->get($verb)][$target]))
         //   return
