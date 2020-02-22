@@ -22,17 +22,13 @@ class Entity implements Dumpable
     public $entityId ; // The is the id of the table link
     public $entityRefs ; /** @var $entityRefs Reference[] */
     public $dataStorage ;
+    public $isForeign = false ;
 
     public $system ;
 
     public function __construct($sandraConcept,$sandraReferencesArray,$factory,$entityId,$conceptVerb,$conceptTarget,System $system){
 
         $this->system = $system ;
-
-
-
-
-
 
         if(is_array($sandraReferencesArray)) {
             foreach ($sandraReferencesArray as $sandraReferenceConceptId => $sandraReferenceValue) {
@@ -354,6 +350,15 @@ class Entity implements Dumpable
 
 
         DatabaseAdapter::rawFlag($this, $flagConcept, $this->system, $autocommit);
+
+
+    }
+
+    public function isForeign()
+    {
+
+
+       return $this->isForeign ;
 
 
     }
