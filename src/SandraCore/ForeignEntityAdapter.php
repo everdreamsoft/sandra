@@ -26,7 +26,7 @@ class ForeignEntityAdapter extends EntityFactory
 
     public $foreignRawData = '';
     protected $flattingArray = array() ;
-    protected $foreignRawArray = '' ;
+    public $foreignRawArray = '';
 
     private $localRefToFuse = null ;
     private $remoteRefFuse = null ;
