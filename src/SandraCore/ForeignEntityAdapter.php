@@ -24,9 +24,9 @@ class ForeignEntityAdapter extends EntityFactory
     public $foreignToLocalVocabulary ; //key is foreign value is local
 
 
-    protected $foreignRawData = '' ;
+    public $foreignRawData = '';
     protected $flattingArray = array() ;
-    protected $foreignRawArray = '' ;
+    public $foreignRawArray = '';
 
     private $localRefToFuse = null ;
     private $remoteRefFuse = null ;

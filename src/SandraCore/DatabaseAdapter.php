@@ -162,9 +162,7 @@ class DatabaseAdapter{
         $tableStorage = $entity->system->tableStorage ;
 
 
-
-
-        $sql = "INSERT INTO $tableStorage (linkReferenced ,`value` ) VALUES (:linkId,  :storeValue) ON DUPLICATE KEY UPDATE  linkReferenced=LAST_INSERT_ID(linkReferenced)";
+        $sql = "INSERT INTO $tableStorage (linkReferenced ,`value` ) VALUES (:linkId,  :storeValue) ON DUPLICATE KEY UPDATE value = :storeValue";
 
 
 
