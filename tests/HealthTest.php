@@ -27,7 +27,7 @@ final class HealthTest extends TestCase
 
         $memory = MemoryManagement::getSystemMemory();
 
-        $this->assertEquals(1, 1);
+        $this->assertStringContainsString('mb',$memory);
 
 
     }
