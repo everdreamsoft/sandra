@@ -277,14 +277,12 @@ class EntityFactory extends FactoryBase implements Dumpable
         $entityArray = array();
         if($target===null) $target = 0 ;
         $verb = CommonFunctions::somethingToConceptId($verb, $this->system);
+        if ($target) $target = CommonFunctions::somethingToConceptId($target, $this->system);
 
         //has brother already been verified ?
         if (isset($this->brotherEntitiesVerified[$verb][$target])) {
             return;
         }
-
-
-        if ($target) $target = CommonFunctions::somethingToConceptId($target, $this->system);
 
 
         $refs = $this->conceptManager->getReferences($verb, $target, null, 0, 1);
