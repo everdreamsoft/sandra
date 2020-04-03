@@ -280,9 +280,27 @@ class EntityFactory extends FactoryBase implements Dumpable
         if ($target) $target = CommonFunctions::somethingToConceptId($target, $this->system);
 
         //has brother already been verified ?
+        //this particular query not
         if (isset($this->brotherEntitiesVerified[$verb][$target])) {
-            return;
+            return $this->entityArray;
         }
+
+        if (isset($this->brotherEntitiesVerified[0][0])) {
+            return $this->entityArray;
+        }
+
+        if ($verb && isset($this->brotherEntitiesVerified[$verb][0])) {
+            return $this->entityArray;
+        }
+
+
+
+
+
+
+
+
+
 
 
         $refs = $this->conceptManager->getReferences($verb, $target, null, 0, 1);
