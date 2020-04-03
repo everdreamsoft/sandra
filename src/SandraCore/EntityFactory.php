@@ -289,10 +289,12 @@ class EntityFactory extends FactoryBase implements Dumpable
             return $this->entityArray;
         }
 
+        //all verb allready loaded
         if ($verb && isset($this->brotherEntitiesVerified[$verb][0])) {
             return $this->entityArray;
         }
 
+        //all target already loaded
         if ($target && isset($this->brotherEntitiesVerified[0][$target])) {
             return $this->entityArray;
         }
