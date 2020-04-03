@@ -293,6 +293,10 @@ class EntityFactory extends FactoryBase implements Dumpable
             return $this->entityArray;
         }
 
+        if ($target && isset($this->brotherEntitiesVerified[0][$target])) {
+            return $this->entityArray;
+        }
+
 
 
 
