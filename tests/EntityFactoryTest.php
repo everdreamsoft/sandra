@@ -20,9 +20,7 @@ final class EntityFactoryTest extends TestCase
 
     public function testEntityFactory()
     {
-        $sandraToFlush = new SandraCore\System('phpUnit_', true);
-        \SandraCore\Setup::flushDatagraph($sandraToFlush);
-        $system = new \SandraCore\System('phpUnit_',true);
+        TestService::getFlushTestDatagraph();
 
 
 
@@ -39,7 +37,7 @@ final class EntityFactoryTest extends TestCase
     public function testCreateNew()
     {
 
-        $system = new \SandraCore\System('phpUnit_',true);
+        $system = TestService::getDatagraph();
 
         //Test unpopulated read write
         $solarSystemFactory =  new \SandraCore\EntityFactory('planet','solarSystemFile',$system);
@@ -56,7 +54,7 @@ final class EntityFactoryTest extends TestCase
     public function testSetFilter()
 {
 
-    $system = new \SandraCore\System('phpUnit_',true);
+    $system = TestService::getDatagraph();
     $alphabetFactory = new \SandraCore\EntityFactory('algebra','algebraFile',$system);
 
     $alphabetFactoryEmpty = clone $alphabetFactory ;
@@ -115,7 +113,7 @@ final class EntityFactoryTest extends TestCase
     public function testStorage()
     {
 
-        $system = new \SandraCore\System('phpUnit_',true);
+        $system = TestService::getDatagraph();
         $bookFactory = new \SandraCore\EntityFactory('book','library',$system);
         $bookFactoryControl = clone $bookFactory ;
 
@@ -149,9 +147,8 @@ final class EntityFactoryTest extends TestCase
     public function testClassLoading()
     {
 
-        $sandraToFlush = new SandraCore\System('phpUnit_', true);
-        \SandraCore\Setup::flushDatagraph($sandraToFlush);
-        $system = new \SandraCore\System('phpUnit_',true);        $bookFactory = new \SandraCore\EntityFactory('book','library',$system);
+        $system = TestService::getFlushTestDatagraph();
+        $bookFactory = new \SandraCore\EntityFactory('book', 'library', $system);
         $bookFactoryControl = clone $bookFactory ;
 
        $customClassFactory = new \SandraCore\EntityFactory('book','library',$system);
@@ -170,9 +167,7 @@ final class EntityFactoryTest extends TestCase
     public function testUpdate()
     {
 
-        $sandraToFlush = new SandraCore\System('phpUnit_', true);
-        \SandraCore\Setup::flushDatagraph($sandraToFlush);
-        $system = new \SandraCore\System('phpUnit_', true);
+        $system = TestService::getFlushTestDatagraph();
 
         $rocketFactory = new \SandraCore\EntityFactory('rocket', 'rocketFile', $system);
         $coldRocketFactory = clone $rocketFactory;
@@ -230,7 +225,8 @@ final class EntityFactoryTest extends TestCase
 
     public function testCountRequest(){
 
-        $system = new SandraCore\System('phpUnit_');
+        $system = TestService::getDatagraph();
+        TestService::getDatagraph();
 
         $alphabetFactory = new \SandraCore\EntityFactory('algebra','algebraFile',$system);
 

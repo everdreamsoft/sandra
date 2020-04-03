@@ -274,20 +274,20 @@ class EntityFactory extends FactoryBase implements Dumpable
      */
     public function populateBrotherEntities($verb = 0, $target = null)
     {
-
         $entityArray = array();
         if($target===null) $target = 0 ;
+        $verb = CommonFunctions::somethingToConceptId($verb, $this->system);
 
         //has brother already been verified ?
-        // if (isset($this->brotherEntitiesVerified[$this->sc->get($verb)][$target]))
-        //   return
-        $verb = CommonFunctions::somethingToConceptId($verb,$this->system);
+        if (isset($this->brotherEntitiesVerified[$verb][$target])) {
+            return;
+        }
+
 
         if ($target) $target = CommonFunctions::somethingToConceptId($target, $this->system);
 
 
-
-        $refs = $this->conceptManager->getReferences($verb, $this->sc->get($target),null,0,1);
+        $refs = $this->conceptManager->getReferences($verb, $target, null, 0, 1);
 
         $sandraReferenceMap = array();
 
@@ -346,7 +346,7 @@ class EntityFactory extends FactoryBase implements Dumpable
         }
 
         $this->addBrotherEntities($entityArray, $sandraReferenceMap);
-        $this->brotherEntitiesVerified[$this->sc->get($verb)][$target];
+        $this->brotherEntitiesVerified[$verb][$target] = 1;
         return $this->entityArray;
 
     }
