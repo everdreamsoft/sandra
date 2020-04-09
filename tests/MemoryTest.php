@@ -30,7 +30,7 @@ class MemoryTest extends TestCase
        // $system = new \SandraCore\System('phpUnit', true);
         //$system = null ;
         $x='';
-        for ($i = 0; $i < 20; $i++) {
+        for ($i = 0; $i < 50; $i++) {
            $system = new System();
 
             $me = CommonFunctions::somethingToConceptId("me",$system);
@@ -48,7 +48,7 @@ class MemoryTest extends TestCase
            $myFactory->populateLocal();
             //
 
-           if ($i==9){
+            if ($i == 20) {
 
                $intermedMemory = memory_get_usage();
                echo"intermed memory = $intermedMemory".PHP_EOL;
@@ -64,6 +64,7 @@ class MemoryTest extends TestCase
 
         $afterMemory = memory_get_usage();
         echo"final memory    = $afterMemory".PHP_EOL;
+        echo \InnateSkills\SandraHealth\MemoryManagement::echoMemoryUsage() . PHP_EOL;
         $delta = $afterMemory - $intermedMemory ;
         echo "delta = $delta";
 

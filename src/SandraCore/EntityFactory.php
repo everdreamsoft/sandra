@@ -269,6 +269,26 @@ class EntityFactory extends FactoryBase implements Dumpable
         return $this->entityArray;
 
     }
+
+    /**
+     * @param $search
+     * @param int $asConcept
+     * @return Entity[]
+     */
+
+    public function populateFromSearchResults($search, $asConcept = 0)
+    {
+
+        $conceptsArray = DatabaseAdapter::searchConcept($search, $asConcept, $this->system, $this->entityReferenceContainer, $this->entityContainedIn);
+        if (!$conceptsArray) return array();
+        $this->conceptArray = $conceptsArray;
+        $this->populateLocal();
+
+        return $this->getEntities();
+
+
+    }
+
     /**
      * @return Entity[]
      */
@@ -1127,6 +1147,13 @@ class EntityFactory extends FactoryBase implements Dumpable
             $entity->destroy();
 
         }
+
+        $this->brotherEntities = null;
+        $this->brotherMap;
+        $this->brotherTarget = null;
+        $this->joinedFactoryArray = null; //should we destroy each joined factory as well ?
+        $this->sandraReferenceMap = null;
+        $this->refMap = null;
 
 
     }

@@ -399,7 +399,10 @@ OR idConceptLink NOT IN ( SELECT idConceptStart FROM `$tableLink` WHERE idConcep
         $limitSQL = '' ;
         $tableReference = $system->tableReference ;
 
+
         if (!$referenceUNID) $referenceUNID = 'IS NOT NULL';
+
+        if ($referenceUNID != 'IS NOT NULL' && !is_numeric($referenceUNID)) $referenceUNID = CommonFunctions::somethingToConceptId($referenceUNID, $system);
 
         if ($conceptLinkConcept != '')
             $conceptLinkConcept = CommonFunctions::somethingToConceptId($conceptLinkConcept, $system);

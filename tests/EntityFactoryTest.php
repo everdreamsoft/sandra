@@ -10,6 +10,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../vendor/autoload.php'; // Autoload files using Composer autoload
 
 use PHPUnit\Framework\TestCase;
+use SandraCore\TestService;
 
 
 
@@ -226,7 +227,7 @@ final class EntityFactoryTest extends TestCase
     public function testCountRequest(){
 
         $system = TestService::getDatagraph();
-        TestService::getDatagraph();
+
 
         $alphabetFactory = new \SandraCore\EntityFactory('algebra','algebraFile',$system);
 
@@ -253,6 +254,62 @@ final class EntityFactoryTest extends TestCase
         $this->assertEquals(3,$allImpliesB->countEntitiesOnRequest(),'error while counting SQL request');
 
 
+
+
+    }
+
+    public function testPopulateSearch()
+    {
+
+        $system = TestService::getDatagraph();
+
+
+        $peopleFactory = new \SandraCore\EntityFactory('person', 'peopleFile', $system);
+
+
+        //We should have now twice the x and y z
+        $peopleFactory->createNew(array('firstname' => 'shaban', 'lastname' => 'shaame'));
+        $peopleFactory->createNew(array('firstname' => 'John', 'lastname' => 'Doe'));
+        $peopleFactory->createNew(array('firstname' => 'John', 'lastname' => 'AppleSeed'));
+        $peopleFactory->createNew(array('firstname' => 'Jack', 'lastname' => 'Johnson'));
+        $peopleFactory->createNew(array('firstname' => 'Jack', 'lastname' => 'Roger'));
+        $peopleFactory->createNew(array('firstname' => 'Roger', 'lastname' => 'Dalton'));
+
+
+        $peopleFactory = new \SandraCore\EntityFactory('person', 'peopleFile', $system);
+        $entities = $peopleFactory->populateFromSearchResults('John');
+
+        $this->assertCount(2, $entities);
+
+        $peopleFactory = new \SandraCore\EntityFactory('person', 'peopleFile', $system);
+        $entities = $peopleFactory->populateFromSearchResults('Roger', 'lastname');
+
+        $this->assertCount(1, $entities);
+
+        $peopleFactory = new \SandraCore\EntityFactory('person', 'peopleFile', $system);
+        $entities = $peopleFactory->populateFromSearchResults('Roger'); //whithout specifying first or lastname
+
+        $this->assertCount(2, $entities);
+
+        $peopleFactory = new \SandraCore\EntityFactory('person', 'peopleFile', $system);
+        $entities = $peopleFactory->populateFromSearchResults(array('Roger', 'John'));
+
+        $this->assertCount(4, $entities);
+
+        $peopleFactory = new \SandraCore\EntityFactory('person', 'peopleFile', $system);
+        $entities = $peopleFactory->populateFromSearchResults(array('Jack', 'Roger'), 'firstname');
+
+        $this->assertCount(3, $entities);
+
+        $peopleFactory = new \SandraCore\EntityFactory('person', 'peopleFile', $system);
+        $entities = $peopleFactory->populateFromSearchResults(array('Anonymous', 'Roger'), 'firstname');
+
+        $this->assertCount(1, $entities);
+
+        $peopleFactory = new \SandraCore\EntityFactory('person', 'peopleFile', $system);
+        $entities = $peopleFactory->populateFromSearchResults(array('Anonymous', 'Roger', 'Jack', 'john', 'shaban'));
+
+        $this->assertCount(6, $entities);
 
 
     }

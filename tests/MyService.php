@@ -8,10 +8,8 @@
 
 require_once __DIR__ . '/../vendor/autoload.php'; // Autoload files using Composer autoload
 
-use PHPUnit\Framework\TestCase;
 
-
-class TestService extends TestCase
+class MyService
 {
 
     public static function getFlushTestDatagraph()
