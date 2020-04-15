@@ -155,11 +155,20 @@ class DatabaseAdapter{
     }
 
 
-    public static function setStorage(Entity $entity,$value){
+    public static function setStorage(Entity $entity, $value, $autocommit = true)
+    {
 
 
         $pdo = System::$pdo->get();
         $tableStorage = $entity->system->tableStorage ;
+
+        if (!self::$transactionStarted && $autocommit == false) {
+            $pdo->beginTransaction();
+            self::$pdo = $pdo;
+            self::$transactionStarted = true;
+
+
+        }
 
 
         $sql = "INSERT INTO $tableStorage (linkReferenced ,`value` ) VALUES (:linkId,  :storeValue) ON DUPLICATE KEY UPDATE value = :storeValue";

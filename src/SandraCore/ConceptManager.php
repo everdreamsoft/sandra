@@ -373,6 +373,7 @@ class ConceptManager
 
     public function getReferences($idConceptLink = 0, $idConceptTarget = 0, $refIdArray = null, $isTargetList = 0, $byTripletid = 0)
     {
+        global $deletedUNID;
 
         /*Note about $byTripletid. The goal is to patch the system if there are different reference on the same idConcept link the first version overight the changes. By adding the variable $byTripletid whe change the form of the result array
 
@@ -430,6 +431,10 @@ class ConceptManager
                 $filter .= " AND y.idConceptTarget = $idConceptTarget ";
             }
 
+            $flag = '';
+            if (!$this->bypassFlags)
+                $flag = "AND x.flag != $deletedUNID";
+
             $sql = "
 			SELECT *
   FROM `$this->tableReference` r
@@ -439,7 +444,7 @@ class ConceptManager
     ON y.id = r.linkReferenced 
    $refsFilter
    AND y.$masterCondition IN ($concepts) 
-   $filter";
+   $filter " . $flag;
             //AND flag != $deletedUNID";
 
 

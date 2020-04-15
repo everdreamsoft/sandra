@@ -294,9 +294,10 @@ class Entity implements Dumpable
 
     }
 
-    public function setStorage($value){
+    public function setStorage($value, $autocommit = true)
+    {
 
-        DatabaseAdapter::setStorage($this,$value);
+        DatabaseAdapter::setStorage($this, $value, $autocommit);
         $this->dataStorage = $value ;
 
     }
