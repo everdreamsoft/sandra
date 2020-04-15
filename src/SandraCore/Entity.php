@@ -364,6 +364,24 @@ class Entity implements Dumpable
 
     }
 
+    public function getDisplayRef()
+    {
+
+        $references = array();
+
+
+        foreach ($this->entityRefs as $key => $value) {
+            /** @var $value Reference */
+
+            $references[$value->refConcept->dumpMeta()] = $value->dumpMeta();
+        }
+
+        return $references;
+
+
+    }
+
+
 
     public function destroy(){
 
