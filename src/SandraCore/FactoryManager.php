@@ -62,6 +62,7 @@ class FactoryManager
             $factory->destroy();
 
         }
+        $this->factoryRegistry = null;
         unset($this->sandraInstance);
 
 
