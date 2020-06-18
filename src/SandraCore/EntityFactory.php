@@ -292,40 +292,34 @@ class EntityFactory extends FactoryBase implements Dumpable
     /**
      * @return Entity[]
      */
-    public function populateBrotherEntities($verb = 0, $target = null)
+    public function populateBrotherEntities($verb = 0, $target = null, $force = false)
     {
         $entityArray = array();
         if($target===null) $target = 0 ;
         $verb = CommonFunctions::somethingToConceptId($verb, $this->system);
         if ($target) $target = CommonFunctions::somethingToConceptId($target, $this->system);
 
-        //has brother already been verified ?
-        //this particular query not
-        if (isset($this->brotherEntitiesVerified[$verb][$target])) {
-            return $this->entityArray;
+        if (!$force) {
+            //has brother already been verified ?
+            //this particular query not
+            if (isset($this->brotherEntitiesVerified[$verb][$target])) {
+                return $this->entityArray;
+            }
+
+            if (isset($this->brotherEntitiesVerified[0][0])) {
+                return $this->entityArray;
+            }
+
+            //all verb allready loaded
+            if ($verb && isset($this->brotherEntitiesVerified[$verb][0])) {
+                return $this->entityArray;
+            }
+
+            //all target already loaded
+            if ($target && isset($this->brotherEntitiesVerified[0][$target])) {
+                return $this->entityArray;
+            }
         }
-
-        if (isset($this->brotherEntitiesVerified[0][0])) {
-            return $this->entityArray;
-        }
-
-        //all verb allready loaded
-        if ($verb && isset($this->brotherEntitiesVerified[$verb][0])) {
-            return $this->entityArray;
-        }
-
-        //all target already loaded
-        if ($target && isset($this->brotherEntitiesVerified[0][$target])) {
-            return $this->entityArray;
-        }
-
-
-
-
-
-
-
-
 
 
 
