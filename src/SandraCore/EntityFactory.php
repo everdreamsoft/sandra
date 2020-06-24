@@ -428,7 +428,12 @@ class EntityFactory extends FactoryBase implements Dumpable
         } else {
 
             $this->entityArray = $entityArray;
-            $this->sandraReferenceMap = $referenceMap;
+            if (is_array($referenceMap)) {
+                //reference map should be investigated
+                //$this->sandraReferenceMap = $this->sandraReferenceMap + $referenceMap;
+                $this->sandraReferenceMap = $referenceMap;
+            }
+
         }
 
         //we nullify the fact that we loaded triplets
@@ -477,6 +482,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         if (!is_array($entityArray)) return;
         if (!is_array($referenceMap)) return;
+
 
         foreach ($entityArray as $entity) {
             /** @var Entity $entity */
@@ -607,7 +613,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         //get the map of reference that should be similar
         $localRefMap = $this->getRefMap($localRefConcept);
-        //$foreignRefMap = $this->foreignAdapter->getRefMap($foreignRef);
+        $foreignRefMap = $this->foreignAdapter->getRefMap($foreignRefConcept);
 
         //return if no refmap
         if (empty($localRefMap))

@@ -136,12 +136,12 @@ class ForeignEntityAdapter extends EntityFactory
                     if (isset($this->foreignToLocalVocabulary[$objectKey])){
 
                         //then return local concept
-                        // $this->refMap[$objectKey] = $entity ;
+                        //$this->refMap[$objectKey] = $objectValue ;
 
                     }
                     else {
 
-                        //  $this->refMap[$objectKey] = $entity;
+                        //  $this->refMap[$objectKey] = $objectValue;
                     }
 
                 }

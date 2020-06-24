@@ -132,11 +132,14 @@ final class ForeignEntityAdapterTest extends TestCase
 
                 $factory->foreignPopulate($foreignAdapter,2);
 
+
         $this->assertCount(2,$factory->entityArray,'Our local factory should have 2 foreign concepts');
 
                 $factory->setFuseForeignOnRef('Visa','visa',$vocabulary);
+        $entityArray = $factory->getAllWith('Visa', 'MR542');
                 $factory->fuseRemoteEntity();
-                $factory->saveEntitiesNotInLocal();
+        //  $factory->saveEntitiesNotInLocal();
+        $factory->saveEntitiesNotInLocal();
 
                 //We should have a local entity
                 $entityArray = $factory->getAllWith('Visa','MR542');
@@ -159,6 +162,39 @@ final class ForeignEntityAdapterTest extends TestCase
         $dump= $controlFactory->dumpMeta();
 
         //
+
+
+    }
+
+    public function testFusionAndUpdate()
+    {
+
+
+        $sandra = new SandraCore\System('_phpUnit', true);
+
+        $foreignAdapter = new ForeignEntityAdapter("https://script.googleusercontent.com/macros/echo?user_content_key=BOhSs78kogORwwxMQYorClE9WArdfTgNaG8ta6jCvMBhEVzGhzeADYbWquh988RM2kzpycxoXJjxXhyDkG6d0zUHNbGjG8gAm5_BxDlH2jW0nuo2oDemN9CCS2h10ox_1xSncGQajx_ryfhECjZEnJiAX7CGU1Nfkw_f4I0D2VGRnCi3suSssTD3wo78iqcZlr0Bqrn_VaBemvrYY_vLpdpytj_A4aoE&lib=M2kgtu8MqTDiOvkCzXVbAhPk0k5gXsDeZ", 'data', $sandra);
+
+        $factory = $sandra->factoryManager->create('personnelFactoryTestLocal', 'person', 'peopleFile');
+        $controlFactory = clone $factory;
+        $factory->populateLocal();
+        $ent = $foreignAdapter->populate(5);
+
+
+        $vocabulary = array(
+            'Visa' => 'visa',
+            'Title' => 'Title'
+        );
+
+        $foreignAdapter->adaptToLocalVocabulary($vocabulary); // If after populate then fail
+
+        $ent2 = $factory->foreignPopulate($foreignAdapter, 5);
+
+        $factory->setFuseForeignOnRef('Visa', 'visa', $vocabulary);
+        $factory->mergeEntities('Visa', 'visa');
+        $factory->fuseRemoteEntity();
+
+
+        print_r($factory->dumpMeta());
 
 
     }
