@@ -21,6 +21,7 @@ final class SystemTest extends TestCase
     public function testLogger()
     {
 
+
         $sandraToFlush = new SandraCore\System('_phpUnit', true);
         \SandraCore\Setup::flushDatagraph($sandraToFlush);
 
@@ -32,6 +33,24 @@ final class SystemTest extends TestCase
         $logger = $sandra::$logger;
 
 
+        //TODO implement the tests
+        $this->assertEquals(1, 1);
+
+
+
+
+    }
+
+    public function testConnections()
+    {
+
+
+        /*while(1) {
+            $sandra = new SandraCore\System('_phpUnit', true);
+        sleep(2);
+        }*/
+
+        $this->assertEquals(1, 1);
 
 
     }

@@ -24,9 +24,9 @@ class ForeignEntityAdapter extends EntityFactory
     public $foreignToLocalVocabulary ; //key is foreign value is local
 
 
-    protected $foreignRawData = '' ;
+    public $foreignRawData = '';
     protected $flattingArray = array() ;
-    protected $foreignRawArray = '' ;
+    public $foreignRawArray = '';
 
     private $localRefToFuse = null ;
     private $remoteRefFuse = null ;
@@ -68,10 +68,9 @@ class ForeignEntityAdapter extends EntityFactory
             curl_close($ch);
         } catch(Exception $e) {
 
-            trigger_error(sprintf(
-                'Curl failed with error #%d: %s',
-                $e->getCode(), $e->getMessage()),
-                E_USER_ERROR);
+            throw new Exception($e);
+
+
 
         }
 
@@ -137,12 +136,12 @@ class ForeignEntityAdapter extends EntityFactory
                     if (isset($this->foreignToLocalVocabulary[$objectKey])){
 
                         //then return local concept
-                        // $this->refMap[$objectKey] = $entity ;
+                        //$this->refMap[$objectKey] = $objectValue ;
 
                     }
                     else {
 
-                        //  $this->refMap[$objectKey] = $entity;
+                        //  $this->refMap[$objectKey] = $objectValue;
                     }
 
                 }

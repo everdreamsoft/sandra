@@ -1,5 +1,6 @@
 <?php
 namespace SandraCore;
+use SandraCore\displayer\Displayer;
 use SandraCore\displayer\DisplayType;
 
 /**
@@ -17,9 +18,12 @@ abstract class FactoryBase
     private $defaultFactoryName = 'noNameFactory';
     public $conceptManager ;
 
+    public $bypassFlags = false; //in large database the flags seems to cause an issue in the query optimization we allow to bypass them
+
     public $displayer ;
     public $tripletfilter ;
     public $system ;
+    private $su = true; //is the factory super user status
 
     /* @var $entityArray Entity[] */
     public $entityArray = array();
@@ -44,6 +48,17 @@ abstract class FactoryBase
         $this->system = $system ;
         $this->factoryIdentifier = $this->defaultFactoryName ;
         $system->registerFactory($this);
+        $system->factoryManager->register($this);
+
+        $this->conceptManager = new ConceptManager($this->su, $this->system);
+
+
+    }
+
+    public function setBypassFlag(bool $bypass)
+    {
+
+        $this->conceptManager->bypassFlags($bypass);
 
     }
 
@@ -101,7 +116,8 @@ abstract class FactoryBase
 
     public function getOrCreateFromRef($refname,$refvalue):Entity{
 
-       $entity = $this->first($refname,$refvalue);
+
+        $entity = $this->first($refname,$refvalue);
        if(!$entity) {
         $entity =   $this->createNew(array($refname=>$refvalue));
                }
@@ -111,12 +127,36 @@ abstract class FactoryBase
 
     public function setFilter($verb=0,$target=0,$exclusion=false):EntityFactory{
 
-        $verbConceptId = CommonFunctions::somethingToConceptId($verb,$this->system);
-        $targetConceptId = CommonFunctions::somethingToConceptId($target,$this->system);
+        $verbArray = array();
+        $targetArray = array();
 
-        $this->tripletfilter["$verbConceptId $targetConceptId"]['verbConceptId'] = $verbConceptId;
-        $this->tripletfilter["$verbConceptId $targetConceptId"]['targetConceptId'] = $targetConceptId;
-        $this->tripletfilter["$verbConceptId $targetConceptId"]['exclusion'] = $exclusion;
+        if (is_array($verb)) {
+            foreach ($verb as $currentVerb) {
+                $verbConceptId = CommonFunctions::somethingToConceptId($currentVerb, $this->system);
+                $verbArray[] = $verbConceptId;
+
+            }
+        } else {
+            $verbArray[] = CommonFunctions::somethingToConceptId($verb, $this->system);
+        }
+
+        if (is_array($target)) {
+            foreach ($target as $currentTarget) {
+                $targetConceptId = CommonFunctions::somethingToConceptId($currentTarget, $this->system);
+                $targetArray[] = $targetConceptId;
+
+            }
+        } else {
+            $targetArray[] = CommonFunctions::somethingToConceptId($target, $this->system);
+        }
+
+        $implodeVerbs = implode(",", $verbArray);
+        $implodeTargets = implode(",", $targetArray);
+
+
+        $this->tripletfilter[implode(",", $verbArray) . implode(",", $targetArray)]['verbConceptId'] = $implodeVerbs;
+        $this->tripletfilter[implode(",", $verbArray) . implode(",", $targetArray)]['targetConceptId'] = $implodeTargets;
+        $this->tripletfilter[implode(",", $verbArray) . implode(",", $targetArray)]['exclusion'] = $exclusion;
 
         return $this ;
 
@@ -127,7 +167,7 @@ abstract class FactoryBase
 
         if (!isset($this->displayer)){
 
-            $this->displayer = new displayer\Displayer($this,$displayType);
+            $this->displayer = new Displayer($this,$displayType);
 
 
         }
@@ -191,7 +231,7 @@ abstract class FactoryBase
             /** @var ConceptManager $conceptManager */
 
             $fieldList .= ",\n rf$incrementor".".value '$fieldname' ";
-            $SQLviewFilterJoin .= " LEFT JOIN $sandra->tableReference rf$incrementor ON l.id = rf$incrementor.`linkReferenced` AND rf$incrementor.idConcept = $concept->idConcept \n";
+            $SQLviewFilterJoin .= " LEFT JOIN  `$sandra->tableReference` rf$incrementor ON l.id = rf$incrementor.`linkReferenced` AND rf$incrementor.idConcept = $concept->idConcept \n";
 
 
 
@@ -207,9 +247,9 @@ abstract class FactoryBase
 
 
         $sql = " CREATE OR REPLACE VIEW `" . $sandra->tablePrefix . "_view_$name` AS SELECT l.idConceptStart unid $fieldList ,
-                    FROM_UNIXTIME(rf.value) updated FROM $sandra->linkTable l LEFT JOIN   $sandra->tableReference rf ON l.id = rf.`linkReferenced` AND rf.idConcept = $creationTimestamp
+                    FROM_UNIXTIME(rf.value) updated FROM $sandra->linkTable l LEFT JOIN    `$sandra->tableReference` rf ON l.id = rf.`linkReferenced` AND rf.idConcept = $creationTimestamp
                      \n $SQLviewFilterJoin $filters
-                     WHERE $SQLviewFilterCondition l.idConceptLink = $entityReferenceContainer AND l.idConceptTarget = $containedUnid ";
+                     WHERE $SQLviewFilterCondition l.idConceptLink = $entityReferenceContainer AND l.idConceptTarget = $containedUnid AND l.flag != $sandra->deletedUNID";
         DatabaseAdapter::executeSQL($sql);
         return $this;
 
@@ -246,6 +286,32 @@ abstract class FactoryBase
 
         return $portableFactory ;
 
+
+    }
+
+    public function setSuperUser($boolean)
+    {
+
+        $this->su = $boolean;
+        $this->conceptManager = new ConceptManager($this->su, $this->system);
+
+    }
+
+    public function destroy(){
+
+       unset($this->system);
+       $this->conceptManager->destroy();
+       unset($this->conceptManager);
+
+        /** @var Displayer $displayer */
+        $displayer = $this->displayer;
+        $displayer->mainFactory = null ;
+
+        foreach ($displayer->factoryArray as $key=> $factory){
+
+            if ($factory == $this) $displayer->factoryArray[$key] = null ;
+        }
+        $displayer->displayType->destroy();
 
     }
 

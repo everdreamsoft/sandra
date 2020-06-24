@@ -22,15 +22,13 @@ class Entity implements Dumpable
     public $entityId ; // The is the id of the table link
     public $entityRefs ; /** @var $entityRefs Reference[] */
     public $dataStorage ;
+    public $isForeign = false ;
 
     public $system ;
 
     public function __construct($sandraConcept,$sandraReferencesArray,$factory,$entityId,$conceptVerb,$conceptTarget,System $system){
 
         $this->system = $system ;
-
-
-
 
         if(is_array($sandraReferencesArray)) {
             foreach ($sandraReferencesArray as $sandraReferenceConceptId => $sandraReferenceValue) {
@@ -55,6 +53,8 @@ class Entity implements Dumpable
         $this->entityId = $entityId;
         $this->factory = $factory;
 
+
+
         /** @var $sandraConcept Concept */
 
         $this->subjectConcept = $sandraConcept;
@@ -65,6 +65,7 @@ class Entity implements Dumpable
         /** @var $sandraConcept Concept */
 
         if(is_string($sandraConcept)) {return new ForeignEntity($sandraConcept,$sandraReferencesArray,$factory,$entityId,$system);}
+
 
         $sandraConcept->addEntity($this);
 
@@ -115,28 +116,38 @@ class Entity implements Dumpable
     public function getJoinedEntities($joinVerb){
 
         $return = null;
+        $entities = array();
 
         $verbConceptId = CommonFunctions::somethingToConceptId($joinVerb,$this->system);
         //No joined data
         if (!isset($this->subjectConcept->tripletArray[$verbConceptId]))return null ;
 
+        $joindedConceptIds = $this->subjectConcept->tripletArray[$verbConceptId];
 
-        // $joinedConcept = $this->system->conceptFactory->getConceptFromId($joindedConceptId);
 
-        foreach ($this->subjectConcept->tripletArray[$verbConceptId] as $joinedConceptId){
+        /** @var $factory EntityFactory */
 
-            $joinedConcept = $this->system->conceptFactory->getConceptFromId($joinedConceptId);
-            if (!is_array($joinedConcept->entityArray )) continue ;
-            foreach ($joinedConcept->entityArray as $entVerb=>$entTarget){
-                foreach ($entTarget as $targetKey => $entity){
-                    $return[] = $entity;
-                }
+        $factory = $this->factory;
+
+        if (!isset($factory->joinedFactoryArray[$verbConceptId])) return null;
+
+        //we find the joined factory
+        $joinedFactory = $factory->joinedFactoryArray[$verbConceptId];
+
+
+        /** @var $joinedFactory EntityFactory */
+        foreach ($joindedConceptIds ? $joindedConceptIds : array() as $conceptId) {
+
+            if (isset($joinedFactory->entityArray[$conceptId])) {
+                $entities[] = $joinedFactory->entityArray[$conceptId];
             }
-
-
         }
 
-        return $return ;
+        return $entities;
+
+
+
+
 
     }
 
@@ -192,7 +203,7 @@ class Entity implements Dumpable
 
     }
 
-    public function setBrotherEntity($brotherVerb,$brotherTarget,$referenceArray){
+    public function setBrotherEntity($brotherVerb,$brotherTarget,$referenceArray,$autocommit=true,$updateOnExistingVerb =false){
 
         $verbConceptId = CommonFunctions::somethingToConceptId($brotherVerb,$this->system);
         $targetConceptId = CommonFunctions::somethingToConceptId($brotherTarget,$this->system);
@@ -200,7 +211,13 @@ class Entity implements Dumpable
         /** @var $factory EntityFactory */
         $factory = $this->factory ;
 
-        $brotherEntity = CommonFunctions::createEntity($this->subjectConcept,$brotherVerb,$brotherTarget,$referenceArray,$factory,$this->system,true);
+        $brotherEntity = CommonFunctions::createEntity($this->subjectConcept,$brotherVerb,$brotherTarget,$referenceArray,$factory,$this->system,$autocommit,$updateOnExistingVerb);
+
+        //we need to remove in the factory the replaced update
+        if ($updateOnExistingVerb && isset($factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId])) {
+
+            array_pop($factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId]);
+        }
 
         $factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId][$targetConceptId] = $brotherEntity ;
 
@@ -223,14 +240,35 @@ class Entity implements Dumpable
 
     public function createOrUpdateRef($referenceShortname,$value): Reference{
 
+        //get old ref
+        $old = $this->get($referenceShortname);
+
         $referenceConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($referenceShortname);
         DatabaseAdapter::rawCreateReference($this->entityId,$referenceConcept->idConcept,$value,$this->system);
         $ref  = new Reference($referenceConcept,$this,$value,$this->system);
         $this->entityRefs[$referenceConcept->idConcept] = $ref ;
 
-        return $ref ;
+        $factory = $this->factory;
+        if (isset($factory->refMap[$referenceConcept->idConcept][$old])) {
+            $currentRefmap = $factory->refMap[$referenceConcept->idConcept][$old];
 
-        //Todo rebuild factory index
+            /** @var EntityFactory $factory */
+            foreach ($currentRefmap ? $currentRefmap : array() as $index => $entity) {
+
+                if ($entity == $this) {
+                    unset($factory->refMap[$referenceConcept->idConcept][$old][$index]);
+                    //if none existing anymore remove this reference
+                    if (empty($factory->refMap[$referenceConcept->idConcept][$old])) {
+                        unset($factory->refMap[$referenceConcept->idConcept][$old]);
+                    }
+                }
+            }
+        }
+
+        $factory->refMap[$referenceConcept->idConcept][$value][] = $this;
+
+
+        return $ref ;
 
 
     }
@@ -250,15 +288,16 @@ class Entity implements Dumpable
 
     public function getStorage(){
 
-       $this->dataStorage =  DatabaseAdapter::getStorage($this);
+        $this->dataStorage =  DatabaseAdapter::getStorage($this);
 
-       return $this->dataStorage ;
+        return $this->dataStorage ;
 
     }
 
-    public function setStorage($value){
+    public function setStorage($value, $autocommit = true)
+    {
 
-         DatabaseAdapter::setStorage($this,$value);
+        DatabaseAdapter::setStorage($this, $value, $autocommit);
         $this->dataStorage = $value ;
 
     }
@@ -284,6 +323,84 @@ class Entity implements Dumpable
         $meta['references'] = $references ;
 
         return $meta ;
+
+    }
+
+
+    /**
+     * @param bool $hard
+     */
+    public function delete($hard = false)
+    {
+
+
+        if (!$hard) {
+
+            $deletedConcept = CommonFunctions::somethingToConcept($this->system->deletedUNID, $this->system);
+
+            $this->flag($deletedConcept);
+
+        }
+
+
+    }
+
+
+    public function flag(Concept $flagConcept, $autocommit = true)
+    {
+
+
+        DatabaseAdapter::rawFlag($this, $flagConcept, $this->system, $autocommit);
+
+
+    }
+
+    public function isForeign()
+    {
+
+
+       return $this->isForeign ;
+
+
+    }
+
+    public function getDisplayRef()
+    {
+
+        $references = array();
+
+
+        foreach ($this->entityRefs as $key => $value) {
+            /** @var $value Reference */
+
+            $references[$value->refConcept->dumpMeta()] = $value->dumpMeta();
+        }
+
+        return $references;
+
+
+    }
+
+
+
+    public function destroy(){
+
+        $this->system = null ;
+        $this->factory = null ;
+
+
+
+        $this->subjectConcept = null ;
+        $this->verbConcept = null ;
+        $this->targetConcept = null ;
+
+        foreach ($this->entityRefs as $ref){
+
+            $ref->destroy();
+            $ref = null ;
+
+        }
+
 
     }
 

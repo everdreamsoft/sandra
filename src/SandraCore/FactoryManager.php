@@ -13,11 +13,14 @@ class FactoryManager
 {
 
     public $sandraInstance ;
+    public $factoryRegistry = array() ;
 
     public function __construct(System $sandraInstance)
     {
 
         $this->sandraInstance = $sandraInstance ;
+
+
 
     }
 
@@ -36,6 +39,36 @@ class FactoryManager
 
 
         return $factory ;
+
+
+    }
+
+    public function register(EntityFactory $factory)  {
+
+        $this->factoryRegistry[] = $factory;
+
+
+
+
+        return $factory ;
+
+
+    }
+
+
+    public function destroy()  {
+
+        foreach ($this->factoryRegistry as $factory){
+            $factory->destroy();
+
+        }
+        $this->factoryRegistry = null;
+        unset($this->sandraInstance);
+
+
+
+
+
 
 
     }

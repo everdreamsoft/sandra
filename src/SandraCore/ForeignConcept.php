@@ -12,6 +12,7 @@ namespace SandraCore;
 class ForeignConcept extends Concept
 {
 
+
     public function setConceptId($value)
     {
 

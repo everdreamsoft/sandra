@@ -58,15 +58,24 @@ $createdConstellation = 'Cetus';
         $this->assertEquals($createdConstellation,$constellationName,'Error while joining factories');
 
 
-
-        $constellationsFactory->createNew(array('name'=>'Cetus','distance[ly]'=>11.74));
+        //  $constellationsFactory->createNew(array('name'=>'Cetus','distance[ly]'=>11.74));
         $constellationsFactory->createNew(array('name'=>'Aquarius','distance[ly]'=>15));
         $constellationsFactory->createNew(array('name'=>'Eridanus','distance[ly]'=>20));
 
 
+        $yzCeti = $starFactory->first('name', 'YZ Ceti');
+        $constellationsOfCeti = $yzCeti->getJoinedEntities("belongToConstellation");
+        $planetOfCeti = $yzCeti->getJoinedEntities("illuminePlanet");
+
+        $empty = $yzCeti->getJoinedEntities("shouldBeEmpty");
+
+        $this->assertCount(1, $constellationsOfCeti, 'cannot get joined entities');
+        $this->assertCount(2, $planetOfCeti, 'cannot get joined entities');
 
 
-        $dataArray = array('name'=>'Aquarius','distance[ly]'=>11.74);
+
+
+
         //$constellation = $entityFactory->createNew($dataArray);
 
 

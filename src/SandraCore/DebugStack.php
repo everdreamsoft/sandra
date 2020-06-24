@@ -1,6 +1,6 @@
 <?php
 
-namespace sandraCore;
+namespace SandraCore;
 
 /**
  * Includes executed SQLs in a Debug Stack.

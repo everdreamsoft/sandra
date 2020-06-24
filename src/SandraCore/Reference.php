@@ -85,5 +85,18 @@ class Reference implements Dumpable
         
     }
 
+    public function destroy()
+    {
+
+       $this->system = null ;
+
+        $this->refConcept = null;
+        $this->refEntity = null;
+        $this->refValue = null;
+        $this->system = null ;
+
+
+    }
+
 
 }

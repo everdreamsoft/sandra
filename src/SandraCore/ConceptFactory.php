@@ -12,8 +12,8 @@ namespace SandraCore;
 
 class ConceptFactory
 {
-    private  $conceptMapFromId;
-    private $system ;
+    private  $conceptMapFromId = array();
+    public $system ;
 
     public function __construct(System $system)
     {
@@ -138,6 +138,19 @@ class ConceptFactory
         }
 
         return $concept;
+    }
+
+    public function destroy(){
+
+
+        $this->system = null ;
+        foreach ($this->conceptMapFromId as $concept){
+
+            $concept->destroy();
+            $concept = null ;
+
+        }
+
     }
 
     

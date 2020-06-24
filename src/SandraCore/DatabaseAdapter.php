@@ -100,34 +100,38 @@ class DatabaseAdapter{
 //if the link is existing and we try to update it instead of adding a new. For example card - set rarity - rare and we want to change the rarity
 //and not add a new link
         if ($udateOnExistingLK == 1) {
-            echo('updating');
 
-            $sql = "SELECT id FROM $tableLink WHERE idConceptStart = $conceptSubject AND idConceptLink = $conceptVerb AND flag != $deletedUNID";
+
+            $sql = "SELECT id FROM $tableLink WHERE idConceptStart = $conceptSubject AND idConceptLink = $conceptVerb AND flag != $system->deletedUNID";
 
             $result = $pdo->query($sql);
 
-            $row = $result->fetchAll(PDO::FETCH_ASSOC) ;
+            $rows = $result->fetchAll(PDO::FETCH_ASSOC);
 
-            $updateID = $row['id'];
+            //$updateID = $row['id'];
+
+            if ($rows) {
+                $lastRow = end($rows);
+                $updateID = $lastRow['id'];
+
+                $sql = "UPDATE $tableLink SET idConceptTarget = $conceptTarget  WHERE id = $updateID";
+
+
+                try {
+                    $result = $pdo->query($sql);
+                } catch (PDOException $exception) {
+                    System::logDatabaseEnd($exception->getMessage());
+                    System::sandraException($exception);
+                    return;
+                }
+
+
+                return $updateID;
+            }
+
         }
 
-        if ($updateID) {
 
-            $sql = "UPDATE $tableLink SET idConceptTarget = $conceptTarget  WHERE id = $updateID";
-
-
-            try {
-                $result = $pdo->query($sql);
-            }
-            catch(PDOException $exception){
-                System::logDatabaseEnd($exception->getMessage());
-                System::sandraException($exception);
-                return ;
-            }
-
-
-            return $updateID;
-        }
 
         $sql = "INSERT INTO $tableLink (idConceptStart ,idConceptLink ,idConceptTarget,flag) VALUES ('$conceptSubject', '$conceptVerb', '$conceptTarget',0) ON DUPLICATE KEY UPDATE flag = 0, id=LAST_INSERT_ID(id)";
 
@@ -151,16 +155,23 @@ class DatabaseAdapter{
     }
 
 
-    public static function setStorage(Entity $entity,$value){
+    public static function setStorage(Entity $entity, $value, $autocommit = true)
+    {
 
 
         $pdo = System::$pdo->get();
         $tableStorage = $entity->system->tableStorage ;
 
+        if (!self::$transactionStarted && $autocommit == false) {
+            $pdo->beginTransaction();
+            self::$pdo = $pdo;
+            self::$transactionStarted = true;
 
 
+        }
 
-        $sql = "INSERT INTO $tableStorage (linkReferenced ,`value` ) VALUES (:linkId,  :storeValue) ON DUPLICATE KEY UPDATE  linkReferenced=LAST_INSERT_ID(linkReferenced)";
+
+        $sql = "INSERT INTO $tableStorage (linkReferenced ,`value` ) VALUES (:linkId,  :storeValue) ON DUPLICATE KEY UPDATE value = :storeValue";
 
 
 
@@ -230,6 +241,41 @@ class DatabaseAdapter{
 
     }
 
+
+    public static function rawFlag(Entity $entity, Concept $flag, System $system, $autocommit = true)
+    {
+
+
+        $pdo = System::$pdo->get();
+
+        $tableLink = $system->linkTable;
+
+        if (!self::$transactionStarted && $autocommit == false) {
+            $pdo->beginTransaction();
+            self::$pdo = $pdo;
+            self::$transactionStarted = true;
+
+
+        }
+
+
+        $sql = "UPDATE $tableLink SET flag = $flag->idConcept  WHERE id = $entity->entityId";
+
+        try {
+            $pdoResult = $pdo->prepare($sql);
+            System::logDatabaseStart($sql);
+            $pdoResult->execute();
+        } catch (PDOException $exception) {
+            System::logDatabaseEnd($exception->getMessage());
+            System::sandraException($exception);
+            return;
+        }
+
+        System::logDatabaseEnd($sql);
+
+
+    }
+
     public static function rawCreateConcept($code, System $system,$autocommit = true){
 
 
@@ -276,7 +322,7 @@ class DatabaseAdapter{
         $tableLink = $system->linkTable;
 
 
-        $comma_separated = implode(",", $_SESSION['accessToFiles']);
+        //$comma_separated = implode(",", $_SESSION['accessToFiles']);
 
 
 //echoln($comma_separated.'comme separated');
@@ -362,14 +408,32 @@ OR idConceptLink NOT IN ( SELECT idConceptStart FROM `$tableLink` WHERE idConcep
         $limitSQL = '' ;
         $tableReference = $system->tableReference ;
 
+
+        if (!$referenceUNID) $referenceUNID = 'IS NOT NULL';
+
+        if ($referenceUNID != 'IS NOT NULL' && !is_numeric($referenceUNID)) $referenceUNID = CommonFunctions::somethingToConceptId($referenceUNID, $system);
+
+        if ($conceptLinkConcept != '')
+            $conceptLinkConcept = CommonFunctions::somethingToConceptId($conceptLinkConcept, $system);
+
+        if ($conceptTargetConcept != '')
+            $conceptTargetConcept = CommonFunctions::somethingToConceptId($conceptTargetConcept, $system);
+
+        if ($referenceUNID != 'IS NOT NULL')
+            $referenceUNID = CommonFunctions::somethingToConceptId($referenceUNID, $system);
+
+
+
         $pdo = System::$pdo->get();
 
 
         $tableLink = $system->linkTable ;
         $i=0;
+        $bindParamArray = array();
 
         //we are building an OR statement if the re are different value to search
         if (is_array($valueToSearch)) {
+            if (empty($valueToSearch)) return array();
 
             $initialStatement = true;
             $orStatement = '';
@@ -387,7 +451,11 @@ OR idConceptLink NOT IN ( SELECT idConceptStart FROM `$tableLink` WHERE idConcep
 
             $valueToSearchStatement =  "(value = :value_0".$orStatement  .")";
             $bindParamArray["value_0"] = $valueToSearch[0] ;
-        } else {
+        }else if ($valueToSearch === true){
+            $valueToSearchStatement = 'value IS NOT NULL';
+        }
+
+        else {
             //$valueToSearch = mysqli_real_escape_string($dbLink, $valueToSearch);
             $valueToSearchStatement = "value = :value_$i";
             $bindParamArray["value_$i"] = $valueToSearch ;
@@ -421,6 +489,7 @@ OR idConceptLink NOT IN ( SELECT idConceptStart FROM `$tableLink` WHERE idConcep
 	SELECT * FROM `$tableReference`, $tableLink 
 	WHERE $valueToSearchStatement 
 	AND `$tableReference`.idConcept $equalSeparator $referenceUNID
+	AND `$tableLink`.flag != $system->deletedUNID
 	AND `$tableReference`.linkReferenced = $tableLink.id 
 	$linkConceptSQL $targetConceptSQL $randomSQL $limitSQL 
 	

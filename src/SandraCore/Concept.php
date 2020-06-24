@@ -120,7 +120,9 @@ class Concept extends DatagraphUnit implements Dumpable
         //look at the followup object
 
 
-        $this->tripletArray = DatabaseAdapter::rawGetTriplets($this->idConcept, 0, 0, 0, 1);
+        $this->tripletArray = DatabaseAdapter::rawGetTriplets($this->system,$this->idConcept, 0, 0, 0, 1);
+
+        return $this->tripletArray ;
 
     }
 
@@ -134,19 +136,18 @@ class Concept extends DatagraphUnit implements Dumpable
         $refs = $conceptManager->getReferences(null,null,null,null,1);
 
         $this->referenceArray = $refs ;
-
-        //die(print_r($refs));
+        return $refs;
 
 
 
     }
 
 
-    public function createTriplet(Concept $verb, Concept $target, array $sandraRefArray = null)
+    public function createTriplet(Concept $verb, Concept $target, array $sandraRefArray = null, $updateOnExistingLk = 0, $autocommit = true)
     {
 
         //Todo add the reference
-        $link = createLink($this->idConcept,$verb->idConcept,$target->idConcept);
+        $link = DatabaseAdapter::rawCreateTriplet($this->idConcept, $verb->idConcept, $target->idConcept, $this->system, $updateOnExistingLk, $autocommit);
 
     }
 
@@ -230,6 +231,14 @@ class Concept extends DatagraphUnit implements Dumpable
 
             return $output ;
         }
+
+    /**
+     * @return mixed
+     */
+    public function destroy()
+    {
+        $this->system = null ;
+    }
 
 
 

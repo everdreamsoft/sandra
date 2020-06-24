@@ -24,11 +24,9 @@ class EntityFactory extends FactoryBase implements Dumpable
     public $populated; //is the factory populated from database
     public $foreignPopulated = false; //is full if we got all the entities without the filter
     public $populatedFull = false; //is full if we got all the entities without the filter
-    private $su = true; //is the factory super user status
+
     private $indexUnid;
     public $tripletRetreived;
-
-
 
 
     public $entityReferenceContainer = 'contained_in_file';
@@ -55,7 +53,8 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     public $brotherEntities ; //to delete ?
     public $brotherEntitiesArray = array();
-    public $brotherMap ;
+    public $brotherMap; // in order to store the the path from source entities with their verb and target for example Simon is friend with Alexis and we want to get every entity friend with alexis
+    public $brotherByTarget;
     public $brotherEntitiesVerified = null;
 
     public $joinedFactoryArray = array(); /* @var $joinedFactoryArray EntityFactory[] */
@@ -86,6 +85,8 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         parent::__construct($system);
 
+
+
         $this->entityIsa = $entityIsa;
         $this->entityContainedIn = $entityContainedIn;
         $this->factoryTable = $system->tableSuffix;
@@ -95,24 +96,14 @@ class EntityFactory extends FactoryBase implements Dumpable
         $this->system = $system;
         $this->sc = $system->systemConcept;
 
-        $this->conceptManager = new ConceptManager($this->su, $this->system);
 
         $this->initDisplayer();
 
+
         $this->refMap = array();
 
-
-
-
     }
 
-    public function setSuperUser($boolean)
-    {
-
-        $this->su = $boolean;
-        $this->conceptManager = new ConceptManager($this->su, $this->system);
-
-    }
 
 
     public function mergeRefFromBrotherEntities($brotherVerb, $brotherTarget)
@@ -123,17 +114,21 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     }
 
+    public function countEntitiesOnRequest():int {
+
+        $entityReferenceContainer = $this->sc->get($this->entityReferenceContainer);
+        $this->buildFilters();
+       $count = $this->conceptManager->getConceptsFromLinkAndTarget($entityReferenceContainer, $this->sc->get($this->entityContainedIn), null, null, null, true);
+
+       return $count ;
+    }
 
 
-
-    /**
-     * @return Entity[]
-     */
-    public function populateLocal($limit = 10000,$offset = 0,$asc='ASC')
+    private function buildFilters()
     {
 
         $entityArray = array();
-        $filter = 0 ;
+        $filter = array();
 
         //do we filter by isa
         if ($this->entityIsa) {
@@ -163,6 +158,20 @@ class EntityFactory extends FactoryBase implements Dumpable
         if ($filter !== 0) {
             $this->conceptManager->setFilter($filter);
         }
+
+
+
+    }
+
+    /**
+     * @return Entity[]
+     */
+    public function populateLocal($limit = 10000,$offset = 0,$asc='ASC')
+    {
+
+        $entityArray = array();
+
+        $this->buildFilters();
 
         $entityReferenceContainer = $this->sc->get($this->entityReferenceContainer);
 
@@ -260,23 +269,61 @@ class EntityFactory extends FactoryBase implements Dumpable
         return $this->entityArray;
 
     }
+
+    /**
+     * @param $search
+     * @param int $asConcept
+     * @return Entity[]
+     */
+
+    public function populateFromSearchResults($search, $asConcept = 0)
+    {
+
+        $conceptsArray = DatabaseAdapter::searchConcept($search, $asConcept, $this->system, $this->entityReferenceContainer, $this->entityContainedIn);
+        if (!$conceptsArray) return array();
+        $this->conceptArray = $conceptsArray;
+        $this->populateLocal();
+
+        return $this->getEntities();
+
+
+    }
+
     /**
      * @return Entity[]
      */
-    public function populateBrotherEntities($verb,$target=null)
+    public function populateBrotherEntities($verb = 0, $target = null, $force = false)
     {
-
         $entityArray = array();
         if($target===null) $target = 0 ;
+        $verb = CommonFunctions::somethingToConceptId($verb, $this->system);
+        if ($target) $target = CommonFunctions::somethingToConceptId($target, $this->system);
+
+        if (!$force) {
+            //has brother already been verified ?
+            //this particular query not
+            if (isset($this->brotherEntitiesVerified[$verb][$target])) {
+                return $this->entityArray;
+            }
+
+            if (isset($this->brotherEntitiesVerified[0][0])) {
+                return $this->entityArray;
+            }
+
+            //all verb allready loaded
+            if ($verb && isset($this->brotherEntitiesVerified[$verb][0])) {
+                return $this->entityArray;
+            }
+
+            //all target already loaded
+            if ($target && isset($this->brotherEntitiesVerified[0][$target])) {
+                return $this->entityArray;
+            }
+        }
 
 
-        //has brother already been verified ?
-        // if (isset($this->brotherEntitiesVerified[$this->sc->get($verb)][$target]))
-        //   return
 
-
-
-        $refs = $this->conceptManager->getReferences($this->sc->get($verb), $this->sc->get($target),null,0,1);
+        $refs = $this->conceptManager->getReferences($verb, $target, null, 0, 1);
 
         $sandraReferenceMap = array();
 
@@ -285,10 +332,16 @@ class EntityFactory extends FactoryBase implements Dumpable
             foreach ($refs as $keyConcept => $valueArray) {
                 foreach ($valueArray as $linkId => $value) {
 
+
                     $concept = $this->system->conceptFactory->getConceptFromId($keyConcept);
                     $entityId = $linkId;
                     $refArray = null;
+
+                    //do we have this factory brother
+                    if ($value['idConceptTarget'] == $this->system->systemConcept->get($this->entityContainedIn)) continue;
+
                     $entityData[$entityId]['idConceptTarget'] = $value['idConceptTarget'];
+                    $entityData[$entityId]['idConceptLink'] = $value['idConceptLink'];
 
 
                     //each reference
@@ -310,7 +363,8 @@ class EntityFactory extends FactoryBase implements Dumpable
                     //we build resulting entities
                     foreach ($refArray as $entityId => $entityRefs) {
 
-                        $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($verb);
+
+                        $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($entityData[$entityId]['idConceptLink']);
                         $entityTarget = $this->system->conceptFactory->getConceptFromId($entityData[$entityId]['idConceptTarget']);
 
                         $entity = new Entity($concept, $entityRefs, $this, $entityId, $entityVerb, $entityTarget, $this->system);
@@ -328,14 +382,32 @@ class EntityFactory extends FactoryBase implements Dumpable
         }
 
         $this->addBrotherEntities($entityArray, $sandraReferenceMap);
-        $this->brotherEntitiesVerified[$this->sc->get($verb)][$target];
+        $this->brotherEntitiesVerified[$verb][$target] = 1;
         return $this->entityArray;
 
     }
 
 
-    public function populatePartialEntity($referenceOnVerb, $referenceOnTarget)
+    /**
+     * @param int $brotherVerb
+     * @param int $brotherTarget
+     * @return Entity[]
+     */
+    public function getEntitiesWithBrother($brotherVerb = 0, $brotherTarget = 0)
     {
+
+        $brotherVerb = CommonFunctions::somethingToConceptId($brotherVerb, $this->system);
+        $brotherTarget = CommonFunctions::somethingToConceptId($brotherTarget, $this->system);
+
+        if ($brotherTarget && isset ($this->brotherMap[$brotherVerb][$brotherTarget]))
+            return $this->brotherMap[$brotherVerb][$brotherTarget];
+        else if ($brotherVerb && isset ($this->brotherMap[$brotherVerb]) && $brotherTarget == 0)
+            return $this->brotherMap[$brotherVerb][0];
+
+        return null;
+
+
+
 
 
     }
@@ -356,7 +428,12 @@ class EntityFactory extends FactoryBase implements Dumpable
         } else {
 
             $this->entityArray = $entityArray;
-            $this->sandraReferenceMap = $referenceMap;
+            if (is_array($referenceMap)) {
+                //reference map should be investigated
+                //$this->sandraReferenceMap = $this->sandraReferenceMap + $referenceMap;
+                $this->sandraReferenceMap = $referenceMap;
+            }
+
         }
 
         //we nullify the fact that we loaded triplets
@@ -406,6 +483,7 @@ class EntityFactory extends FactoryBase implements Dumpable
         if (!is_array($entityArray)) return;
         if (!is_array($referenceMap)) return;
 
+
         foreach ($entityArray as $entity) {
             /** @var Entity $entity */
             $subject = $entity->subjectConcept->idConcept ;
@@ -413,6 +491,12 @@ class EntityFactory extends FactoryBase implements Dumpable
             $target = $entity->targetConcept->idConcept ;
 
             $this->brotherEntitiesArray[$subject][$verb][$target] = $entity ;
+            //build map
+            $this->brotherMap[$verb][$target][$subject] = $this->entityArray[$subject];
+            $this->brotherMap[0][$target][$subject] = $this->entityArray[$subject]; // With any verb to target
+            $this->brotherMap[$verb][0][$subject] = $this->entityArray[$subject]; //With a verb with any target
+            $this->brotherByTarget[$target][0][$subject] = $this->entityArray[$subject];
+            $this->brotherByTarget[$target][$verb][$subject] = $this->entityArray[$subject];
 
         }
 
@@ -529,7 +613,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         //get the map of reference that should be similar
         $localRefMap = $this->getRefMap($localRefConcept);
-        //$foreignRefMap = $this->foreignAdapter->getRefMap($foreignRef);
+        $foreignRefMap = $this->foreignAdapter->getRefMap($foreignRefConcept);
 
         //return if no refmap
         if (empty($localRefMap))
@@ -598,9 +682,70 @@ class EntityFactory extends FactoryBase implements Dumpable
     }
 
 
-    public function update($entity, $dataArray)
+    public function update(Entity $entity, $dataArray, $linkArray = null)
     {
-        //if()
+        foreach ($dataArray ? $dataArray : array() as $keyData => $valueData) {
+
+
+            $localData = $entity->get($keyData);
+            if ($localData != $valueData) {
+
+                $entity->createOrUpdateRef($keyData, $valueData);
+
+
+            }
+
+        }
+
+        //do we have brother entities ?
+        foreach ($linkArray ? $linkArray : array() as $verb => $valueToTarget) {
+
+            $valueTargetArray = array();
+
+            if ($valueToTarget instanceof Entity) {
+                $valueToTarget = $valueToTarget->subjectConcept->idConcept;
+
+            }
+
+            //Each target
+            if (!is_array($valueToTarget)) {
+                //in case we have only one target for a link
+                $valueTargetArray[$valueToTarget] = $valueToTarget;
+            } else {
+                $valueTargetArray = $valueToTarget;
+            }
+
+            foreach ($valueTargetArray ? $valueTargetArray : array() as $targetConcept => $targetArray) {
+                if (!($this->tripletRetreived)) $this->getTriplets();
+
+
+                if (!is_array($targetArray)) {
+
+
+                    $targetArray = [$targetArray];
+
+
+                }
+
+                foreach ($targetArray as $singleTarget) {
+
+
+                    if (is_array($targetArray)) {
+                        $this->system->systemError(777, 'entityFactory', '2', 'Update on brother entity reference not supported');
+                        //TODO update brother reference
+
+                    } else {
+                        $targetConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($singleTarget);
+
+                        if (!isset($entity->subjectConcept->tripletArray[$targetConcept->idConcept]))
+                            //it's a simple data link without refrence
+                            $entity->setBrotherEntity($verb, $targetConcept, null);
+
+                    }
+                }
+
+            }
+        }
 
     }
 
@@ -613,11 +758,18 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         //Now we find if the object exists
 
-        if ($refmap[$refValue]) {
+        if (isset($refmap[$refValue])) {
+            /** @var Entity $foundEntity */
+
+            $foundEntity = end($refmap[$refValue]);
+
+
+            $this->update($foundEntity, $dataArray, $linkArray);
 
 
         } //concept doens't exists
         else {
+            $dataArray[$refShortname] = $refValue;
 
             $this->createNewWithAutoIncrementIndex($dataArray, $linkArray);
         }
@@ -731,6 +883,8 @@ class EntityFactory extends FactoryBase implements Dumpable
                     }
 
                     $linkId = DatabaseAdapter::rawCreateTriplet($conceptId, $this->sc->get($verb), $this->sc->get($targetName), $this->system,false);
+                    
+                    
                     //Now we will add reference on additional links if any
                     if (!empty($extraRef)) {
                         foreach ($extraRef as $refname => $refValue) {
@@ -861,6 +1015,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         $refmap = $this->getRefMap($referenceConcept);
 
+
         if (is_array($refmap) && key_exists($referenceValue, $refmap)) {
 
             //If we have a single entity make sure to return an array
@@ -982,7 +1137,26 @@ class EntityFactory extends FactoryBase implements Dumpable
         $this->tripletRetreived = true;
     }
 
+    public function destroy()
+    {
+        parent::destroy();
 
+        //unlink entities
+        foreach ($this->entityArray as $entity){
+
+            $entity->destroy();
+
+        }
+
+        $this->brotherEntities = null;
+        $this->brotherMap;
+        $this->brotherTarget = null;
+        $this->joinedFactoryArray = null; //should we destroy each joined factory as well ?
+        $this->sandraReferenceMap = null;
+        $this->refMap = null;
+
+
+    }
 
 
 }

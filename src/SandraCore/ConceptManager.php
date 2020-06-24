@@ -3,6 +3,7 @@
 namespace SandraCore;
 
 use PDO;
+use phpDocumentor\Reflection\Types\Boolean;
 
 class ConceptManager
 {
@@ -16,6 +17,8 @@ class ConceptManager
     private $deletedUnid;
     public $conceptArray = array();
     public $mainQuerySQL = null ;
+    private $bypassFlags = false;
+    private $lastLinkJoined = null;
 
     public function __construct($su = 1, System $system, $tableLinkParam = 'default', $tableReferenceParam = 'default')
     {
@@ -55,6 +58,12 @@ class ConceptManager
 
     }
 
+    public function bypassFlags(bool $boolean)
+    {
+        $this->bypassFlags = $boolean;
+
+    }
+
     public function setFilter($value, $limit = 0)
     {
         if (!is_array($value)) {
@@ -82,6 +91,12 @@ class ConceptManager
 
             $tableCounter++;
 
+            $this->lastLinkJoined = 'link' . $tableCounter;
+
+            if (!$this->bypassFlags)
+                $flag = "AND link$tableCounter.flag != $deletedUNID";
+            else $flag = '';
+
 
             if ($targetConcept['lktg'] == 0 && $targetConcept['lklk'] == 0)
                 continue;
@@ -101,24 +116,25 @@ class ConceptManager
                 else
                     $logic = 'AND';
 
+
                 //it's an inclusion filter
                 if ($targetConcept['lktg'] == 0) {
 
 
-                    $join .= " JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
-                    $conditionnalClause .= " AND link$tableCounter.flag != $deletedUNID AND link$tableCounter.idConceptLink = $targetConcept[lklk]";
+                    $join .= "JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
+                    $conditionnalClause .= "  $flag  IN($targetConcept[lklk])";
                 } //any filter if the link equal 0 then make the filter on ANY link
                 else if ($targetConcept['lklk'] == 0) {
 
 
                     $join .= " JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
-                    $conditionnalClause .= " AND link$tableCounter.flag != $deletedUNID AND link$tableCounter.$secondaryConcept =$targetConcept[lktg]";
+                    $conditionnalClause .= " $flag AND link$tableCounter.$secondaryConcept IN($targetConcept[lktg])";
                 } else {
 
 
                     $join .= " JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
-                    $conditionnalClause .= " AND link$tableCounter.flag != $deletedUNID AND 
-			link$tableCounter.$secondaryConcept =$targetConcept[lktg] AND link$tableCounter.idConceptLink = $targetConcept[lklk]";
+                    $conditionnalClause .= " $flag AND 
+			link$tableCounter.$secondaryConcept IN($targetConcept[lktg]) AND link$tableCounter.idConceptLink IN($targetConcept[lklk])";
                 }
             } else {
                 //eclusion filter
@@ -126,8 +142,8 @@ class ConceptManager
                 if ($targetConcept['lktg'] == 0) {
 
                     $join .= " LEFT JOIN  $this->tableLink link$tableCounter ON link$tableCounter.idConceptStart = l.idConceptStart 
-			 						  AND link$tableCounter.flag != $deletedUNID
-			 						  AND link$tableCounter.idConceptLink = $targetConcept[lklk]";
+			 						  $flag
+			 						  AND link$tableCounter.idConceptLink IN($targetConcept[lklk])";
                     $conditionnalClause .= " 
 									  AND link$tableCounter.idConceptLink IS NULL";
                 } //any filter if the link equal 0 then make the filter on ANY link
@@ -135,17 +151,17 @@ class ConceptManager
 
 
                     $join .= " LEFT JOIN  $this->tableLink link$tableCounter ON link$tableCounter.idConceptStart = l.idConceptStart 
-					  AND link$tableCounter.flag != $deletedUNID
-					  AND link$tableCounter.idConceptTarget =$targetConcept[lktg] ";
+					  $flag
+					  AND link$tableCounter.idConceptTarget IN($targetConcept[lktg]) ";
                     $conditionnalClause .= " 
 									 AND link$tableCounter.idConceptTarget IS NULL";
                 } else {
 
 
                     $join .= " LEFT JOIN  $this->tableLink link$tableCounter ON link$tableCounter.idConceptStart = l.idConceptStart 
-	 AND link$tableCounter.flag != $deletedUNID 
-			AND link$tableCounter.idConceptTarget = $targetConcept[lktg] 
-			AND link$tableCounter.idConceptLink = $targetConcept[lklk]";
+	 $flag 
+			AND link$tableCounter.idConceptTarget IN ($targetConcept[lktg]) 
+			AND link$tableCounter.idConceptLink  IN( $targetConcept[lklk])";
                     $conditionnalClause .= "
 			AND link$tableCounter.idConceptTarget IS NULL";
                 }
@@ -189,7 +205,7 @@ class ConceptManager
     }
 
     //Check the followup if something needs to be done
-    public function getConceptsFromLinkAndTarget($linkConcept, $targetConcept, $limit = 0, $asc = 'ASC',$offset = 0)
+    public function getConceptsFromLinkAndTarget($linkConcept, $targetConcept, $limit = 0, $asc = 'ASC',$offset = 0, $countOnly = false)
     {
         global $tableLink, $tableReference, $deletedUNID, $includeCid, $containsInFileCid, $dbLink;
 
@@ -227,13 +243,39 @@ class ConceptManager
             )";
         }
 
+        $lastLinkJoined = $this->lastLinkJoined;
 
-        $sql = "SELECT  l.idConceptStart, l.idConceptLink, l.`idConceptTarget` FROM  $this->tableLink l " .
+        if (!$this->lastLinkJoined) {
+            $lastLinkJoined = 'l';
+        }
+
+        //Due to a supposed MySQL optimizer bug we order by the last joined table
+        $orderBy = "ORDER BY $lastLinkJoined.idConceptStart";
+
+        $flag = '';
+
+        if (!$this->bypassFlags)
+            $flag = "AND l.flag != $deletedUNID";
+
+        //build selector
+        $selector = "SELECT  l.idConceptStart, l.idConceptLink, l.`idConceptTarget` ";
+
+        if ($countOnly)
+            $selector = "SELECT  COUNT(l.idConceptStart) AS result";
+
+
+
+
+
+
+
+
+        $sql = "$selector FROM  $this->tableLink l " .
             $this->filterJoin . "
 	WHERE l.idConceptLink = $linkConcept  
 	AND l.idConceptTarget = $targetConcept
-	AND l.flag != $deletedUNID 
-	" . $this->filterCondition . " $hideLinks ORDER BY l.idConceptStart $asc " . $limitSQL .$offsetSQL;
+	$flag
+	" . $this->filterCondition . " $hideLinks $orderBy $asc " . $limitSQL .$offsetSQL;
 
 
         // echoln( "su = $this->su access to file". $_SESSION['accessToFiles']);
@@ -253,6 +295,10 @@ class ConceptManager
 
 
         foreach ($pdoResult->fetchAll(PDO::FETCH_ASSOC) as $result) {
+
+            if ($countOnly)
+                return $result['result'] ;
+
             $idConceptStart = $result['idConceptStart'];
             $array[] = $idConceptStart;
             $this->concepts[] = new Concept($idConceptStart, $this->system);
@@ -287,11 +333,18 @@ class ConceptManager
             )";
         }
 
+
+        $flag = '';
+
+        if (!$this->bypassFlags)
+            $flag = "AND l.flag != $deletedUNID";
+
+
         $sql = "SELECT  l.idConceptStart, l.idConceptLink, l.`idConceptTarget` FROM  $this->tableLink l " .
             $this->filterJoin . "
 	
 	AND l.idConceptLink = $linkConcept
-	AND l.flag != $deletedUNID 
+	$flag 
 	" . $this->filterCondition . " $hideLinks ORDER BY l.idConceptStart DESC " . $limitSQL;
 
         if ($debug)
@@ -320,6 +373,7 @@ class ConceptManager
 
     public function getReferences($idConceptLink = 0, $idConceptTarget = 0, $refIdArray = null, $isTargetList = 0, $byTripletid = 0)
     {
+        global $deletedUNID;
 
         /*Note about $byTripletid. The goal is to patch the system if there are different reference on the same idConcept link the first version overight the changes. By adding the variable $byTripletid whe change the form of the result array
 
@@ -377,6 +431,10 @@ class ConceptManager
                 $filter .= " AND y.idConceptTarget = $idConceptTarget ";
             }
 
+            $flag = '';
+            if (!$this->bypassFlags)
+                $flag = "AND x.flag != $deletedUNID";
+
             $sql = "
 			SELECT *
   FROM `$this->tableReference` r
@@ -386,7 +444,7 @@ class ConceptManager
     ON y.id = r.linkReferenced 
    $refsFilter
    AND y.$masterCondition IN ($concepts) 
-   $filter";
+   $filter " . $flag;
             //AND flag != $deletedUNID";
 
 
@@ -507,6 +565,13 @@ class ConceptManager
 	AND l.flag != $deletedUNID 
 	" . $this->filterCondition . " $hideLink";
 
+
+    }
+
+    public function destroy(){
+
+        unset ($this->system) ;
+        unset ($this->pdo) ;
 
     }
 
