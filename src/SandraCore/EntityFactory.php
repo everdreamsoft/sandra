@@ -597,7 +597,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     /**
      *
      */
-    public function fuseRemoteEntity()
+    public function fuseRemoteEntity($updateFromRemote=false)
     {
 
         /* @var $localRefConcept $this->fuseForeignConcept */
@@ -647,6 +647,22 @@ class EntityFactory extends FactoryBase implements Dumpable
 
 
             if (isset($localOnThisRef->entityRefs) && isset($foreignOnThisRef->entityRefs)) {
+
+                //do we have a query for update ?
+                if ($updateFromRemote){
+                    echo "should change ";
+
+                    foreach ($foreignOnThisRef->entityRefs as $keyForeignRef => $valueForeign){
+                        if (!isset($localOnThisRef->entityRefs[$keyForeignRef])) continue ;
+
+                        if($localOnThisRef->entityRefs[$keyForeignRef]->refValue != $valueForeign->refValue){
+                            /* @var $localRef Reference */
+                            $localRef = $localOnThisRef->entityRefs[$keyForeignRef];
+                            $localRef->save($valueForeign->refValue);
+                        }
+                    }
+
+                }
 
                 $localOnThisRef->entityRefs = $localOnThisRef->entityRefs + $foreignOnThisRef->entityRefs;
 

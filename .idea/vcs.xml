@@ -24,6 +24,7 @@
     <mapping directory="$PROJECT_DIR$/vendor/sebastian/object-reflector" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/vendor/sebastian/recursion-context" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/vendor/sebastian/resource-operations" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/vendor/sebastian/type" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/vendor/symfony/polyfill-ctype" vcs="Git" />
   </component>
 </project>

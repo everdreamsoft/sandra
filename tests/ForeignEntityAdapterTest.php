@@ -123,7 +123,9 @@ final class ForeignEntityAdapterTest extends TestCase
 
         $vocabulary = array(
             'Visa' => 'visa',
-            'Title'=> 'Title'
+            'Title' => 'Title',
+            'Age' => 'age',
+            'First Name' => 'firstname'
         );
 
 
@@ -182,7 +184,9 @@ final class ForeignEntityAdapterTest extends TestCase
 
         $vocabulary = array(
             'Visa' => 'visa',
-            'Title' => 'Title'
+            'Title' => 'Title',
+            'Age' => 'age',
+            'First Name' => 'firstname'
         );
 
         $foreignAdapter->adaptToLocalVocabulary($vocabulary); // If after populate then fail
@@ -191,10 +195,11 @@ final class ForeignEntityAdapterTest extends TestCase
 
         $factory->setFuseForeignOnRef('Visa', 'visa', $vocabulary);
         $factory->mergeEntities('Visa', 'visa');
-        $factory->fuseRemoteEntity();
+        $factory->fuseRemoteEntity(true);
 
 
-        print_r($factory->dumpMeta());
+        print_r($factory->getDisplay('array'));
+        $this->assertEquals(1,1);
 
 
     }
