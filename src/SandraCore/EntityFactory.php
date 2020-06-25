@@ -650,7 +650,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
                 //do we have a query for update ?
                 if ($updateFromRemote){
-                    echo "should change ";
+
 
                     foreach ($foreignOnThisRef->entityRefs as $keyForeignRef => $valueForeign){
                         if (!isset($localOnThisRef->entityRefs[$keyForeignRef])) continue ;
