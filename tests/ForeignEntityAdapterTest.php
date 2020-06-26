@@ -198,7 +198,7 @@ final class ForeignEntityAdapterTest extends TestCase
         $factory->fuseRemoteEntity(true);
 
 
-        print_r($factory->getDisplay('array'));
+        print_r($factory->getDisplay('array',null,null,new \SandraCore\displayer\KilimanjaroDisplay(["additional"=>"meta"])));
         $this->assertEquals(1,1);
 
 
