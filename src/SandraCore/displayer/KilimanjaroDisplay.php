@@ -49,9 +49,10 @@ namespace SandraCore\displayer;
                     if(!is_object( $entity->entityRefs[$refConceptUnid])) continue ;
 
                     $returnArray[$refConceptName] = $entity->entityRefs[$refConceptUnid]->refValue;
-                    $dataArray[] = $returnArray ;
+
 
                 }
+                $dataArray[] = $returnArray ;
 
             }
         }
