@@ -118,9 +118,9 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         $entityReferenceContainer = $this->sc->get($this->entityReferenceContainer);
         $this->buildFilters();
-       $count = $this->conceptManager->getConceptsFromLinkAndTarget($entityReferenceContainer, $this->sc->get($this->entityContainedIn), null, null, null, true);
+        $count = $this->conceptManager->getConceptsFromLinkAndTarget($entityReferenceContainer, $this->sc->get($this->entityContainedIn), null, null, null, true);
 
-       return $count ;
+        return $count ;
     }
 
 
@@ -659,6 +659,8 @@ class EntityFactory extends FactoryBase implements Dumpable
             $foreignOnThisRef = reset($foreignOnThisRef);
 
 
+
+
             if (isset($localOnThisRef->entityRefs) && isset($foreignOnThisRef->entityRefs)) {
 
                 //do we have a query for update ?
@@ -666,7 +668,15 @@ class EntityFactory extends FactoryBase implements Dumpable
 
 
                     foreach ($foreignOnThisRef->entityRefs as $keyForeignRef => $valueForeign){
-                        if (!isset($localOnThisRef->entityRefs[$keyForeignRef])) continue ;
+
+                        if (!isset($localOnThisRef->entityRefs[$keyForeignRef])) {// the concept exist on remote not local
+                            if (is_numeric($keyForeignRef)) {
+                                //if the concept is mapped
+                                $localOnThisRef->createOrUpdateRef($this->system->systemConcept->getSCS($keyForeignRef), $valueForeign->refValue);
+                            }
+
+                            continue ;
+                        }
 
                         if($localOnThisRef->entityRefs[$keyForeignRef]->refValue != $valueForeign->refValue){
                             /* @var $localRef Reference */
@@ -912,8 +922,8 @@ class EntityFactory extends FactoryBase implements Dumpable
                     }
 
                     $linkId = DatabaseAdapter::rawCreateTriplet($conceptId, $this->sc->get($verb), $this->sc->get($targetName), $this->system,false);
-                    
-                    
+
+
                     //Now we will add reference on additional links if any
                     if (!empty($extraRef)) {
                         foreach ($extraRef as $refname => $refValue) {

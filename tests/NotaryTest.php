@@ -16,6 +16,9 @@ class NotaryTest extends TestCase
     public function testLog()
     {
 
+        $this->assertEquals(1,1);
+        return ;
+
         //die(TestService::class);
         $testDisplayer = new DisplayerTest();
         //$testDisplayer-

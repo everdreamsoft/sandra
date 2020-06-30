@@ -193,7 +193,6 @@ final class ForeignEntityAdapterTest extends TestCase
 
         $ent2 = $factory->foreignPopulate($foreignAdapter, 5);
 
-
         $factory->mergeEntities('Visa', 'visa');
         $factory->fuseRemoteEntity(true);
         $entities = $factory->getEntities();
@@ -201,6 +200,8 @@ final class ForeignEntityAdapterTest extends TestCase
 
         //did the age was updated ?
         $this->assertEquals($firstEntity->getReference('age')->refValue, 55);
+
+
 
 
     }
