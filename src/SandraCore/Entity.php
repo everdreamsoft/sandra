@@ -227,7 +227,8 @@ class Entity implements Dumpable
     }
 
 
-    public function getReference($referenceName){
+    public function getReference($referenceName): ?Reference
+    {
 
         $refId = $this->system->systemConcept->get($referenceName);
 

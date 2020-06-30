@@ -250,6 +250,17 @@ class EntityFactory extends FactoryBase implements Dumpable
 
                 }
 
+                //if the class is instanciable
+                try {
+                    $testClass = new \ReflectionClass($classname);
+                    if ($testClass->isAbstract()) {
+
+                        $classname = Entity::class;
+                    }
+                } catch (\ReflectionException $e) {
+                    $classname = Entity::class;
+                }
+
                 $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($entityReferenceContainer);
                 $entityTarget = $this->system->conceptFactory->getConceptFromShortnameOrId($this->entityContainedIn);
                 $entity = new $classname($concept, $refArray, $this, $entityId, $entityVerb, $entityTarget, $this->system);
@@ -566,6 +577,8 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     public function setFuseForeignOnRef($foreignRef, $localRefName,$vocabulary = null)
     {
+        //for now this is redudant
+
         /* doenst work yet
 
         if (is_array($vocabulary)) {
@@ -926,6 +939,17 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         }
 
+        //if the class is instanciable
+        try {
+            $testClass = new \ReflectionClass($classname);
+            if ($testClass->isAbstract()) {
+
+                $classname = Entity::class;
+            }
+        } catch (\ReflectionException $e) {
+            $classname = Entity::class;
+        }
+
         $createdEntity = new $classname($this->system->conceptFactory->getConceptFromId($conceptId),$dataArray,$this,$link,$conceptContainerConcept,$conceptContainedIn,$this->system);
         $concept = $createdEntity->subjectConcept;
 
@@ -1066,6 +1090,18 @@ class EntityFactory extends FactoryBase implements Dumpable
                     $entityId = $resultSet['entityId'];
 
                     $refArray[$referenceConcept->idConcept] = $resultSet['referenceValue'];
+
+                    //if the class is instanciable
+                    try {
+                        $testClass = new \ReflectionClass($classname);
+                        if ($testClass->isAbstract()) {
+
+                            $classname = Entity::class;
+                        }
+                    } catch (\ReflectionException $e) {
+                        $classname = Entity::class;
+                    }
+
 
                     $entity = new $classname($concept, $refArray, $this, $entityId, $entityVerb, $entityTarget, $this->system);
                     /** @var Entity $entity */
