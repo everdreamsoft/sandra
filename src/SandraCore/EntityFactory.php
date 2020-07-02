@@ -634,7 +634,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         foreach ($localRefMap as $key => $value) {
 
-
+            if (!$key) continue;
             $localOnThisRef = array();
             $foreignOnThisRef = array();
 
