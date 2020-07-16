@@ -6,14 +6,14 @@
  * Time: 17:02
  */
 
-namespace sandraCore;
+namespace SandraCore;
 
 
 class SandraDatabaseDefinition
 {
 
-    public static function createEnvTables($tableConcept,$tableTriplet,$tableReference,$tablestorage,$tableConf){
-
+    public static function createEnvTables($tableConcept, $tableTriplet, $tableReference, $tablestorage, $tableConf)
+    {
 
 
         $sql = "create table IF NOT EXISTS $tableConcept
