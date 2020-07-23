@@ -112,7 +112,7 @@ class Entity implements Dumpable
         $mainTarget = CommonFunctions::somethingToConceptId($joinedFactory->entityContainedIn,$this->system) ;
 
         //no joined entity
-        if (!isset($joinedConcept->entityArray[$mainVerb][$mainTarget]))return null ;
+        if (!isset($joinedConcept->entityArray[$mainVerb][$mainTarget])) return null;
 
         $joinedEntity = $joinedConcept->entityArray[$mainVerb][$mainTarget];
         return $joinedEntity->get($referenceName);
@@ -120,14 +120,19 @@ class Entity implements Dumpable
     }
 
 
-    public function getJoinedEntities($joinVerb){
+    /**
+     * @param $joinVerb
+     * @return Entity[]|null
+     */
+    public function getJoinedEntities($joinVerb)
+    {
 
         $return = null;
         $entities = array();
 
-        $verbConceptId = CommonFunctions::somethingToConceptId($joinVerb,$this->system);
+        $verbConceptId = CommonFunctions::somethingToConceptId($joinVerb, $this->system);
         //No joined data
-        if (!isset($this->subjectConcept->tripletArray[$verbConceptId]))return null ;
+        if (!isset($this->subjectConcept->tripletArray[$verbConceptId])) return null;
 
         $joindedConceptIds = $this->subjectConcept->tripletArray[$verbConceptId];
 
@@ -154,6 +159,7 @@ class Entity implements Dumpable
 
 
     }
+
 
     public function getBrotherEntity($brotherVerb,$brotherTarget=null){
 
@@ -406,7 +412,7 @@ class Entity implements Dumpable
 
     }
 
-    protected function getEntity(): Entity
+    protected function _getEntity(): Entity
     {
         return $this;
     }

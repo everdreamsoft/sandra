@@ -20,11 +20,11 @@ trait EntityQueryTrait
     public function hasTargetConcept($concept): bool
     {
 
-        $system = $this->getEntity()->system;
+        $system = $this->_getEntity()->system;
 
         $concept = CommonFunctions::somethingToConcept($concept, $system);
 
-        $this->getEntity()->factory->getTriplets();
+        $this->_getEntity()->factory->getTriplets();
         $map = $this->getTripletTargetMap();
 
         if (isset($map[$concept->idConcept])) {
@@ -36,13 +36,13 @@ trait EntityQueryTrait
 
     }
 
-    abstract protected function getEntity(): Entity;
+    abstract protected function _getEntity(): Entity;
 
     private function getTripletTargetMap(): array
     {
 
-        $this->getEntity()->factory->getTriplets();
-        $triplets = $this->getEntity()->subjectConcept->tripletArray;
+        $this->_getEntity()->factory->getTriplets();
+        $triplets = $this->_getEntity()->subjectConcept->tripletArray;
         $reverse = [];
 
         foreach ($triplets ?? array() as $verbKey => $verbs) {
@@ -60,19 +60,40 @@ trait EntityQueryTrait
     public function hasVerbAndTarget($conceptVerb, $conceptTarget): bool
     {
 
-        $system = $this->getEntity()->system;
+        $system = $this->_getEntity()->system;
 
         $conceptVerb = CommonFunctions::somethingToConcept($conceptVerb, $system);
         $conceptTarget = CommonFunctions::somethingToConcept($conceptTarget, $system);
 
-        $this->getEntity()->factory->getTriplets();
+        $this->_getEntity()->factory->getTriplets();
         $map = $this->getTripletTargetMap();
 
-        $this->getEntity()->factory->getTriplets();
+        $this->_getEntity()->factory->getTriplets();
         $triplets = $this->getEntity()->subjectConcept->tripletArray;
 
         if (!isset($triplets[$conceptVerb->idConcept])) return false;
         if (!in_array($conceptTarget->idConcept, $triplets[$conceptVerb->idConcept])) return false;
+
+
+        return true;
+
+    }
+
+    private function TOTOgetTargetConceptsFromVerb($conceptVerb): Concept
+    {
+
+        $system = $this->_getEntity()->system;
+
+        $conceptVerb = CommonFunctions::somethingToConcept($conceptVerb, $system);
+
+
+        $this->_getEntity()->factory->getTriplets();
+        $map = $this->getTripletTargetMap();
+
+        $this->_getEntity()->factory->getTriplets();
+        $triplets = $this->_getEntity()->subjectConcept->tripletArray;
+
+        if (!isset($triplets[$conceptVerb->idConcept])) return false;
 
 
         return true;

@@ -265,7 +265,7 @@ final class EntityFactoryTest extends TestCase
         $a = $alphabetFactory->first("name", 'a');
         $b = $alphabetFactory->first("name", 'b');
 
-        $this->assertTrue($a->hasTargetConcept(\SandraCore\CommonFunctions::somethingToConcept($b, $b->system)));
+        $this->assertTrue($a->hasTargetConcept($b));
         $this->assertTrue($a->hasVerbAndTarget('implies', $b));
         $this->assertFalse($a->hasVerbAndTarget('impliesX', $b));
         $this->assertFalse($a->hasVerbAndTarget('implies', "falseTing"));
