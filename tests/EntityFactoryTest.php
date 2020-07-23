@@ -246,17 +246,33 @@ final class EntityFactoryTest extends TestCase
         $e->setBrotherEntity('implies',$b,null);
         $d->setBrotherEntity('implies',$b,null);
 
-       $count =  $alphabetFactory->countEntitiesOnRequest();
-       $this->assertEquals(8,$count,'error while counting SQL request');
+        $count = $alphabetFactory->countEntitiesOnRequest();
+        $this->assertEquals(8, $count, 'error while counting SQL request');
 
-        $allImpliesB =  new \SandraCore\EntityFactory('algebra','algebraFile',$system);
-        $allImpliesB->setFilter('implies',$b);
-        $this->assertEquals(3,$allImpliesB->countEntitiesOnRequest(),'error while counting SQL request');
-
-
+        $allImpliesB = new \SandraCore\EntityFactory('algebra', 'algebraFile', $system);
+        $allImpliesB->setFilter('implies', $b);
+        $this->assertEquals(3, $allImpliesB->countEntitiesOnRequest(), 'error while counting SQL request');
 
 
     }
+
+    public function testEntityQueries()
+    {
+
+        $system = TestService::getDatagraph();
+
+        $alphabetFactory = new \SandraCore\EntityFactory('algebra', 'algebraFile', $system);
+        $a = $alphabetFactory->first("name", 'a');
+        $b = $alphabetFactory->first("name", 'b');
+
+        $this->assertTrue($a->hasTargetConcept(\SandraCore\CommonFunctions::somethingToConcept($b, $b->system)));
+        $this->assertTrue($a->hasVerbAndTarget('implies', $b));
+        $this->assertFalse($a->hasVerbAndTarget('impliesX', $b));
+        $this->assertFalse($a->hasVerbAndTarget('implies', "falseTing"));
+
+
+    }
+
 
     public function testPopulateSearch()
     {

@@ -9,24 +9,32 @@
 namespace SandraCore;
 
 
+use SandraCore\queryTraits\EntityQueryTrait;
+
 class Entity implements Dumpable
 {
 
+    use EntityQueryTrait;
 
-    private $entityIsa ;
-    private $entityContainedIn ;
-    public $factory ;
-    public $subjectConcept ;  /** @var $subjectConcept Concept */
-    public $verbConcept ; /** @var $verbConcept Concept */
-    public $targetConcept ; /** @var $targetConcept Concept */
-    public $entityId ; // The is the id of the table link
+
+    private $entityIsa;
+    private $entityContainedIn;
+    /** @var $factory EntityFactory */
+    public $factory;
+    public $subjectConcept;
+    /** @var $subjectConcept Concept */
+    public $verbConcept;
+    /** @var $verbConcept Concept */
+    public $targetConcept;
+    /** @var $targetConcept Concept */
+    public $entityId; // The is the id of the table link
     public $entityRefs ; /** @var $entityRefs Reference[] */
     public $dataStorage ;
     public $isForeign = false ;
 
     public $system ;
 
-    public function __construct($sandraConcept,$sandraReferencesArray,$factory,$entityId,$conceptVerb,$conceptTarget,System $system){
+    public function __construct($sandraConcept, $sandraReferencesArray, $factory, $entityId, $conceptVerb, $conceptTarget, System $system){
 
         $this->system = $system ;
 
@@ -52,7 +60,6 @@ class Entity implements Dumpable
 
         $this->entityId = $entityId;
         $this->factory = $factory;
-
 
 
         /** @var $sandraConcept Concept */
@@ -146,9 +153,6 @@ class Entity implements Dumpable
         return $entities;
 
 
-
-
-
     }
 
     public function getBrotherEntity($brotherVerb,$brotherTarget=null){
@@ -187,8 +191,7 @@ class Entity implements Dumpable
 
         $entity = $this->getBrotherEntity($brotherVerb,$brotherTarget);
 
-        if(is_null($entity)) {return null ;}
-        else if(!is_array($entity)){
+        if(is_null($entity)) {return null ;} else if(!is_array($entity)){
 
             return $entity->get($referenceName);
         }
@@ -360,7 +363,7 @@ class Entity implements Dumpable
     {
 
 
-       return $this->isForeign ;
+        return $this->isForeign ;
 
 
     }
@@ -383,26 +386,28 @@ class Entity implements Dumpable
     }
 
 
-
     public function destroy(){
 
         $this->system = null ;
         $this->factory = null ;
 
 
-
         $this->subjectConcept = null ;
         $this->verbConcept = null ;
         $this->targetConcept = null ;
 
-        foreach ($this->entityRefs as $ref){
+        foreach ($this->entityRefs as $ref) {
 
             $ref->destroy();
-            $ref = null ;
+            $ref = null;
 
         }
 
 
     }
 
+    protected function getEntity(): Entity
+    {
+        return $this;
+    }
 }
