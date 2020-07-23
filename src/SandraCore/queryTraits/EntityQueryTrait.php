@@ -69,7 +69,7 @@ trait EntityQueryTrait
         $map = $this->getTripletTargetMap();
 
         $this->_getEntity()->factory->getTriplets();
-        $triplets = $this->getEntity()->subjectConcept->tripletArray;
+        $triplets = $this->_getEntity()->subjectConcept->tripletArray;
 
         if (!isset($triplets[$conceptVerb->idConcept])) return false;
         if (!in_array($conceptTarget->idConcept, $triplets[$conceptVerb->idConcept])) return false;
