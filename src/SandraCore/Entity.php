@@ -371,7 +371,7 @@ class Entity implements Dumpable
     public function isForeign()
     {
 
-        if (is_string($this->entityId)) return true;
+        if (!is_numeric($this->entityId)) return true;
         else return false;
 
         // return $this->isForeign ;
