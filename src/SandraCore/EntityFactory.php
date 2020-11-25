@@ -659,8 +659,6 @@ class EntityFactory extends FactoryBase implements Dumpable
             $foreignOnThisRef = reset($foreignOnThisRef);
 
 
-
-
             if (isset($localOnThisRef->entityRefs) && isset($foreignOnThisRef->entityRefs)) {
 
                 //do we have a query for update ?

@@ -65,13 +65,16 @@ class Entity implements Dumpable
         /** @var $sandraConcept Concept */
 
         $this->subjectConcept = $sandraConcept;
-        $this->verbConcept = CommonFunctions::somethingToConcept($conceptVerb,$system);
-        $this->targetConcept = CommonFunctions::somethingToConcept($conceptTarget,$system);
+        $this->verbConcept = CommonFunctions::somethingToConcept($conceptVerb, $system);
+        $this->targetConcept = CommonFunctions::somethingToConcept($conceptTarget, $system);
 
 
         /** @var $sandraConcept Concept */
 
-        if(is_string($sandraConcept)) {return new ForeignEntity($sandraConcept,$sandraReferencesArray,$factory,$entityId,$system);}
+        if (is_string($sandraConcept)) {
+
+            return new ForeignEntity($sandraConcept, $sandraReferencesArray, $factory, $entityId, $system);
+        }
 
 
         $sandraConcept->addEntity($this);
@@ -368,8 +371,10 @@ class Entity implements Dumpable
     public function isForeign()
     {
 
+        if (is_string($this->entityId)) return true;
+        else return false;
 
-        return $this->isForeign ;
+        // return $this->isForeign ;
 
 
     }

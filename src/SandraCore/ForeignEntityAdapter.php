@@ -119,15 +119,17 @@ class ForeignEntityAdapter extends EntityFactory
             $i++;
             $refArray = array();
 
-            if ($limit && $i > $limit) break ;
+            if ($limit && $i > $limit) break;
+
+            //fix if there is only one entity
+            if (!is_array($foreignEntity)) $foreignEntity = [$foreignEntity];
 
 
-            foreach ($foreignEntity as $objectKey => $objectValue){
-
+            foreach ($foreignEntity as $objectKey => $objectValue) {
 
 
                 //it a flat reference
-                if (!is_array($objectValue)){
+                if (!is_array($objectValue)) {
 
 
                     $refArray[$objectKey] =   $objectValue ;
