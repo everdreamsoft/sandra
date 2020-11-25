@@ -183,15 +183,19 @@ class ForeignEntityAdapter extends EntityFactory
         $fistNode = reset($explodedPath);
 
         //If we have a special command in the path for example first or last node
-        switch($fistNode){
+        switch ($fistNode) {
 
             case '$first':
                 $pathedArray = reset($pathedArray);
-                break ;
+                break;
+
+            case '$unique':
+                $pathedArray = [$pathedArray];
+                break;
 
             case '$last':
                 $pathedArray = end($pathedArray);
-                break ;
+                break;
 
             default:
                 $pathedArray = $pathedArray[$fistNode];
