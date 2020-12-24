@@ -330,6 +330,17 @@ final class EntityFactoryTest extends TestCase
 
     }
 
+    public function exportTest(){
+
+        $system = TestService::getDatagraph();
+        $peopleFactory = new \SandraCore\EntityFactory('person', 'peopleFile', $system);
+
+        echo $peopleFactory->export();
+
+
+
+    }
+
 
 
 

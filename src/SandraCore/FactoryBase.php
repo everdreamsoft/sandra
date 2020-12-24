@@ -297,6 +297,14 @@ abstract class FactoryBase
 
     }
 
+    public function export()
+    {
+
+       $exporter = new FactoryExporter('dog','dogfile');
+       return json_encode($exporter);
+
+    }
+
     public function destroy(){
 
        unset($this->system);
