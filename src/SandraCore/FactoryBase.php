@@ -50,7 +50,7 @@ abstract class FactoryBase
         $system->registerFactory($this);
         $system->factoryManager->register($this);
 
-        $this->conceptManager = new ConceptManager($this->su, $this->system);
+        $this->conceptManager = new ConceptManager($this->system, $this->su);
 
 
     }

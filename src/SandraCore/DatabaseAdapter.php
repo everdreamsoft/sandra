@@ -398,15 +398,16 @@ OR idConceptLink NOT IN ( SELECT idConceptStart FROM `$tableLink` WHERE idConcep
     }
 
 
-    public static function searchConcept($valueToSearch, $referenceUNID = 'IS NOT NULL', System $system, $conceptLinkConcept = '',
-                                         $conceptTargetConcept = '', $limit = '', $random = '', $advanced = null){
+    public static function searchConcept(System $system, $valueToSearch, $referenceUNID = 'IS NOT NULL', $conceptLinkConcept = '',
+                                         $conceptTargetConcept = '', $limit = '', $random = '', $advanced = null)
+    {
         $limitSQL = '';
         $randomSQL = '';
         $targetConceptSQL = '';
-        $linkConceptSQL = '' ;
-        $randomSQL = '' ;
-        $limitSQL = '' ;
-        $tableReference = $system->tableReference ;
+        $linkConceptSQL = '';
+        $randomSQL = '';
+        $limitSQL = '';
+        $tableReference = $system->tableReference;
 
 
         if (!$referenceUNID) $referenceUNID = 'IS NOT NULL';

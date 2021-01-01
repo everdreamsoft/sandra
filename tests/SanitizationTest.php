@@ -20,7 +20,7 @@ class SanitizationTest extends TestCase
         $system = new \SandraCore\System('phpUnit_', true);
 
         foreach ($this->edgeRequestString() as $edge) {
-            $findPlayer = DatabaseAdapter::searchConcept($edge, null, $system, 0, $edge);
+            $findPlayer = DatabaseAdapter::searchConcept($system, $edge, null, 0, $edge);
             \SandraCore\CommonFunctions::somethingToConceptId($edge, $system);
             $system->systemConcept->get($edge);
             $this->assertEmpty($findPlayer);

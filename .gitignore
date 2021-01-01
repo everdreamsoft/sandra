@@ -1,3 +1,7 @@
 testopensea.php
 localTest
 /vendor/
+vendor/
+vendor
+.idea
+

@@ -131,7 +131,7 @@ class Concept extends DatagraphUnit implements Dumpable
 
 //this to be redone because we should use entities
 
-            $conceptManager = new ConceptManager(1,$this->system);
+            $conceptManager = new ConceptManager($this->system, 1);
         $conceptManager->getConceptsFromArray(array($this->idConcept));
         $refs = $conceptManager->getReferences(null,null,null,null,1);
 

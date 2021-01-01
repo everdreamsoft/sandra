@@ -20,7 +20,7 @@ class ConceptManager
     private $bypassFlags = false;
     private $lastLinkJoined = null;
 
-    public function __construct($su = 1, System $system, $tableLinkParam = 'default', $tableReferenceParam = 'default')
+    public function __construct(System $system, $su = 1, $tableLinkParam = 'default', $tableReferenceParam = 'default')
     {
 
         $this->filterSQL = '';

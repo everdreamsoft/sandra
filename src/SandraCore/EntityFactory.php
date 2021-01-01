@@ -290,7 +290,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     public function populateFromSearchResults($search, $asConcept = 0)
     {
 
-        $conceptsArray = DatabaseAdapter::searchConcept($search, $asConcept, $this->system, $this->entityReferenceContainer, $this->entityContainedIn);
+        $conceptsArray = DatabaseAdapter::searchConcept($this->system, $search, $asConcept, $this->entityReferenceContainer, $this->entityContainedIn);
         if (!$conceptsArray) return array();
         $this->conceptArray = $conceptsArray;
         $this->populateLocal();
@@ -1082,8 +1082,8 @@ class EntityFactory extends FactoryBase implements Dumpable
 
             //First we need to know if exist already in the factory
 
-            $searchResults = DatabaseAdapter::searchConcept($referenceValue,
-                $referenceConcept->idConcept, $this->system, $link->idConcept, $target->idConcept, '', '', 1);
+            $searchResults = DatabaseAdapter::searchConcept($this->system, $referenceValue,
+                $referenceConcept->idConcept, $link->idConcept, $target->idConcept, '', '', 1);
 
             if (is_array($searchResults)) {
                 foreach ($searchResults as $resultSet) {
