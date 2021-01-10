@@ -842,16 +842,16 @@ class EntityFactory extends FactoryBase implements Dumpable
     }
 
 
-    public function createNew($dataArray, $linArray = null): Entity
+    public function createNew($dataArray, $linArray = null, $autocommit = true): Entity
     {
-        $conceptId = DatabaseAdapter::rawCreateConcept("A " . $this->entityIsa, $this->system,false);
+        $conceptId = DatabaseAdapter::rawCreateConcept("A " . $this->entityIsa, $this->system, false);
         $addedRefMap = array();
 
         $addedReferenceMap = array();
 
         if ($this->entityIsa) {
 
-            DatabaseAdapter::rawCreateTriplet($conceptId, $this->sc->get('is_a'), $this->sc->get($this->entityIsa), $this->system,false);
+            DatabaseAdapter::rawCreateTriplet($conceptId, $this->sc->get('is_a'), $this->sc->get($this->entityIsa), $this->system, false);
         }
 
         $entityReferenceContainer = $this->sc->get($this->entityReferenceContainer);
@@ -933,17 +933,20 @@ class EntityFactory extends FactoryBase implements Dumpable
             }
         }
 
-        $conceptContainedIn = $this->system->conceptFactory->getConceptFromId($this->sc->get($this->entityContainedIn)) ;
-        $conceptContainerConcept = $this->system->conceptFactory->getConceptFromId($this->sc->get($this->entityReferenceContainer)) ;
+        $conceptContainedIn = $this->system->conceptFactory->getConceptFromId($this->sc->get($this->entityContainedIn));
+        $conceptContainerConcept = $this->system->conceptFactory->getConceptFromId($this->sc->get($this->entityReferenceContainer));
 
-        DatabaseAdapter::commit();
+        if ($autocommit) {
+            DatabaseAdapter::commit();
+        }
 
-        $classname = $this->generatedEntityClass ;
+
+        $classname = $this->generatedEntityClass;
 
         //do we have a hardcoded class in the datagraph
-        if (isset ($addedRefMap[$this->system->systemConcept->get('class_name')])){
+        if (isset ($addedRefMap[$this->system->systemConcept->get('class_name')])) {
 
-            $classname = $addedRefMap[$this->system->systemConcept->get('class_name')] ;
+            $classname = $addedRefMap[$this->system->systemConcept->get('class_name')];
 
         }
 
