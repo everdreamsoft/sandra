@@ -227,7 +227,7 @@ class Gossiper
                         $localTargetConcept = $this->shortnameDict[$target];
                         echo($localTargetConcept);
                     }
-                    echo "link on verb $verb target remote $target as local $localTargetConcept." . PHP_EOL;
+
 
                     //triplet creating with entity
                     if (!$localEntity->hasVerbAndTarget($verb, $localTargetConcept)) {
