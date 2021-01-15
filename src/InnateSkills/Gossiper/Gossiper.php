@@ -25,6 +25,7 @@ class Gossiper
     public $createRefCount = 0;
     public $equalRefCount = 0;
     public $bufferTripletsArray = array();
+    public $shortnameDict = array();
     /**
      * @var System
      */
@@ -48,6 +49,10 @@ class Gossiper
 
         $updateOnRefShortName = $jsonObject->gossiper->updateOnReferenceShortname;
         $this->updateOnRef = $this->sandra->conceptFactory->getConceptFromShortnameOrId($updateOnRefShortName);
+
+        if (isset($jsonObject->gossiper->shortNameDictionary)) {
+            $this->shortnameDict = (array)$jsonObject->gossiper->shortNameDictionary;
+        };
 
         //first we cycle trough joinedFactories and first register joined entities
         if (isset ($jsonObject->entityFactory->joinedFactory) && $jsonObject->entityFactory->joinedFactory) {
@@ -208,12 +213,23 @@ class Gossiper
         foreach ($this->bufferTripletsArray ?? [] as $subject => $verbs) {
             foreach ($verbs as $verb => $targetList) {
                 foreach ($targetList as $target) {
+
+
                     //target is the unid of the foreign entity passed
                     //we need to find out our local entity
                     /** @var Entity $localEntity */
                     $localEntity = $this->localEntityMap[$subject];
-                    $localTargetConcept = $this->foreignEntityMap[$target]->subjectConcept->idConcept;
+                    // if is an entity for example DogEntity -> FriendWith -> anotherDogEntity
+                    if (isset($this->foreignEntityMap[$target]->subjectConcept->idConcept)) {
+                        $localTargetConcept = $this->foreignEntityMap[$target]->subjectConcept->idConcept;
+                    } //its a pure shortname target for example LightBulbEntity -> hasStatus -> switchedOn
+                    else if (isset($this->shortnameDict[$target])) {
+                        $localTargetConcept = $this->shortnameDict[$target];
+                        echo($localTargetConcept);
+                    }
+                    echo "link on verb $verb target remote $target as local $localTargetConcept." . PHP_EOL;
 
+                    //triplet creating with entity
                     if (!$localEntity->hasVerbAndTarget($verb, $localTargetConcept)) {
                         $localEntity->subjectConcept->createTriplet(CommonFunctions::somethingToConcept($verb, $this->sandra),
                             CommonFunctions::somethingToConcept($localTargetConcept, $this->sandra), [], 0, false);

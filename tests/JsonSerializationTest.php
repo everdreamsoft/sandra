@@ -17,6 +17,28 @@ use SandraCore\TestService;
 final class JsonSerializationTest extends TestCase
 {
 
+
+    public function testWithRrmrk()
+    {
+        $sandra = TestService::getFlushTestDatagraph();
+        $json = '{"gossiper":{"updateOnReferenceShortname":"txId","shortNameDictionary":{"0":"null_concept","1":"address","2":"id","3":"txId","4":"txid","5":"entity:subject:0","6":"entity:subject:1","7":"entity:subject:2","8":"entity:subject:3","9":"timestamp","10":"quantity","11":"source","12":"hasSingleDestination","13":"sourceBlockchainContract","14":"onBlockchain","15":"genericBlockchain"}},"entityFactory":{"is_a":"blockchainEvent","contained_in_file":"blockchainEventFile","entityArray":[{"id":0,"subjectUnid":5,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":4,"shortname":"txid","triplets":{}},"value":"txid1111"},{"refId":0,"concept":{"isPureShortname":false,"unid":9,"shortname":"timestamp","triplets":{}},"value":"1111"},{"refId":0,"concept":{"isPureShortname":false,"unid":10,"shortname":"quantity","triplets":{}},"value":"1"}],"triplets":{"source":[6],"hasSingleDestination":[7],"sourceBlockchainContract":[8],"onBlockchain":[15]}}],"refMap":{"4":"txid"},"joinedFactory":[{"gossiper":{"updateOnReferenceShortname":"address"},"entityFactory":{"is_a":"kusamaAddress","contained_in_file":"kusamaAddressFile","entityArray":[{"id":1,"subjectUnid":6,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":1,"shortname":"address","triplets":{}},"value":"address1"}]},{"id":2,"subjectUnid":7,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":1,"shortname":"address","triplets":{}},"value":"addressDest1"}]}],"refMap":{},"joinedFactory":[]}},{"gossiper":{"updateOnReferenceShortname":"address"},"entityFactory":{"is_a":"kusamaAddress","contained_in_file":"kusamaAddressFile","entityArray":[{"id":1,"subjectUnid":6,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":1,"shortname":"address","triplets":{}},"value":"address1"}]},{"id":2,"subjectUnid":7,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":1,"shortname":"address","triplets":{}},"value":"addressDest1"}]}],"refMap":{},"joinedFactory":[]}},{"gossiper":{"updateOnReferenceShortname":"id"},"entityFactory":{"is_a":"rmrkContract","contained_in_file":"rmrkContractFile","entityArray":[{"id":3,"subjectUnid":8,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":2,"shortname":"id","triplets":{}},"value":"contract1"}]}],"refMap":{},"joinedFactory":[]}}]}}
+';
+
+        $gossiper = new InnateSkills\Gossiper\Gossiper($sandra);
+        $entityFactory = $gossiper->receiveEntityFactory($json);
+
+
+        $blockchainEventFactory = new \SandraCore\EntityFactory('blockchainEvent', 'blockchainEventFile', $sandra);
+        $blockchainEventFactory->populateLocal();
+        $blockchainEventFactory->getTriplets();
+        // $blockchainEventFactory->getEntities()[0] ;
+        print_r($blockchainEventFactory->dumpMeta());
+
+        die();
+
+
+    }/*
+
     public function testReadJson()
     {
         $sandra = TestService::getFlushTestDatagraph();
@@ -218,6 +240,9 @@ final class JsonSerializationTest extends TestCase
         $this->assertEquals('jown', $felixMasters[1]->get('name'), 'Jown has Mike as master');
 
     }
+
+
+*/
 
 
 }
