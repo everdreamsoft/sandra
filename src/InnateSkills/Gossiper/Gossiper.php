@@ -109,9 +109,9 @@ class Gossiper
     {
 
         $this->foreignEntityMap = $gossiper->foreignEntityMap + $this->foreignEntityMap;
-        $this->bufferTripletsArray = $this->bufferTripletsArray + $this->bufferTripletsArray;
-        $this->indexRef = $this->indexRef + $this->indexRef;
-        $this->localEntityMap = $this->localEntityMap + $this->localEntityMap;
+        $this->bufferTripletsArray = $gossiper->bufferTripletsArray + $this->bufferTripletsArray;
+        $this->indexRef = $gossiper->indexRef + $this->indexRef;
+        $this->localEntityMap = $gossiper->localEntityMap + $this->localEntityMap;
 
         return $this;
 

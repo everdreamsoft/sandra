@@ -18,8 +18,6 @@ final class JsonSerializationTest extends TestCase
 {
 
 
-
-
     public function testReadJson()
     {
         $sandra = TestService::getFlushTestDatagraph();
