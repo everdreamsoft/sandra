@@ -243,5 +243,82 @@ final class JsonSerializationTest extends TestCase
 
     }
 
+    public function testWithSubSubFactory()
+    {
+        $sandra = TestService::getFlushTestDatagraph();
+        $json = '{"gossiper":{"updateOnReferenceShortname":"txHash","shortNameDictionary":{"0":"null_concept","1":"address","2":"id","3":"txHash","4":"blockIndex","5":"entity:subject:0","6":"entity:subject:1","7":"class_name","8":"entity:subject:2","9":"entity:subject:3","10":"contractStandard","11":"entity:subject:4","12":"timestamp","13":"quantity","14":"source","15":"hasSingleDestination","16":"blockchainContract","17":"entity:subject:5","18":"onBlock","19":"onBlockchain","20":"kusama"}},"entityFactory":{"is_a":"blockchainEvent","contained_in_file":"blockchainEventFile","entityArray":[{"id":4,"subjectUnid":11,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":3,"shortname":"txHash","triplets":{}},"value":"0x6c6520706f7374206d61726368652073616e73206a7175657279"},{"refId":0,"concept":{"isPureShortname":false,"unid":12,"shortname":"timestamp","triplets":{}},"value":"123456"},{"refId":0,"concept":{"isPureShortname":false,"unid":13,"shortname":"quantity","triplets":{}},"value":"1"}],"triplets":{"source":[5],"hasSingleDestination":[6],"blockchainContract":[9],"onBlock":[17],"onBlockchain":[20]}}],"refMap":{"3":"txHash"},"joinedFactory":[{"gossiper":{"updateOnReferenceShortname":"address"},"entityFactory":{"is_a":"kusamaAddress","contained_in_file":"kusamaAddressFile","entityArray":[{"id":0,"subjectUnid":5,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":1,"shortname":"address","triplets":{}},"value":"DmUVjSi8id22vcH26btyVsVq39p8EVPiepdBEYhzoLL8Qby"}]},{"id":1,"subjectUnid":6,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":1,"shortname":"address","triplets":{}},"value":"GczFVp4yRk8baEBsMZ2JFvFu6n6Ucp1Ry6PV4c3PDNC6pe3"}]}],"refMap":{},"joinedFactory":[]}},{"gossiper":{"updateOnReferenceShortname":"address"},"entityFactory":{"is_a":"kusamaAddress","contained_in_file":"kusamaAddressFile","entityArray":[{"id":0,"subjectUnid":5,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":1,"shortname":"address","triplets":{}},"value":"DmUVjSi8id22vcH26btyVsVq39p8EVPiepdBEYhzoLL8Qby"}]},{"id":1,"subjectUnid":6,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":1,"shortname":"address","triplets":{}},"value":"GczFVp4yRk8baEBsMZ2JFvFu6n6Ucp1Ry6PV4c3PDNC6pe3"}]}],"refMap":{},"joinedFactory":[]}},{"gossiper":{"updateOnReferenceShortname":"id"},"entityFactory":{"is_a":"rmrkContract","contained_in_file":"blockchainContractFile","entityArray":[{"id":3,"subjectUnid":9,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":2,"shortname":"id","triplets":{}},"value":"241B8516516F381A-FRACTAL"}],"triplets":{"contractStandard":[8]}}],"refMap":{},"joinedFactory":[{"gossiper":{"updateOnReferenceShortname":"class_name"},"entityFactory":{"is_a":"blockchainStandard","contained_in_file":"blockchainStandardFile","entityArray":[{"id":2,"subjectUnid":8,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":7,"shortname":"class_name","triplets":{}},"value":"Interfaces\\\RmrkContractStandard"}]}],"refMap":{},"joinedFactory":[]}}]}},{"gossiper":{"updateOnReferenceShortname":"blockIndex"},"entityFactory":{"is_a":"kusamaBlock","contained_in_file":"blockchainBlocFile","entityArray":[{"id":5,"subjectUnid":17,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":4,"shortname":"blockIndex","triplets":{}},"value":"555"},{"refId":0,"concept":{"isPureShortname":false,"unid":12,"shortname":"timestamp","triplets":{}},"value":"123456"}]}],"refMap":{},"joinedFactory":[]}}]}}
+';
+
+        $gossiper = new InnateSkills\Gossiper\Gossiper($sandra);
+        $entityFactory = $gossiper->receiveEntityFactory($json);
+
+
+        $blockchainContractFactory = new \SandraCore\EntityFactory('rmrkContract', 'blockchainContractFile', $sandra);
+        $blockchainContractFactory->populateLocal();
+        $blockchainContractFactory->getTriplets();
+
+        $blockchainStandardFactory = new \SandraCore\EntityFactory('blockchainStandard', 'blockchainStandardFile', $sandra);
+        $blockchainContractFactory->joinFactory('contractStandard', $blockchainStandardFactory);
+        $blockchainContractFactory->joinPopulate();
+
+        $entity = $blockchainContractFactory->first('id', '241B8516516F381A-FRACTAL');
+
+        $this->assertCount(1, $entity->getJoinedEntities('contractStandard'));
+
+        $this->assertInstanceOf(\SandraCore\Entity::class, $entity);
+
+
+    }
+
+    public function testWithReferenceOnTriplet()
+    {
+        $sandra = TestService::getFlushTestDatagraph();
+        $json = '{"gossiper":{"updateOnReferenceShortname":"txHash","shortNameDictionary":{"0":"null_concept","1":"address","2":"id","3":"txHash","4":"blockIndex","5":"entity:subject:0","6":"entity:subject:1","7":"class_name","8":"entity:subject:2","9":"entity:subject:3","10":"contractStandard","11":"entity:subject:4","12":"sn","13":"entity:subject:5","14":"timestamp","15":"quantity","16":"source","17":"hasSingleDestination","18":"entity:subject:6","19":"onBlock","20":"onBlockchain","21":"kusama","22":"blockchainContract"}},"entityFactory":{"is_a":"blockchainEvent","contained_in_file":"blockchainEventFile","entityArray":[{"id":5,"subjectUnid":13,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":3,"shortname":"txHash","triplets":{},"tripletsReferences":{}},"value":"0x6c6520706f7374206d61726368652073616e73206a7175657279"},{"refId":0,"concept":{"isPureShortname":false,"unid":14,"shortname":"timestamp","triplets":{},"tripletsReferences":{}},"value":"123456"},{"refId":0,"concept":{"isPureShortname":false,"unid":15,"shortname":"quantity","triplets":{},"tripletsReferences":{}},"value":"1"}],"triplets":{"source":[5],"hasSingleDestination":[6],"onBlock":[18],"onBlockchain":[21],"blockchainContract":[9]},"tripletsReferences":{"blockchainContract":[{"targetUnid":9,"refs":[{"conceptUnid":12,"value":"0000000000000003"}]}]}}],"refMap":{"3":"txHash"},"joinedFactory":[{"gossiper":{"updateOnReferenceShortname":"address"},"entityFactory":{"is_a":"kusamaAddress","contained_in_file":"kusamaAddressFile","entityArray":[{"id":0,"subjectUnid":5,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":1,"shortname":"address","triplets":{},"tripletsReferences":{}},"value":"DmUVjSi8id22vcH26btyVsVq39p8EVPiepdBEYhzoLL8Qby"}]},{"id":1,"subjectUnid":6,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":1,"shortname":"address","triplets":{},"tripletsReferences":{}},"value":"GczFVp4yRk8baEBsMZ2JFvFu6n6Ucp1Ry6PV4c3PDNC6pe3"}]}],"refMap":{},"joinedFactory":[]}},{"gossiper":{"updateOnReferenceShortname":"address"},"entityFactory":{"is_a":"kusamaAddress","contained_in_file":"kusamaAddressFile","entityArray":[{"id":0,"subjectUnid":5,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":1,"shortname":"address","triplets":{},"tripletsReferences":{}},"value":"DmUVjSi8id22vcH26btyVsVq39p8EVPiepdBEYhzoLL8Qby"}]},{"id":1,"subjectUnid":6,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":1,"shortname":"address","triplets":{},"tripletsReferences":{}},"value":"GczFVp4yRk8baEBsMZ2JFvFu6n6Ucp1Ry6PV4c3PDNC6pe3"}]}],"refMap":{},"joinedFactory":[]}},{"gossiper":{"updateOnReferenceShortname":"blockIndex"},"entityFactory":{"is_a":"kusamaBlock","contained_in_file":"blockchainBlocFile","entityArray":[{"id":6,"subjectUnid":18,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":4,"shortname":"blockIndex","triplets":{},"tripletsReferences":{}},"value":"555"},{"refId":0,"concept":{"isPureShortname":false,"unid":14,"shortname":"timestamp","triplets":{},"tripletsReferences":{}},"value":"123456"}]}],"refMap":{},"joinedFactory":[]}},{"gossiper":{"updateOnReferenceShortname":"id"},"entityFactory":{"is_a":"rmrkContract","contained_in_file":"blockchainContractFile","entityArray":[{"id":3,"subjectUnid":9,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":2,"shortname":"id","triplets":{},"tripletsReferences":{}},"value":"241B8516516F381A-FRACTAL"}],"triplets":{"contractStandard":[8]}}],"refMap":{},"joinedFactory":[{"gossiper":{"updateOnReferenceShortname":"class_name"},"entityFactory":{"is_a":"blockchainStandard","contained_in_file":"blockchainStandardFile","entityArray":[{"id":2,"subjectUnid":8,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":7,"shortname":"class_name","triplets":{},"tripletsReferences":{}},"value":"CsCannon\\\Blockchains\\\Interfaces\\\RmrkContractStandard"}]}],"refMap":{},"joinedFactory":[]}}]}}]}}
+';
+
+        $gossiper = new InnateSkills\Gossiper\Gossiper($sandra);
+        $entityFactory = $gossiper->receiveEntityFactory($json);
+
+
+        $blockchainEventFactory = new \SandraCore\EntityFactory('blockchainEvent', 'blockchainEventFile', $sandra);
+        $blockchainEventFactory->populateLocal();
+        $blockchainEventFactory->populateBrotherEntities("blockchainContract");
+        $blockchainEventFactory->getTriplets();
+
+        $entities = $blockchainEventFactory->getEntities();
+        $entity = reset($entities);
+
+        $brotherEntity = $entity->getBrotherEntity("blockchainContract");
+        $brotherEntity = reset($brotherEntity);
+        $sn = $brotherEntity->get('sn');
+
+        $this->assertInstanceOf(\SandraCore\Entity::class, $brotherEntity);
+        $this->assertNotNull($sn);
+
+        $newVal = 5;
+        //check update
+        $json = '{"gossiper":{"updateOnReferenceShortname":"txHash","shortNameDictionary":{"0":"null_concept","1":"address","2":"id","3":"txHash","4":"blockIndex","5":"entity:subject:0","6":"entity:subject:1","7":"class_name","8":"entity:subject:2","9":"entity:subject:3","10":"contractStandard","11":"entity:subject:4","12":"sn","13":"entity:subject:5","14":"timestamp","15":"quantity","16":"source","17":"hasSingleDestination","18":"entity:subject:6","19":"onBlock","20":"onBlockchain","21":"kusama","22":"blockchainContract"}},"entityFactory":{"is_a":"blockchainEvent","contained_in_file":"blockchainEventFile","entityArray":[{"id":5,"subjectUnid":13,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":3,"shortname":"txHash","triplets":{},"tripletsReferences":{}},"value":"0x6c6520706f7374206d61726368652073616e73206a7175657279"},{"refId":0,"concept":{"isPureShortname":false,"unid":14,"shortname":"timestamp","triplets":{},"tripletsReferences":{}},"value":"123456"},{"refId":0,"concept":{"isPureShortname":false,"unid":15,"shortname":"quantity","triplets":{},"tripletsReferences":{}},"value":"1"}],"triplets":{"source":[5],"hasSingleDestination":[6],"onBlock":[18],"onBlockchain":[21],"blockchainContract":[9]},"tripletsReferences":{"blockchainContract":[{"targetUnid":9,"refs":[{"conceptUnid":12,"value":"' . $newVal . '"}]}]}}],"refMap":{"3":"txHash"},"joinedFactory":[{"gossiper":{"updateOnReferenceShortname":"address"},"entityFactory":{"is_a":"kusamaAddress","contained_in_file":"kusamaAddressFile","entityArray":[{"id":0,"subjectUnid":5,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":1,"shortname":"address","triplets":{},"tripletsReferences":{}},"value":"DmUVjSi8id22vcH26btyVsVq39p8EVPiepdBEYhzoLL8Qby"}]},{"id":1,"subjectUnid":6,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":1,"shortname":"address","triplets":{},"tripletsReferences":{}},"value":"GczFVp4yRk8baEBsMZ2JFvFu6n6Ucp1Ry6PV4c3PDNC6pe3"}]}],"refMap":{},"joinedFactory":[]}},{"gossiper":{"updateOnReferenceShortname":"address"},"entityFactory":{"is_a":"kusamaAddress","contained_in_file":"kusamaAddressFile","entityArray":[{"id":0,"subjectUnid":5,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":1,"shortname":"address","triplets":{},"tripletsReferences":{}},"value":"DmUVjSi8id22vcH26btyVsVq39p8EVPiepdBEYhzoLL8Qby"}]},{"id":1,"subjectUnid":6,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":1,"shortname":"address","triplets":{},"tripletsReferences":{}},"value":"GczFVp4yRk8baEBsMZ2JFvFu6n6Ucp1Ry6PV4c3PDNC6pe3"}]}],"refMap":{},"joinedFactory":[]}},{"gossiper":{"updateOnReferenceShortname":"blockIndex"},"entityFactory":{"is_a":"kusamaBlock","contained_in_file":"blockchainBlocFile","entityArray":[{"id":6,"subjectUnid":18,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":4,"shortname":"blockIndex","triplets":{},"tripletsReferences":{}},"value":"555"},{"refId":0,"concept":{"isPureShortname":false,"unid":14,"shortname":"timestamp","triplets":{},"tripletsReferences":{}},"value":"123456"}]}],"refMap":{},"joinedFactory":[]}},{"gossiper":{"updateOnReferenceShortname":"id"},"entityFactory":{"is_a":"rmrkContract","contained_in_file":"blockchainContractFile","entityArray":[{"id":3,"subjectUnid":9,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":2,"shortname":"id","triplets":{},"tripletsReferences":{}},"value":"241B8516516F381A-FRACTAL"}],"triplets":{"contractStandard":[8]}}],"refMap":{},"joinedFactory":[{"gossiper":{"updateOnReferenceShortname":"class_name"},"entityFactory":{"is_a":"blockchainStandard","contained_in_file":"blockchainStandardFile","entityArray":[{"id":2,"subjectUnid":8,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":7,"shortname":"class_name","triplets":{},"tripletsReferences":{}},"value":"CsCannon\\\Blockchains\\\Interfaces\\\RmrkContractStandard"}]}],"refMap":{},"joinedFactory":[]}}]}}]}}
+';
+        $gossiper = new InnateSkills\Gossiper\Gossiper($sandra);
+        $entityFactory = $gossiper->receiveEntityFactory($json);
+
+        $blockchainEventFactory = new \SandraCore\EntityFactory('blockchainEvent', 'blockchainEventFile', $sandra);
+        $blockchainEventFactory->populateLocal();
+        $blockchainEventFactory->populateBrotherEntities("blockchainContract");
+        $blockchainEventFactory->getTriplets();
+
+        $entities = $blockchainEventFactory->getEntities();
+        $entity = reset($entities);
+
+        $brotherEntity = $entity->getBrotherEntity("blockchainContract");
+        $brotherEntity = reset($brotherEntity);
+        $sn = $brotherEntity->get('sn');
+
+        $this->assertInstanceOf(\SandraCore\Entity::class, $brotherEntity);
+        $this->assertEquals($newVal, $sn);
+
+
+    }
+
 
 }

@@ -146,8 +146,13 @@ class Concept extends DatagraphUnit implements Dumpable
     public function createTriplet(Concept $verb, Concept $target, array $sandraRefArray = null, $updateOnExistingLk = 0, $autocommit = true)
     {
 
-        //Todo add the reference
+
         $link = DatabaseAdapter::rawCreateTriplet($this->idConcept, $verb->idConcept, $target->idConcept, $this->system, $updateOnExistingLk, $autocommit);
+
+        foreach ($sandraRefArray as $key => $value) {
+
+            DatabaseAdapter::rawCreateReference($link, CommonFunctions::somethingToConceptId($key, $this->system), $value, $this->system, $autocommit);
+        }
 
     }
 

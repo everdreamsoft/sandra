@@ -31,6 +31,10 @@ class Gossiper
      */
     private System $sandra;
     private $autocommit;
+    private $bufferTripletsRef = array();
+    public $rawNewTripletCount = 0;
+    public $rawNewTripletRefUpdate = 0;
+    public $rawNewTripletRefSimilar = 0;
 
     public function __construct(System $sandra, $autocommit = true)
     {
@@ -84,6 +88,7 @@ class Gossiper
 
         $entityFactory->populateFromSearchResults($this->indexRef, $this->updateOnRef);
         $entityFactory->getTriplets();
+        $entityFactory->populateBrotherEntities();
 
         if (isset($entityFactoryJson->entityArray)) {
             foreach ($entityFactoryJson->entityArray as $entityJson) {
@@ -91,6 +96,10 @@ class Gossiper
                 $entity = self::gossipReferences($entityFactory, $entityJson->referenceArray, $entityJson->subjectUnid);
                 if (isset($entityJson->triplets)) {
                     $this->bufferTriplets($entity, $entityJson->triplets);
+                }
+
+                if (isset($entityJson->tripletsReferences)) {
+                    $this->bufferTripletRef($entity, $entityJson->tripletsReferences);
                 }
 
             }
@@ -112,6 +121,7 @@ class Gossiper
         $this->bufferTripletsArray = $gossiper->bufferTripletsArray + $this->bufferTripletsArray;
         $this->indexRef = $gossiper->indexRef + $this->indexRef;
         $this->localEntityMap = $gossiper->localEntityMap + $this->localEntityMap;
+        $this->bufferTripletsRef = $gossiper->bufferTripletsRef + $this->bufferTripletsRef;
 
         return $this;
 
@@ -206,6 +216,18 @@ class Gossiper
         return $this;
     }
 
+    private function bufferTripletRef(Entity $entity, $tripletRefJson): self
+    {
+
+
+        foreach ($tripletRefJson as $verb => $targets) {
+            foreach ($targets as $target) {
+                $this->bufferTripletsRef[$entity->subjectConcept->idConcept][$verb][$target->targetUnid] = $target;
+            }
+        }
+        return $this;
+    }
+
     private function executeTripletBuffer(): self
     {
 
@@ -225,16 +247,41 @@ class Gossiper
                     } //its a pure shortname target for example LightBulbEntity -> hasStatus -> switchedOn
                     else if (isset($this->shortnameDict[$target])) {
                         $localTargetConcept = $this->shortnameDict[$target];
-                        echo($localTargetConcept);
+
                     }
 
+                    $saveRefArray = [];
 
+                    //build the triplet reference array
+                    if (isset($this->bufferTripletsRef[$subject][$verb][$target])) {
+
+                        $referencesRawArray = $this->bufferTripletsRef[$subject][$verb][$target];
+                        foreach ($referencesRawArray->refs as $ref) {
+
+                            $saveRefArray[$this->shortnameDict[$ref->conceptUnid]] = $ref->value;
+                        }
+
+                    }
+
+                    $tripletCreated = false;
                     //triplet creating with entity
                     if (!$localEntity->hasVerbAndTarget($verb, $localTargetConcept)) {
                         $localEntity->subjectConcept->createTriplet(CommonFunctions::somethingToConcept($verb, $this->sandra),
-                            CommonFunctions::somethingToConcept($localTargetConcept, $this->sandra), [], 0, false);
-                    }
+                            CommonFunctions::somethingToConcept($localTargetConcept, $this->sandra), $saveRefArray, 0, false);
+                        $tripletCreated = true;
+                        $this->rawNewTripletCount++;
+                    } else {
+                        //the entity exist already
+                        $localBrotherEntity = $localEntity->getBrotherEntity($verb, $localTargetConcept);
 
+                        //now we check if each of these refs are updated
+                        foreach ($saveRefArray as $key => $value) {
+                            if ($localBrotherEntity->get($key) != $value) {
+                                $localBrotherEntity->createOrUpdateRef($key, $value);
+                                $this->rawNewTripletRefUpdate++;
+                            }
+                        }
+                    }
                 }
             }
         }
