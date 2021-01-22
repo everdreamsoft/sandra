@@ -250,6 +250,15 @@ class Gossiper
 
                     }
 
+                    if (strpos($verb, "entity:") === 0) {
+
+
+                        $foreignEntityKey = array_search($verb, $this->shortnameDict);
+                        $verb = $this->foreignEntityMap[$foreignEntityKey];
+
+                    }
+
+
                     $saveRefArray = [];
 
                     //build the triplet reference array
@@ -260,7 +269,6 @@ class Gossiper
 
                             $saveRefArray[$this->shortnameDict[$ref->conceptUnid]] = $ref->value;
                         }
-
                     }
 
                     $tripletCreated = false;
