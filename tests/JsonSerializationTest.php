@@ -17,38 +17,7 @@ use SandraCore\TestService;
 final class JsonSerializationTest extends TestCase
 {
 
-    public function testWithEntityAsVerb()
-    {
-        $sandra = TestService::getFlushTestDatagraph();
-        $json = '{"gossiper":{"updateOnReferenceShortname":"code","shortNameDictionary":{"0":"null_concept","1":"collectionId","2":"assetId","3":"code","4":"class_name","5":"address","6":"id","7":"txHash","8":"blockIndex","9":"entity:subject:0","10":"name","11":"imageUrl","12":"description","13":"entity:subject:1","14":"entity:subject:2","15":"bindToCollection","16":"entity:subject:3","17":"sn","18":"entity:subject:4"}},"entityFactory":{"is_a":"tokenPath","contained_in_file":"tokenPathFile","entityArray":[{"id":4,"subjectUnid":18,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":3,"shortname":"code","triplets":{},"tripletsReferences":{}},"value":"sn-0000000004"}],"triplets":{"entity:subject:2":[13]}}],"refMap":{"3":"code"},"joinedFactory":[{"gossiper":{"updateOnReferenceShortname":"id"},"entityFactory":{"is_a":"rmrkContract","contained_in_file":"blockchainContractFile","entityArray":[{"id":2,"subjectUnid":14,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":6,"shortname":"id","triplets":{},"tripletsReferences":{}},"value":"CONTRACT4TEST"}]}],"refMap":{},"joinedFactory":[]}},{"gossiper":{"updateOnReferenceShortname":"assetId"},"entityFactory":{"is_a":"blockchainizableAsset","contained_in_file":"blockchainizableAssets","entityArray":[{"id":1,"subjectUnid":13,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":2,"shortname":"assetId","triplets":{},"tripletsReferences":{}},"value":"A great asset I made"}],"triplets":{"bindToCollection":[9]}}],"refMap":{},"joinedFactory":[{"gossiper":{"updateOnReferenceShortname":"collectionId"},"entityFactory":{"is_a":"assetCollection","contained_in_file":"assetCollectionFile","entityArray":[{"id":0,"subjectUnid":9,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":1,"shortname":"collectionId","triplets":{},"tripletsReferences":{}},"value":"my veryfirst collection"},{"refId":0,"concept":{"isPureShortname":false,"unid":10,"shortname":"name","triplets":{},"tripletsReferences":{}},"value":"my veryfirst collection"},{"refId":0,"concept":{"isPureShortname":false,"unid":11,"shortname":"imageUrl","triplets":{},"tripletsReferences":{}},"value":"https://picsum.photos/400"},{"refId":0,"concept":{"isPureShortname":false,"unid":12,"shortname":"description","triplets":{},"tripletsReferences":{}},"value":"dolor"}]}],"refMap":{},"joinedFactory":[]}}]}}]}}';
 
-        $gossiper = new InnateSkills\Gossiper\Gossiper($sandra);
-        $entityFactory = $gossiper->receiveEntityFactory($json);
-
-
-        $tokenFactory = new \SandraCore\EntityFactory('tokenPath', 'tokenPathFile', $sandra);
-        $tokenFactory->populateLocal();
-        $tokenFactory->getTriplets();
-
-        $entities = $tokenFactory->getEntities();
-        $entity = reset($entities);
-
-        $contractFactory = new \SandraCore\EntityFactory('rmrkContract', 'blockchainContractFile', $sandra);
-        $contractFactory->populateLocal();
-        $entityContracts = $contractFactory->getEntities();
-        $entityContract = reset($entityContracts);
-
-
-        $assetFactory = new \SandraCore\EntityFactory('blockchainizableAsset', 'blockchainizableAssets', $sandra);
-        $assetFactory->populateLocal();
-        $entityAsset = $assetFactory->getEntities();
-        $entityAsset = reset($entityAsset);
-
-
-        $this->assertTrue($entity->hasVerbAndTarget($entityContract, $entityAsset));
-
-
-    }
 
 
     public function testReadJson()
@@ -349,6 +318,39 @@ final class JsonSerializationTest extends TestCase
 
         $this->assertInstanceOf(\SandraCore\Entity::class, $brotherEntity);
         $this->assertEquals($newVal, $sn);
+
+
+    }
+
+    public function testWithEntityAsVerb()
+    {
+        $sandra = TestService::getFlushTestDatagraph();
+        $json = '{"gossiper":{"updateOnReferenceShortname":"code","shortNameDictionary":{"0":"null_concept","1":"collectionId","2":"assetId","3":"code","4":"class_name","5":"address","6":"id","7":"txHash","8":"blockIndex","9":"entity:subject:0","10":"name","11":"imageUrl","12":"description","13":"entity:subject:1","14":"entity:subject:2","15":"bindToCollection","16":"entity:subject:3","17":"sn","18":"entity:subject:4"}},"entityFactory":{"is_a":"tokenPath","contained_in_file":"tokenPathFile","entityArray":[{"id":4,"subjectUnid":18,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":3,"shortname":"code","triplets":{},"tripletsReferences":{}},"value":"sn-0000000004"}],"triplets":{"entity:subject:2":[13]}}],"refMap":{"3":"code"},"joinedFactory":[{"gossiper":{"updateOnReferenceShortname":"id"},"entityFactory":{"is_a":"rmrkContract","contained_in_file":"blockchainContractFile","entityArray":[{"id":2,"subjectUnid":14,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":6,"shortname":"id","triplets":{},"tripletsReferences":{}},"value":"CONTRACT4TEST"}]}],"refMap":{},"joinedFactory":[]}},{"gossiper":{"updateOnReferenceShortname":"assetId"},"entityFactory":{"is_a":"blockchainizableAsset","contained_in_file":"blockchainizableAssets","entityArray":[{"id":1,"subjectUnid":13,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":2,"shortname":"assetId","triplets":{},"tripletsReferences":{}},"value":"A great asset I made"}],"triplets":{"bindToCollection":[9]}}],"refMap":{},"joinedFactory":[{"gossiper":{"updateOnReferenceShortname":"collectionId"},"entityFactory":{"is_a":"assetCollection","contained_in_file":"assetCollectionFile","entityArray":[{"id":0,"subjectUnid":9,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":1,"shortname":"collectionId","triplets":{},"tripletsReferences":{}},"value":"my veryfirst collection"},{"refId":0,"concept":{"isPureShortname":false,"unid":10,"shortname":"name","triplets":{},"tripletsReferences":{}},"value":"my veryfirst collection"},{"refId":0,"concept":{"isPureShortname":false,"unid":11,"shortname":"imageUrl","triplets":{},"tripletsReferences":{}},"value":"https://picsum.photos/400"},{"refId":0,"concept":{"isPureShortname":false,"unid":12,"shortname":"description","triplets":{},"tripletsReferences":{}},"value":"dolor"}]}],"refMap":{},"joinedFactory":[]}}]}}]}}';
+
+        $gossiper = new InnateSkills\Gossiper\Gossiper($sandra);
+        $entityFactory = $gossiper->receiveEntityFactory($json);
+
+
+        $tokenFactory = new \SandraCore\EntityFactory('tokenPath', 'tokenPathFile', $sandra);
+        $tokenFactory->populateLocal();
+        $tokenFactory->getTriplets();
+
+        $entities = $tokenFactory->getEntities();
+        $entity = reset($entities);
+
+        $contractFactory = new \SandraCore\EntityFactory('rmrkContract', 'blockchainContractFile', $sandra);
+        $contractFactory->populateLocal();
+        $entityContracts = $contractFactory->getEntities();
+        $entityContract = reset($entityContracts);
+
+
+        $assetFactory = new \SandraCore\EntityFactory('blockchainizableAsset', 'blockchainizableAssets', $sandra);
+        $assetFactory->populateLocal();
+        $entityAsset = $assetFactory->getEntities();
+        $entityAsset = reset($entityAsset);
+
+
+        $this->assertTrue($entity->hasVerbAndTarget($entityContract, $entityAsset));
 
 
     }
