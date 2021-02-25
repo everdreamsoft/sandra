@@ -149,7 +149,7 @@ class Concept extends DatagraphUnit implements Dumpable
 
         $link = DatabaseAdapter::rawCreateTriplet($this->idConcept, $verb->idConcept, $target->idConcept, $this->system, $updateOnExistingLk, $autocommit);
 
-        foreach ($sandraRefArray as $key => $value) {
+        foreach ($sandraRefArray ?? array() as $key => $value) {
 
             DatabaseAdapter::rawCreateReference($link, CommonFunctions::somethingToConceptId($key, $this->system), $value, $this->system, $autocommit);
         }
