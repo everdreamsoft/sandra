@@ -440,8 +440,8 @@ class ConceptManager
             if ($orderByRefConcept) {
                 $sortableRef = CommonFunctions::somethingToConceptId($orderByRefConcept, $this->system);
 
-                $joinSorter = "JOIN $this->tableReference refSorter ON x.id = refSorter.linkReferenced ";
-                $sorterWhere = "   ";
+                $joinSorter = "JOIN $this->tableReference refSorter ON x.id = refSorter.linkReferenced";
+                $sorterWhere = " AND  refSorter.idConcept = $sortableRef ";
                 if (!$numberSort) {
                     $orderBy = " ORDER BY refSorter.value";
                 } else {
@@ -464,7 +464,7 @@ class ConceptManager
                 $flag = "AND x.flag != $deletedUNID";
 
             $sql = "
-			SELECT *
+			SELECT r.id, r.idConcept, r.linkReferenced, r.value, x.idConceptStart, x.idConceptLink, x.idConceptTarget, x.id
   FROM `$this->tableReference` r
   JOIN  $this->tableLink x
     ON x.id = r.linkreferenced
