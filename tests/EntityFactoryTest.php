@@ -364,9 +364,11 @@ final class EntityFactoryTest extends TestCase
         $peopleFactory->populateLocal(null, null, null, 'age', true);
 
         //first element
-        foreach (array_slice($peopleFactory->getEntities(), 0, 1) as $value) ;
+        foreach (array_slice($peopleFactory->getEntities(), 0, 1) as $firstEntity) ;
 
-        $this->assertEquals(20, $value->get('age'));
+        $this->assertEquals(20, $firstEntity->get('age'));
+
+        $this->assertEquals('John', $firstEntity->get('firstname'));
 
 
     }

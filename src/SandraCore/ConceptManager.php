@@ -441,7 +441,7 @@ class ConceptManager
                 $sortableRef = CommonFunctions::somethingToConceptId($orderByRefConcept, $this->system);
 
                 $joinSorter = "JOIN $this->tableReference refSorter ON x.id = refSorter.linkReferenced ";
-                $sorterWhere = " AND refSorter.idConcept = $sortableRef  ";
+                $sorterWhere = "   ";
                 if (!$numberSort) {
                     $orderBy = " ORDER BY refSorter.value";
                 } else {
