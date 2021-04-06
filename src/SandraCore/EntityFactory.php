@@ -166,7 +166,7 @@ class EntityFactory extends FactoryBase implements Dumpable
     /**
      * @return Entity[]
      */
-    public function populateLocal($limit = 10000, $offset = 0, $asc = 'ASC', $sortByRef = null)
+    public function populateLocal($limit = 10000, $offset = 0, $asc = 'ASC', $sortByRef = null, $numberSort = false)
     {
 
         $entityArray = array();
@@ -178,14 +178,14 @@ class EntityFactory extends FactoryBase implements Dumpable
         //we don't have preselected concept yet
         if (empty($this->conceptArray)) {
 
-            $this->conceptManager->getConceptsFromLinkAndTarget($entityReferenceContainer, $this->sc->get($this->entityContainedIn), $limit, $asc, $offset, false, $sortByRef);
+            $this->conceptManager->getConceptsFromLinkAndTarget($entityReferenceContainer, $this->sc->get($this->entityContainedIn), $limit, $asc, $offset, false, $sortByRef, $numberSort);
         }
         else {
 
             $this->conceptManager->getConceptsFromArray($this->conceptArray);
         }
 
-        $refs = $this->conceptManager->getReferences($entityReferenceContainer, $this->sc->get($this->entityContainedIn), null, 0, 0, $sortByRef);
+        $refs = $this->conceptManager->getReferences($entityReferenceContainer, $this->sc->get($this->entityContainedIn), null, 0, 0, $sortByRef, $numberSort);
 
         if ($this->brotherVerb or $this->brotherTarget) {
             $mergedRefs = $this->conceptManager->getReferences($this->brotherVerb, $this->brotherTarget);

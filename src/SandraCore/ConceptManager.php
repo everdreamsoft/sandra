@@ -205,7 +205,7 @@ class ConceptManager
     }
 
     //Check the followup if something needs to be done
-    public function getConceptsFromLinkAndTarget($linkConcept, $targetConcept, $limit = 0, $asc = 'ASC', $offset = 0, $countOnly = false, $orderByRefConcept = null)
+    public function getConceptsFromLinkAndTarget($linkConcept, $targetConcept, $limit = 0, $asc = 'ASC', $offset = 0, $countOnly = false, $orderByRefConcept = null, $numberSort = false)
     {
         global $tableLink, $tableReference, $deletedUNID, $includeCid, $containsInFileCid, $dbLink;
 
@@ -260,7 +260,11 @@ class ConceptManager
 
             $joinSorter = "JOIN $this->tableReference refSorter ON l.id = refSorter.linkReferenced ";
             $sorterWhere = " AND refSorter.idConcept = $sortableRef  ";
-            $orderBy = "ORDER BY refSorter.value";
+            if ($numberSort) {
+                $orderBy = " ORDER BY refSorter.value";
+            } else {
+                $orderBy = " ORDER BY CAST(refSorter.value AS DECIMAL)";
+            }
         }
 
 
@@ -378,7 +382,7 @@ class ConceptManager
     }
 
 
-    public function getReferences($idConceptLink = 0, $idConceptTarget = 0, $refIdArray = null, $isTargetList = 0, $byTripletid = 0, $orderByRefConcept = null)
+    public function getReferences($idConceptLink = 0, $idConceptTarget = 0, $refIdArray = null, $isTargetList = 0, $byTripletid = 0, $orderByRefConcept = null, $numberSort = false)
     {
         global $deletedUNID;
 
@@ -438,7 +442,12 @@ class ConceptManager
 
                 $joinSorter = "JOIN $this->tableReference refSorter ON x.id = refSorter.linkReferenced ";
                 $sorterWhere = " AND refSorter.idConcept = $sortableRef  ";
-                $orderBy = " ORDER BY refSorter.value";
+                if ($numberSort) {
+                    $orderBy = " ORDER BY refSorter.value";
+                } else {
+                    $orderBy = " ORDER BY CAST(refSorter.value AS DECIMAL)";
+                }
+
             }
 
 

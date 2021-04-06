@@ -339,13 +339,15 @@ final class EntityFactoryTest extends TestCase
         $peopleFactory = new \SandraCore\EntityFactory('person', 'peopleFile', $system);
 
         $peopleFactory->createNew(array('firstname' => 'shaban', 'lastname' => 'shaame', 'age' => '40'));
-        $peopleFactory->createNew(array('firstname' => 'John', 'lastname' => 'Doe', 'age' => '20'));
-        $peopleFactory->createNew(array('firstname' => 'John', 'lastname' => 'AppleSeed', 'age' => '100'));
+        $peopleFactory->createNew(array('firstname' => 'John', 'lastname' => 'Doe', 'age' => '20')); //min by number
+        $peopleFactory->createNew(array('firstname' => 'John', 'lastname' => 'AppleSeed', 'age' => '100')); // max on number min alphabetically
         $peopleFactory->createNew(array('firstname' => 'Jack', 'lastname' => 'Johnson'));
         $peopleFactory->createNew(array('firstname' => 'Jack', 'lastname' => 'Roger'));
         $peopleFactory->createNew(array('firstname' => 'Roger', 'lastname' => 'Dalton', 'age' => '90'));
 
         $peopleFactory = new \SandraCore\EntityFactory('person', 'peopleFile', $system);
+
+        //we sort alphabetically so
         $peopleFactory->populateLocal(null, null, null, 'age');
 
         $entities = $peopleFactory->getEntities();
