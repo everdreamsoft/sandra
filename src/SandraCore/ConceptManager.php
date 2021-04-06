@@ -260,7 +260,7 @@ class ConceptManager
 
             $joinSorter = "JOIN $this->tableReference refSorter ON l.id = refSorter.linkReferenced ";
             $sorterWhere = " AND refSorter.idConcept = $sortableRef  ";
-            if ($numberSort) {
+            if (!$numberSort) {
                 $orderBy = " ORDER BY refSorter.value";
             } else {
                 $orderBy = " ORDER BY CAST(refSorter.value AS DECIMAL)";
@@ -442,7 +442,7 @@ class ConceptManager
 
                 $joinSorter = "JOIN $this->tableReference refSorter ON x.id = refSorter.linkReferenced ";
                 $sorterWhere = " AND refSorter.idConcept = $sortableRef  ";
-                if ($numberSort) {
+                if (!$numberSort) {
                     $orderBy = " ORDER BY refSorter.value";
                 } else {
                     $orderBy = " ORDER BY CAST(refSorter.value AS DECIMAL)";

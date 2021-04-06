@@ -347,16 +347,26 @@ final class EntityFactoryTest extends TestCase
 
         $peopleFactory = new \SandraCore\EntityFactory('person', 'peopleFile', $system);
 
-        //we sort alphabetically so
+        //we sort alphabetically so 100 in the min
         $peopleFactory->populateLocal(null, null, null, 'age');
 
         $entities = $peopleFactory->getEntities();
 
+        //We have only 4 because 2 people don't have age
         $this->assertCount(4, $entities);
 
         $firstEntity = reset($entities);
 
         $this->assertEquals(100, $firstEntity->get('age'));
+
+        $peopleFactory = new \SandraCore\EntityFactory('person', 'peopleFile', $system);
+        //we number sort
+        $peopleFactory->populateLocal(null, null, null, 'age', true);
+
+        //first element
+        foreach (array_slice($peopleFactory->getEntities(), 0, 1) as $value) ;
+
+        $this->assertEquals(20, $value->get('age'));
 
 
     }
