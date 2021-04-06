@@ -205,7 +205,7 @@ class ConceptManager
     }
 
     //Check the followup if something needs to be done
-    public function getConceptsFromLinkAndTarget($linkConcept, $targetConcept, $limit = 0, $asc = 'ASC',$offset = 0, $countOnly = false)
+    public function getConceptsFromLinkAndTarget($linkConcept, $targetConcept, $limit = 0, $asc = 'ASC', $offset = 0, $countOnly = false, $orderByRefConcept = null)
     {
         global $tableLink, $tableReference, $deletedUNID, $includeCid, $containsInFileCid, $dbLink;
 
@@ -224,8 +224,6 @@ class ConceptManager
             $offsetSQL = "";
         }
 
-
-
         //sub optimal to remove soon
 
         if (!isset($_SESSION['accessToFiles'])) {
@@ -243,6 +241,7 @@ class ConceptManager
             )";
         }
 
+
         $lastLinkJoined = $this->lastLinkJoined;
 
         if (!$this->lastLinkJoined) {
@@ -251,6 +250,19 @@ class ConceptManager
 
         //Due to a supposed MySQL optimizer bug we order by the last joined table
         $orderBy = "ORDER BY $lastLinkJoined.idConceptStart";
+
+
+        $joinSorter = '';
+        $sorterWhere = '';
+        //we sort by refConcepts
+        if ($orderByRefConcept) {
+            $sortableRef = CommonFunctions::somethingToConceptId($orderByRefConcept, $this->system);
+
+            $joinSorter = "JOIN $this->tableReference refSorter ON l.id = refSorter.linkReferenced ";
+            $sorterWhere = " AND refSorter.idConcept = $sortableRef  ";
+            $orderBy = "ORDER BY refSorter.value";
+        }
+
 
         $flag = '';
 
@@ -265,16 +277,11 @@ class ConceptManager
 
 
 
-
-
-
-
-
         $sql = "$selector FROM  $this->tableLink l " .
-            $this->filterJoin . "
+            $this->filterJoin . $joinSorter . "
 	WHERE l.idConceptLink = $linkConcept  
 	AND l.idConceptTarget = $targetConcept
-	$flag
+	$flag $sorterWhere
 	" . $this->filterCondition . " $hideLinks $orderBy $asc " . $limitSQL .$offsetSQL;
 
 
@@ -371,7 +378,7 @@ class ConceptManager
     }
 
 
-    public function getReferences($idConceptLink = 0, $idConceptTarget = 0, $refIdArray = null, $isTargetList = 0, $byTripletid = 0)
+    public function getReferences($idConceptLink = 0, $idConceptTarget = 0, $refIdArray = null, $isTargetList = 0, $byTripletid = 0, $orderByRefConcept = null)
     {
         global $deletedUNID;
 
@@ -422,6 +429,18 @@ class ConceptManager
                 //$sql .= " AND `$this->tableReference `.idConcept IN ($refs)";
             }
 
+            $joinSorter = '';
+            $sorterWhere = '';
+            $orderBy = '';
+            //we sort by refConcepts
+            if ($orderByRefConcept) {
+                $sortableRef = CommonFunctions::somethingToConceptId($orderByRefConcept, $this->system);
+
+                $joinSorter = "JOIN $this->tableReference refSorter ON x.id = refSorter.linkReferenced ";
+                $sorterWhere = " AND refSorter.idConcept = $sortableRef  ";
+                $orderBy = " ORDER BY refSorter.value";
+            }
+
 
             $filter = '';
             if ($idConceptLink > 0) {
@@ -442,9 +461,9 @@ class ConceptManager
     ON x.id = r.linkreferenced
   JOIN  $this->tableLink y
     ON y.id = r.linkReferenced 
-   $refsFilter
+  $joinSorter $refsFilter $sorterWhere 
    AND y.$masterCondition IN ($concepts) 
-   $filter " . $flag;
+   $filter " . $flag . $orderBy;
             //AND flag != $deletedUNID";
 
 

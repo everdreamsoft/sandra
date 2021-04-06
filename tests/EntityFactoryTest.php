@@ -330,7 +330,37 @@ final class EntityFactoryTest extends TestCase
 
     }
 
-    public function exportTest(){
+    public function testRefSorting()
+    {
+
+        $system = TestService::getDatagraph();
+
+
+        $peopleFactory = new \SandraCore\EntityFactory('person', 'peopleFile', $system);
+
+        $peopleFactory->createNew(array('firstname' => 'shaban', 'lastname' => 'shaame', 'age' => '40'));
+        $peopleFactory->createNew(array('firstname' => 'John', 'lastname' => 'Doe', 'age' => '20'));
+        $peopleFactory->createNew(array('firstname' => 'John', 'lastname' => 'AppleSeed', 'age' => '100'));
+        $peopleFactory->createNew(array('firstname' => 'Jack', 'lastname' => 'Johnson'));
+        $peopleFactory->createNew(array('firstname' => 'Jack', 'lastname' => 'Roger'));
+        $peopleFactory->createNew(array('firstname' => 'Roger', 'lastname' => 'Dalton', 'age' => '90'));
+
+        $peopleFactory = new \SandraCore\EntityFactory('person', 'peopleFile', $system);
+        $peopleFactory->populateLocal(null, null, null, 'age');
+
+        $entities = $peopleFactory->getEntities();
+
+        $this->assertCount(4, $entities);
+
+        $firstEntity = reset($entities);
+
+        $this->assertEquals(100, $firstEntity->get('age'));
+
+
+    }
+
+    public function exportTest()
+    {
 
         $system = TestService::getDatagraph();
         $peopleFactory = new \SandraCore\EntityFactory('person', 'peopleFile', $system);
