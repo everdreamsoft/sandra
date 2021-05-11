@@ -382,7 +382,7 @@ class ConceptManager
     }
 
 
-    public function getReferences($idConceptLink = 0, $idConceptTarget = 0, $refIdArray = null, $isTargetList = 0, $byTripletid = 0, $orderByRefConcept = null, $numberSort = false)
+    public function getReferences($idConceptLink = 0, $idConceptTarget = 0, $refIdArray = null, $isTargetList = 0, $byTripletid = 0, $orderByRefConcept = null, $numberSort = false,$fullFormat=0)
     {
         global $deletedUNID;
 
@@ -464,7 +464,7 @@ class ConceptManager
                 $flag = "AND x.flag != $deletedUNID";
 
             $sql = "
-			SELECT r.id, r.idConcept, r.linkReferenced, r.value, x.idConceptStart, x.idConceptLink, x.idConceptTarget, x.id
+			SELECT r.id as refId, r.idConcept, r.linkReferenced, r.value, x.idConceptStart, x.idConceptLink, x.idConceptTarget, x.id
   FROM `$this->tableReference` r
   JOIN  $this->tableLink x
     ON x.id = r.linkreferenced
@@ -489,29 +489,59 @@ class ConceptManager
 
             $resultArray = $pdoResult->fetchAll(PDO::FETCH_ASSOC);
 
+            if (!$fullFormat) {
+                if ($byTripletid) {
+                    foreach ($resultArray as $key => $result) {
+                        $idConcept = $result[$masterCondition];
+                        $value = $result['value'];
+                        $array[$idConcept][$result['id']][$result['idConcept']] = $value;
+                        $array[$idConcept][$result['id']]['linkId'] = $result['id'];
+                        $array[$idConcept][$result['id']]['idConceptTarget'] = $result['idConceptTarget'];
+                        $array[$idConcept][$result['id']]['idConceptLink'] = $result['idConceptLink'];
 
-            if ($byTripletid) {
-                foreach ($resultArray as $key => $result) {
-                    $idConcept = $result[$masterCondition];
-                    $value = $result['value'];
-                    $array[$idConcept][$result['id']][$result['idConcept']] = $value;
-                    $array[$idConcept][$result['id']]['linkId'] = $result['id'];
-                    $array[$idConcept][$result['id']]['idConceptTarget'] = $result['idConceptTarget'];
-                    $array[$idConcept][$result['id']]['idConceptLink'] = $result['idConceptLink'];
+                    }
+                } else {
+
+                    foreach ($resultArray as $key => $result) {
+
+                        $value = $result['value'];
+                        $idConcept = $result[$masterCondition];
+                        $array[$idConcept][$result['idConcept']] = $value;
+                        $array[$idConcept][$result['idConcept']]['value'] = $value;
+                        $array[$idConcept][$result['idConcept']] = $value;
+                        $array[$idConcept]['linkId'] = $result['id'];
+                        $array[$idConcept]['idConceptTarget'] = $result['idConceptTarget'];
+                    }
 
                 }
-
-            } else {
-
+            }else {
+                //full format is the best format other are legacy
                 foreach ($resultArray as $key => $result) {
 
                     $value = $result['value'];
+                    $entityId = $result['id'] ;
+                    $refArray['refId'] = $result['refId']; ;
+                    $refArray['refConceptId'] = $result['idConcept'] ;
+                    $refArray['value'] = $value ;
                     $idConcept = $result[$masterCondition];
-                    $array[$idConcept][$result['idConcept']] = $value;
-                    $array[$idConcept]['linkId'] = $result['id'];
-                    $array[$idConcept]['idConceptTarget'] = $result['idConceptTarget'];
-                }
 
+
+                   // $array[$idConcept][$result['idConcept']] = $value;
+                    //$array[$idConcept][$result['idConcept']]['value'] = $value;
+                   // $array[$idConcept][$result['idConcept']] = $value;
+                   // $array[$idConcept]['linkId'] = $result['id'];
+                   // $array[$idConcept]['idConceptTarget'] = $result['idConceptTarget'];
+                    //$array[$idConcept][$entityId][] = $refArray;
+                    $array[$idConcept][$entityId]['tripletId'] = $entityId;
+                    $array[$idConcept][$entityId]['targetConcept'] = $result['idConceptTarget'];
+                    if(!isset ($array[$idConcept][$entityId]['refs'])) {
+                        $array[$idConcept][$entityId]['refs'][] = $refArray;
+                    }
+                    else  array_push($array[$idConcept][$entityId]['refs'] , $refArray) ;
+
+
+
+                }
             }
         }
 

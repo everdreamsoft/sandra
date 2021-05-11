@@ -300,7 +300,7 @@ abstract class FactoryBase
     public function export()
     {
 
-       $exporter = new FactoryExporter('dog','dogfile');
+       $exporter = new FactoryExporter($this->entityIsa,$this->entityContainedIn);
        return json_encode($exporter);
 
     }

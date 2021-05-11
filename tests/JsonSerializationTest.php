@@ -551,15 +551,12 @@ final class JsonSerializationTest extends TestCase
         $gossiper = new InnateSkills\Gossiper\Gossiper($sandra);
         $entityFactory = $gossiper->receiveEntityFactory($json);
 
-
         $blockchainEventFactory = new \SandraCore\EntityFactory('blockchainEvent', 'blockchainEventFile', $sandra);
         $blockchainEventFactory->populateLocal();
         $blockchainEventFactory->getTriplets();
 
         $entity = $blockchainEventFactory->first('txId', 'txid1111');
-
         $this->assertInstanceOf(\SandraCore\Entity::class, $entity);
-
         $entity->hasVerbAndTarget('onBlockchain', 'genericBlockchain');
 
 
@@ -573,7 +570,6 @@ final class JsonSerializationTest extends TestCase
 
         $gossiper = new InnateSkills\Gossiper\Gossiper($sandra);
         $entityFactory = $gossiper->receiveEntityFactory($json);
-
 
         $blockchainContractFactory = new \SandraCore\EntityFactory('rmrkContract', 'blockchainContractFile', $sandra);
         $blockchainContractFactory->populateLocal();
@@ -600,7 +596,6 @@ final class JsonSerializationTest extends TestCase
 
         $gossiper = new InnateSkills\Gossiper\Gossiper($sandra);
         $entityFactory = $gossiper->receiveEntityFactory($json);
-
 
         $blockchainEventFactory = new \SandraCore\EntityFactory('blockchainEvent', 'blockchainEventFile', $sandra);
         $blockchainEventFactory->populateLocal();
@@ -639,7 +634,6 @@ final class JsonSerializationTest extends TestCase
         $this->assertInstanceOf(\SandraCore\Entity::class, $brotherEntity);
         $this->assertEquals($newVal, $sn);
 
-
     }
 
     public function testWithEntityAsVerb()
@@ -649,7 +643,6 @@ final class JsonSerializationTest extends TestCase
 
         $gossiper = new InnateSkills\Gossiper\Gossiper($sandra);
         $entityFactory = $gossiper->receiveEntityFactory($json);
-
 
         $tokenFactory = new \SandraCore\EntityFactory('tokenPath', 'tokenPathFile', $sandra);
         $tokenFactory->populateLocal();
@@ -663,15 +656,12 @@ final class JsonSerializationTest extends TestCase
         $entityContracts = $contractFactory->getEntities();
         $entityContract = reset($entityContracts);
 
-
         $assetFactory = new \SandraCore\EntityFactory('blockchainizableAsset', 'blockchainizableAssets', $sandra);
         $assetFactory->populateLocal();
         $entityAsset = $assetFactory->getEntities();
         $entityAsset = reset($entityAsset);
 
-
         $this->assertTrue($entity->hasVerbAndTarget($entityContract, $entityAsset));
-
 
     }
 
@@ -681,13 +671,9 @@ final class JsonSerializationTest extends TestCase
         $sandra = TestService::getFlushTestDatagraph();
         $catFactory = new \SandraCore\EntityFactory('cat', 'catFile', $sandra);
         $ownerFactory = new \SandraCore\EntityFactory('person', 'peopleFile', $sandra);
-
         $catFactory->createNew(['name' => 'kitty']);
         $catFactory->createNew(['name' => 'felix']);
-
-
         $gossiper = new InnateSkills\Gossiper\Gossiper($sandra);
-
         print_r($gossiper->exposeGossip($catFactory));
 
     }

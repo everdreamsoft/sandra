@@ -345,12 +345,22 @@ class Gossiper
         $response['id'] = $entity->entityId;
         $response['subjectUnid'] = $entity->subjectConcept->idConcept;
         $response['referenceArray'] = $entity->getDisplayRef();
+        $referenceArrayData = array();
 
         foreach ($entity->entityRefs as $ref) {
             /** @var Reference $ref */
             $refDisplay['refId'] = $ref->refId;
+            $refDisplay['concept']['unid'] = $ref->refConcept->idConcept;
+            $refDisplay['concept']['shortname'] = $ref->refConcept->getShortname();
+            $refDisplay['concept']['triplets'] = $ref->refConcept->tripletArray ;
+            $refDisplay['value'] = $ref->refValue;
+
+            $referenceArrayData[] = $refDisplay ;
+
 
         }
+
+        $response['referenceArray'] = $referenceArrayData ;
 
         //todo triplets
 
