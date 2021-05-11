@@ -137,7 +137,8 @@ class Gossiper
         foreach ($refJsonObject as $ref) {
 
             $concept = new ForeignConcept($ref->concept->shortname, $system);
-            $refArray[] = new Reference($concept, $entity, $ref->value, $system);
+            //todo replace zero for reference id
+            $refArray[] = new Reference(0, $concept, $entity, $ref->value, $system);
             /** @var $updateOnRef */
             if ($this->updateOnRef->getShortname() == $ref->concept->shortname) {
                 $this->indexRef[] = $ref->value;
@@ -298,5 +299,67 @@ class Gossiper
 
 
     }
+
+    public function exposeGossip(EntityFactory $entityFactory, $isFinalFactory = true)
+    {
+
+        if (!$entityFactory->populated) {
+            $entityFactory->populateLocal();
+            $entityFactory->joinPopulate();
+        }
+
+        $joinedFactoryGossipData = array();
+        $entityArray = array();
+
+        foreach ($entityFactory->joinedFactoryArray as $joinedFactory) {
+
+            $joinedFactoryGossipData[] = $this->exposeGossip($joinedFactory, false);
+
+        }
+
+        foreach ($entityFactory->getEntities() as $entity) {
+
+
+            $entityArray[] = $this->exposeGossipEntity($entity);
+
+        }
+
+
+        $entityFactoryData['is_a'] = $entityFactory->entityIsa;
+        $entityFactoryData['contained_in_file'] = $entityFactory->entityContainedIn;
+        $entityFactoryData['entityArray'] = $entityArray;
+        $entityFactoryData['joinedFactory'] = $joinedFactoryGossipData;
+
+
+        $return['gossiper']['updateOnReferenceShortname'] = $entityFactory->indexShortname;
+        $return['entityFactory'] = $entityFactoryData;
+
+        return $return;
+
+
+    }
+
+    public function exposeGossipEntity(Entity $entity)
+    {
+
+        $response['id'] = $entity->entityId;
+        $response['subjectUnid'] = $entity->subjectConcept->idConcept;
+        $response['referenceArray'] = $entity->getDisplayRef();
+
+        foreach ($entity->entityRefs as $ref) {
+            /** @var Reference $ref */
+            $refDisplay['refId'] = $ref->refId;
+
+        }
+
+        //todo triplets
+
+        //todo refontriplets
+
+        return $response;
+
+
+    }
+
 
 }

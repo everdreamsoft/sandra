@@ -50,7 +50,8 @@ class Entity implements Dumpable
 
                     $referenceConcept = $this->system->conceptFactory->getForeignConceptFromId($sandraReferenceConceptId);
 
-                    $ref = new Reference($referenceConcept, $this, $sandraReferenceValue, $this->system);
+                    //todo replace zero for reference id
+                    $ref = new Reference(0, $referenceConcept, $this, $sandraReferenceValue, $this->system);
                 }
                 $this->entityRefs[$sandraReferenceConceptId] = $ref;
 
@@ -258,8 +259,8 @@ class Entity implements Dumpable
         $old = $this->get($referenceShortname);
 
         $referenceConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($referenceShortname);
-        DatabaseAdapter::rawCreateReference($this->entityId, $referenceConcept->idConcept, $value, $this->system, $autocommit);
-        $ref = new Reference($referenceConcept, $this, $value, $this->system);
+        $refId = DatabaseAdapter::rawCreateReference($this->entityId, $referenceConcept->idConcept, $value, $this->system, $autocommit);
+        $ref = new Reference($refId, $referenceConcept, $this, $value, $this->system);
         $this->entityRefs[$referenceConcept->idConcept] = $ref;
 
         $factory = $this->factory;

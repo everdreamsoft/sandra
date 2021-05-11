@@ -532,6 +532,14 @@ final class JsonSerializationTest extends TestCase
         $this->assertEquals('mike', $felixMasters[0]->get('name'), 'Felix has Mike as master');
         $this->assertEquals('jown', $felixMasters[1]->get('name'), 'Jown has Mike as master');
 
+
+        //the other way arround
+        $verifCatFactory->indexShortname = 'name';
+        $generatedGossip = $gossiper->exposeGossip($verifCatFactory);
+
+        $this->assertEquals(json_encode($generatedGossip, JSON_PRETTY_PRINT), json_encode(json_decode($json), JSON_PRETTY_PRINT));
+
+
     }
 
     public function testWithShortnameAsLink()
@@ -664,6 +672,23 @@ final class JsonSerializationTest extends TestCase
 
         $this->assertTrue($entity->hasVerbAndTarget($entityContract, $entityAsset));
 
+
+    }
+
+    public function testExposeGossip()
+    {
+
+        $sandra = TestService::getFlushTestDatagraph();
+        $catFactory = new \SandraCore\EntityFactory('cat', 'catFile', $sandra);
+        $ownerFactory = new \SandraCore\EntityFactory('person', 'peopleFile', $sandra);
+
+        $catFactory->createNew(['name' => 'kitty']);
+        $catFactory->createNew(['name' => 'felix']);
+
+
+        $gossiper = new InnateSkills\Gossiper\Gossiper($sandra);
+
+        print_r($gossiper->exposeGossip($catFactory));
 
     }
 

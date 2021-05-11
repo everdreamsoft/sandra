@@ -14,15 +14,17 @@ class Reference implements Dumpable
     public $refConcept ;/** @var $refConcept Concept */
     public $refEntity ;  /** @var $refEntity SandraEntity */
     public $refValue ;
-    private $system ;
+    private $system;
+    public $refId;
 
-    public function __construct(Concept $refConcept,Entity &$refEntity,$refValue,System $system)
+    public function __construct($id, Concept $refConcept, Entity &$refEntity, $refValue, System $system)
     {
 
         $this->refConcept = $refConcept;
+        $this->refId = $id;
         $this->refEntity = $refEntity;
         $this->refValue = $refValue;
-        $this->system = $system ;
+        $this->system = $system;
     }
 
     public function hasChangedFromDatabase(): bool
@@ -93,7 +95,8 @@ class Reference implements Dumpable
         $this->refConcept = null;
         $this->refEntity = null;
         $this->refValue = null;
-        $this->system = null ;
+        $this->system = null;
+        $this->refId = null;
 
 
     }
