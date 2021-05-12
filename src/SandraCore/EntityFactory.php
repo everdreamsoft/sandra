@@ -215,9 +215,9 @@ class EntityFactory extends FactoryBase implements Dumpable
                         $refConceptUnid = $refValue['refConceptId'];
                         $refValue = $refValue['value'];
 
-                        echo PHP_EOL;
-                        echo $refValue;
-                        echo PHP_EOL;
+                       // echo PHP_EOL;
+                       // echo $refValue;
+                       // echo PHP_EOL;
 
                         //escape if reference is not a concept id
                         if (!is_numeric($refConceptUnid))
@@ -527,7 +527,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
             $this->brotherEntitiesArray[$subject][$verb][$target] = $entity ;
             //build map
-            echo"$verb,$target,$subject";
+            //echo"$verb,$target,$subject";
             $this->brotherMap[$verb][$target][$subject] = $this->entityArray[$subject];
             $this->brotherMap[0][$target][$subject] = $this->entityArray[$subject]; // With any verb to target
             $this->brotherMap[$verb][0][$subject] = $this->entityArray[$subject]; //With a verb with any target
