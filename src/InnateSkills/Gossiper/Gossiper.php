@@ -344,16 +344,28 @@ class Gossiper
 
         $response['id'] = $entity->entityId;
         $response['subjectUnid'] = $entity->subjectConcept->idConcept;
-        $response['referenceArray'] = $entity->getDisplayRef();
+       // $response['referenceArray'] = $entity->getDisplayRef();
         $referenceArrayData = array();
+
+//        echo"Ok dumpt the entity" ;
+//        print_r($entity->dumpMeta());
+//        die();
+//        echo"Ok we just dumped the ref object".PHP_EOL ;
 
         foreach ($entity->entityRefs as $ref) {
             /** @var Reference $ref */
+            echo"Ok we are dumping the ref".PHP_EOL ;
+            print_r($ref->dumpMeta());
+            echo"Ok we just dumped the ref object".PHP_EOL ;
+            $refDisplay = array();
             $refDisplay['refId'] = $ref->refId;
             $refDisplay['concept']['unid'] = $ref->refConcept->idConcept;
             $refDisplay['concept']['shortname'] = $ref->refConcept->getShortname();
             $refDisplay['concept']['triplets'] = $ref->refConcept->tripletArray ;
             $refDisplay['value'] = $ref->refValue;
+
+            echo"Ok We are dumping the display".PHP_EOL ;
+            print_r($refDisplay);
 
             $referenceArrayData[] = $refDisplay ;
 
@@ -363,6 +375,7 @@ class Gossiper
         $response['referenceArray'] = $referenceArrayData ;
 
         //todo triplets
+
 
         //todo refontriplets
 

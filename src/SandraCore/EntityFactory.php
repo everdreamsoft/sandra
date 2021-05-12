@@ -189,7 +189,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         if ($this->brotherVerb or $this->brotherTarget) {
 
-            $mergedRefs = $this->conceptManager->getReferences($this->brotherVerb, $this->brotherTarget,null, 0, 0, $sortByRef, $numberSort,true);
+            $mergedRefs = $this->conceptManager->getReferences($this->brotherVerb, $this->brotherTarget,null, 0, 0, $sortByRef, $numberSort,false);
         }
 
 
@@ -215,6 +215,10 @@ class EntityFactory extends FactoryBase implements Dumpable
                         $refConceptUnid = $refValue['refConceptId'];
                         $refValue = $refValue['value'];
 
+                        echo PHP_EOL;
+                        echo $refValue;
+                        echo PHP_EOL;
+
                         //escape if reference is not a concept id
                         if (!is_numeric($refConceptUnid))
                             continue;
@@ -235,7 +239,9 @@ class EntityFactory extends FactoryBase implements Dumpable
                     }
 
                     //there are ref to be merged
+                    if(isset($mergedRefs))
                     if (isset($mergedRefs[$conceptId])) {
+
 
                         foreach ($mergedRefs[$conceptId] as $mergeConceptId => $refValueMerged) {
 
@@ -273,7 +279,7 @@ class EntityFactory extends FactoryBase implements Dumpable
                     $entityTarget = $this->system->conceptFactory->getConceptFromShortnameOrId($this->entityContainedIn);
                     $entity = new $classname($concept, $refArray, $this, $entityId, $entityVerb, $entityTarget, $this->system);
                     //$entity = new Entity($concept,$refArray,$this,$entityId,$entityVerb,$entityTarget,$this->system);
-                    $entityArray[$entityId] = $entity;
+                    $entityArray[$concept->idConcept] = $entity;
 
                     if (isset($indexFound)) {
 
@@ -366,6 +372,8 @@ class EntityFactory extends FactoryBase implements Dumpable
                     $entityData[$entityId]['idConceptTarget'] = $value['idConceptTarget'];
                     $entityData[$entityId]['idConceptLink'] = $value['idConceptLink'];
 
+                    //die(print_r($entityData));
+
 
                     //each reference
                     foreach ($value as $refConceptUnid => $refValue) {
@@ -378,8 +386,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
                         //die(print_r($value));
                         //$refArray[$entityId][$refConceptUnid] = $refValue;
-                        $refArray[$entityId][$refConceptUnid]['value'] = $refValue;
-                        $refArray[$entityId][$refConceptUnid]['refId'] = $refValue;
+                        $refArray[$entityId][$refConceptUnid] = $refValue;
 
                         //we add the reference in the factory reference map
                         $sandraReferenceMap[$refConceptUnid] = $this->system->conceptFactory->getConceptFromId($refConceptUnid);
@@ -387,6 +394,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
                     //we build resulting entities
                     foreach ($refArray as $entityId => $entityRefs) {
+
 
 
                         $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($entityData[$entityId]['idConceptLink']);
@@ -406,6 +414,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
             }
         }
+
 
         $this->addBrotherEntities($entityArray, $sandraReferenceMap);
         $this->brotherEntitiesVerified[$verb][$target] = 1;
@@ -518,6 +527,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
             $this->brotherEntitiesArray[$subject][$verb][$target] = $entity ;
             //build map
+            echo"$verb,$target,$subject";
             $this->brotherMap[$verb][$target][$subject] = $this->entityArray[$subject];
             $this->brotherMap[0][$target][$subject] = $this->entityArray[$subject]; // With any verb to target
             $this->brotherMap[$verb][0][$subject] = $this->entityArray[$subject]; //With a verb with any target
