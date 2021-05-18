@@ -305,6 +305,7 @@ class Gossiper
 
         if (!$entityFactory->populated) {
             $entityFactory->populateLocal();
+            $entityFactory->getTriplets();
             $entityFactory->joinPopulate();
         }
 
@@ -344,6 +345,7 @@ class Gossiper
 
         $response['id'] = $entity->entityId;
         $response['subjectUnid'] = $entity->subjectConcept->idConcept;
+
        // $response['referenceArray'] = $entity->getDisplayRef();
         $referenceArrayData = array();
 
@@ -360,8 +362,8 @@ class Gossiper
             $refDisplay = array();
             $refDisplay['refId'] = $ref->refId;
             $refDisplay['concept']['unid'] = $ref->refConcept->idConcept;
-            $refDisplay['concept']['shortname'] = $ref->refConcept->getShortname();
-            $refDisplay['concept']['triplets'] = $ref->refConcept->tripletArray ;
+            $refDisplay['concept']['shortname'] = $this->sandra->systemConcept->getSCS( $ref->refConcept->idConcept);
+            $refDisplay['concept']['triplets'] = $ref->refConcept->tripletArray ?? array() ;
             $refDisplay['value'] = $ref->refValue;
 
             echo"Ok We are dumping the display".PHP_EOL ;
@@ -372,7 +374,18 @@ class Gossiper
 
         }
 
+        $tripletArray = array();
         $response['referenceArray'] = $referenceArrayData ;
+
+
+        foreach ( $entity->subjectConcept->tripletArray ?? array() as $verb =>$targetArray) {
+            $verbShortname = $this->sandra->systemConcept->getSCS($verb) ?? $verb ;
+            foreach ($targetArray as $tagetId) {
+
+                $tripletArray[$verbShortname][] = $tagetId;
+            }
+        }
+        $response['triplets'] = $tripletArray;
 
         //todo triplets
 
