@@ -51,7 +51,6 @@ class Entity implements Dumpable
                     $referenceConcept = $this->system->conceptFactory->getForeignConceptFromId($sandraReferenceConceptId);
 
                     //todo replace zero for reference id
-
                     $ref = new Reference(0, $referenceConcept, $this, $sandraReferenceValue, $this->system);
                 }
                 $this->entityRefs[$sandraReferenceConceptId] = $ref;
