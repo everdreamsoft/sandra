@@ -185,11 +185,10 @@ class EntityFactory extends FactoryBase implements Dumpable
             $this->conceptManager->getConceptsFromArray($this->conceptArray);
         }
 
-        $refs = $this->conceptManager->getReferences($entityReferenceContainer, $this->sc->get($this->entityContainedIn), null, 0, 0, $sortByRef, $numberSort,true);
+        $refs = $this->conceptManager->getReferences($entityReferenceContainer, $this->sc->get($this->entityContainedIn), null, 0, 0, $sortByRef, $numberSort);
 
         if ($this->brotherVerb or $this->brotherTarget) {
-
-            $mergedRefs = $this->conceptManager->getReferences($this->brotherVerb, $this->brotherTarget,null, 0, 0, $sortByRef, $numberSort,false);
+            $mergedRefs = $this->conceptManager->getReferences($this->brotherVerb, $this->brotherTarget);
         }
 
 
@@ -199,93 +198,79 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         //Each concept
         if (is_array($refs)) {
-            foreach ($refs as $conceptId => $something) {
-                foreach ($something as $entityId => $entity) {
-                    //key is entity id
-                    $concept = $this->system->conceptFactory->getConceptFromId($conceptId);
+            foreach ($refs as $key => $value) {
 
-                    $entityId = $entity['tripletId'];
-                    $refArray = $entity['refs'];
+                $concept = $this->system->conceptFactory->getConceptFromId($key);
+                $entityId = $value['linkId'];
+                $refArray = null;
 
 
-                    //each reference
-                    foreach ($refArray as $refConceptUnid => $refValue) {
+                //each reference
+                foreach ($value as $refConceptUnid => $refValue) {
 
+                    //escape if reference is not a concept id
+                    if (!is_numeric($refConceptUnid))
+                        continue;
 
-                        $refConceptUnid = $refValue['refConceptId'];
-                        $refValue = $refValue['value'];
-
-                       // echo PHP_EOL;
-                       // echo $refValue;
-                       // echo PHP_EOL;
-
-                        //escape if reference is not a concept id
-                        if (!is_numeric($refConceptUnid))
-                            continue;
-
-                        //we are builiding the auto increment index if any
-                        if ($refConceptUnid == $this->indexUnid) {
-                            if ($refValue > $this->maxIndex) {
-                                $indexFound = $refValue;
-                                $this->maxIndex = $refValue;
-                            }
-                        }
-
-                        $refArray[$refConceptUnid] = $refValue;
-
-                        //we add the reference in the factory reference map
-                        $sandraReferenceMap[$refConceptUnid] = $this->system->conceptFactory->getConceptFromId($refConceptUnid);
-                        //die(print_r($refConceptUnid));
-                    }
-
-                    //there are ref to be merged
-                    if(isset($mergedRefs))
-                    if (isset($mergedRefs[$conceptId])) {
-
-
-                        foreach ($mergedRefs[$conceptId] as $mergeConceptId => $refValueMerged) {
-
-                            //the reference not already exist in entity
-                            if (!$refArray[$mergeConceptId]) {
-
-                                $refArray[$mergeConceptId] = $refValueMerged;
-
-                                //we add the reference in the factory reference map
-                                $sandraReferenceMap[$refConceptUnid] = $this->system->conceptFactory->getConceptFromId($mergeConceptId);
-                            }
+                    //we are builiding the auto increment index if any
+                    if ($refConceptUnid == $this->indexUnid) {
+                        if ($refValue > $this->maxIndex) {
+                            $indexFound = $refValue;
+                            $this->maxIndex = $refValue;
                         }
                     }
-                    $classname = $this->generatedEntityClass;
 
-                    //do we have a hardcoded class in the datagraph
-                    if (isset ($refArray[$this->system->systemConcept->get('class_name')])) {
+                    $refArray[$refConceptUnid] = $refValue;
 
-                        $classname = $refArray[$this->system->systemConcept->get('class_name')];
+                    //we add the reference in the factory reference map
+                    $sandraReferenceMap[$refConceptUnid] = $this->system->conceptFactory->getConceptFromId($refConceptUnid);
+                }
 
-                    }
+                //there are ref to be merged
+                if (isset($mergedRefs[$key])) {
 
-                    //if the class is instanciable
-                    try {
-                        $testClass = new \ReflectionClass($classname);
-                        if ($testClass->isAbstract()) {
+                    foreach ($mergedRefs[$key] as $mergeConceptId => $refValueMerged) {
 
-                            $classname = Entity::class;
+                        //the reference not already exist in entity
+                        if (!$refArray[$mergeConceptId]) {
+
+                            $refArray[$mergeConceptId] = $refValueMerged;
+
+                            //we add the reference in the factory reference map
+                            $sandraReferenceMap[$refConceptUnid] = $this->system->conceptFactory->getConceptFromId($mergeConceptId);
                         }
-                    } catch (\ReflectionException $e) {
+                    }
+                }
+                $classname = $this->generatedEntityClass;
+
+                //do we have a hardcoded class in the datagraph
+                if (isset ($refArray[$this->system->systemConcept->get('class_name')])){
+
+                    $classname = $refArray[$this->system->systemConcept->get('class_name')] ;
+
+                }
+
+                //if the class is instanciable
+                try {
+                    $testClass = new \ReflectionClass($classname);
+                    if ($testClass->isAbstract()) {
+
                         $classname = Entity::class;
                     }
+                } catch (\ReflectionException $e) {
+                    $classname = Entity::class;
+                }
 
-                    $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($entityReferenceContainer);
-                    $entityTarget = $this->system->conceptFactory->getConceptFromShortnameOrId($this->entityContainedIn);
-                    $entity = new $classname($concept, $refArray, $this, $entityId, $entityVerb, $entityTarget, $this->system);
-                    //$entity = new Entity($concept,$refArray,$this,$entityId,$entityVerb,$entityTarget,$this->system);
-                    $entityArray[$concept->idConcept] = $entity;
+                $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($entityReferenceContainer);
+                $entityTarget = $this->system->conceptFactory->getConceptFromShortnameOrId($this->entityContainedIn);
+                $entity = new $classname($concept, $refArray, $this, $entityId, $entityVerb, $entityTarget, $this->system);
+                //$entity = new Entity($concept,$refArray,$this,$entityId,$entityVerb,$entityTarget,$this->system);
+                $entityArray[$key] = $entity;
 
-                    if (isset($indexFound)) {
+                if (isset($indexFound)) {
 
-                        //if entity of this factory have index
-                        $this->entityIndexMap[$indexFound] = $entity;
-                    }
+                    //if entity of this factory have index
+                    $this->entityIndexMap[$indexFound] = $entity;
                 }
             }
         }
@@ -350,14 +335,11 @@ class EntityFactory extends FactoryBase implements Dumpable
 
 
         $refs = $this->conceptManager->getReferences($verb, $target, null, 0, 1);
-        //die(print_r($refs));
-
 
         $sandraReferenceMap = array();
 
         //Each concept
         if (is_array($refs)) {
-
             foreach ($refs as $keyConcept => $valueArray) {
                 foreach ($valueArray as $linkId => $value) {
 
@@ -372,8 +354,6 @@ class EntityFactory extends FactoryBase implements Dumpable
                     $entityData[$entityId]['idConceptTarget'] = $value['idConceptTarget'];
                     $entityData[$entityId]['idConceptLink'] = $value['idConceptLink'];
 
-                    //die(print_r($entityData));
-
 
                     //each reference
                     foreach ($value as $refConceptUnid => $refValue) {
@@ -384,8 +364,7 @@ class EntityFactory extends FactoryBase implements Dumpable
                         if (!is_numeric($refConceptUnid))
                             continue;
 
-                        //die(print_r($value));
-                        //$refArray[$entityId][$refConceptUnid] = $refValue;
+
                         $refArray[$entityId][$refConceptUnid] = $refValue;
 
                         //we add the reference in the factory reference map
@@ -396,10 +375,8 @@ class EntityFactory extends FactoryBase implements Dumpable
                     foreach ($refArray as $entityId => $entityRefs) {
 
 
-
                         $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($entityData[$entityId]['idConceptLink']);
                         $entityTarget = $this->system->conceptFactory->getConceptFromId($entityData[$entityId]['idConceptTarget']);
-
 
                         $entity = new Entity($concept, $entityRefs, $this, $entityId, $entityVerb, $entityTarget, $this->system);
 
@@ -414,7 +391,6 @@ class EntityFactory extends FactoryBase implements Dumpable
 
             }
         }
-
 
         $this->addBrotherEntities($entityArray, $sandraReferenceMap);
         $this->brotherEntitiesVerified[$verb][$target] = 1;
@@ -527,7 +503,6 @@ class EntityFactory extends FactoryBase implements Dumpable
 
             $this->brotherEntitiesArray[$subject][$verb][$target] = $entity ;
             //build map
-            //echo"$verb,$target,$subject";
             $this->brotherMap[$verb][$target][$subject] = $this->entityArray[$subject];
             $this->brotherMap[0][$target][$subject] = $this->entityArray[$subject]; // With any verb to target
             $this->brotherMap[$verb][0][$subject] = $this->entityArray[$subject]; //With a verb with any target
@@ -852,7 +827,6 @@ class EntityFactory extends FactoryBase implements Dumpable
                 if (!isset  ($value->entityRefs[$valOfConcept])) continue ;
                 $valueOfThisRef = $value->entityRefs[$valOfConcept]->refValue;
 
-                //die(print_r($this->refMap));
                 $this->refMap[$valOfConcept][$valueOfThisRef][] = $value;
 
             }
