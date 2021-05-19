@@ -356,20 +356,20 @@ class Gossiper
 
         foreach ($entity->entityRefs as $ref) {
             /** @var Reference $ref */
-            echo"Ok we are dumping the ref".PHP_EOL ;
-            print_r($ref->dumpMeta());
-            echo"Ok we just dumped the ref object".PHP_EOL ;
+//            echo"Ok we are dumping the ref".PHP_EOL ;
+//            print_r($ref->dumpMeta());
+//            echo"Ok we just dumped the ref object".PHP_EOL ;
             $refDisplay = array();
             $refDisplay['refId'] = $ref->refId;
             $refDisplay['concept']['unid'] = $ref->refConcept->idConcept;
-            $refDisplay['concept']['shortname'] = $this->sandra->systemConcept->getSCS( $ref->refConcept->idConcept);
-            $refDisplay['concept']['triplets'] = $ref->refConcept->tripletArray ?? array() ;
+            $refDisplay['concept']['shortname'] = $this->sandra->systemConcept->getSCS($ref->refConcept->idConcept);
+            $refDisplay['concept']['triplets'] = $ref->refConcept->tripletArray ?? array();
             $refDisplay['value'] = $ref->refValue;
 
-            echo"Ok We are dumping the display".PHP_EOL ;
-            print_r($refDisplay);
+            //  echo"Ok We are dumping the display".PHP_EOL ;
+//            print_r($refDisplay);
 
-            $referenceArrayData[] = $refDisplay ;
+            $referenceArrayData[] = $refDisplay;
 
 
         }
