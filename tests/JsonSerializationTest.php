@@ -353,6 +353,8 @@ final class JsonSerializationTest extends TestCase
 
     }
 
+
+
     public function testOverideRef()
     {
         $ageModif = 4;
@@ -408,6 +410,23 @@ final class JsonSerializationTest extends TestCase
         $this->assertEquals(1, $gossiper->createRefCount);
         $this->assertEquals(1, $gossiper->updateRefCount);
         $this->assertEquals(1, $gossiper->equalRefCount);
+
+
+    }
+
+    public function testNullData()
+    {
+        $sandra = TestService::getFlushTestDatagraph();
+        $json = '{"gossiper":{"updateOnReferenceShortname":"txHash","shortNameDictionary":{"0":"null_concept","1":"collectionId","2":"assetId","3":"code","4":"class_name","5":"identifier","6":"entity:subject:0","7":"blockchain","8":"address","9":"id","10":"txHash","11":"blockIndex"}},"entityFactory":{"is_a":"blockchainEvent","contained_in_file":"blockchainEventFile","entityArray":[],"refMap":{},"joinedFactory":[]}} ';
+
+        $gossiper = new InnateSkills\Gossiper\Gossiper($sandra);
+        $entityFactory = $gossiper->receiveEntityFactory($json);
+
+        $this->assertEquals(0, $gossiper->createRefCount);
+        $this->assertEquals(0, $gossiper->rawNewTripletCount);
+
+
+
 
 
     }

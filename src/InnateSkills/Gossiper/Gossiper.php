@@ -31,6 +31,7 @@ class Gossiper
      */
     private System $sandra;
     private $autocommit;
+    private $somethingToCommit = false ;
     private $bufferTripletsRef = array();
     public $rawNewTripletCount = 0;
     public $rawNewTripletRefUpdate = 0;
@@ -107,7 +108,7 @@ class Gossiper
         }
         if ($this->autocommit) {
             $this->executeTripletBuffer();
-            DatabaseAdapter::commit();
+            $this->somethingToCommit ? DatabaseAdapter::commit() : false;
         }
 
         return $entityFactory;
@@ -279,6 +280,7 @@ class Gossiper
                             CommonFunctions::somethingToConcept($localTargetConcept, $this->sandra), $saveRefArray, 0, false);
                         $tripletCreated = true;
                         $this->rawNewTripletCount++;
+                        $this->somethingToCommit = true ;
                     } else {
                         //the entity exist already
                         $localBrotherEntity = $localEntity->getBrotherEntity($verb, $localTargetConcept);
@@ -287,6 +289,7 @@ class Gossiper
                         foreach ($saveRefArray as $key => $value) {
                             if ($localBrotherEntity->get($key) != $value) {
                                 $localBrotherEntity->createOrUpdateRef($key, $value);
+                                $this->somethingToCommit = true ;
                                 $this->rawNewTripletRefUpdate++;
                             }
                         }

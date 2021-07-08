@@ -590,6 +590,7 @@ OR idConceptLink NOT IN ( SELECT idConceptStart FROM `$tableLink` WHERE idConcep
 
     public static function commit(){
 
+
         self::$pdo->commit() ;
         self::$transactionStarted = false ;
 
