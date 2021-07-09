@@ -108,7 +108,7 @@ class Gossiper
         }
         if ($this->autocommit) {
             $this->executeTripletBuffer();
-            $this->somethingToCommit ? DatabaseAdapter::commit() : false;
+             if ($this->somethingToCommit) DatabaseAdapter::commit();
         }
 
         return $entityFactory;
@@ -162,8 +162,11 @@ class Gossiper
         if ($discriminatingValue)
             $entityExist = $entityFactory->getAllWith($this->updateOnRef->getShortname(), $discriminatingValue);
 
-        if (!$entityExist) $entity = $entityFactory->createNew([], null, false);
-        else $entity = reset($entityExist);
+        if (!$entityExist) {
+            $entity = $entityFactory->createNew([], null, false);
+            $this->somethingToCommit = true;
+
+        } else $entity = reset($entityExist);
 
 
         foreach ($refJsonObject as $ref) {
@@ -180,6 +183,7 @@ class Gossiper
             $keyValueArray[$ref->concept->shortname] = $ref->value;
 
             $entity->createOrUpdateRef($ref->concept->shortname, $ref->value, false);
+            $this->somethingToCommit = true;
 
             if ($update) $this->updateRefCount++;
             if ($create) $this->createRefCount++;
