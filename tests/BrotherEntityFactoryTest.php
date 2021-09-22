@@ -176,7 +176,7 @@ final class BrotherEntityFactoryTest extends TestCase
 
     }
 
-    public function testHotplugBrotherEntity(): int
+    public function testHotplugBrotherEntity()
     {
 
         $sandraToFlush = new SandraCore\System('phpUnit_', true);

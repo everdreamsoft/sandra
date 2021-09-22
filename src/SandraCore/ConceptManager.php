@@ -122,7 +122,7 @@ class ConceptManager
 
 
                     $join .= "JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
-                    $conditionnalClause .= "  $flag  IN($targetConcept[lklk])";
+                    $conditionnalClause .= "  $flag AND link$tableCounter.idConceptLink IN($targetConcept[lklk])";
                 } //any filter if the link equal 0 then make the filter on ANY link
                 else if ($targetConcept['lklk'] == 0) {
 
@@ -138,7 +138,6 @@ class ConceptManager
                 }
             } else {
                 //eclusion filter
-                //it's an inclusion filter
                 if ($targetConcept['lktg'] == 0) {
 
                     $join .= " LEFT JOIN  $this->tableLink link$tableCounter ON link$tableCounter.idConceptStart = l.idConceptStart 

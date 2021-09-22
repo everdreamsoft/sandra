@@ -55,6 +55,7 @@ final class EntityFactoryTest extends TestCase
     public function testSetFilter()
 {
 
+    TestService::getFlushTestDatagraph();
     $system = TestService::getDatagraph();
     $alphabetFactory = new \SandraCore\EntityFactory('algebra','algebraFile',$system);
 
@@ -66,12 +67,17 @@ final class EntityFactoryTest extends TestCase
     $c = $alphabetFactory->createNew(array('name'=>'c'));
     $d = $alphabetFactory->createNew(array('name'=>'d'));
     $e = $alphabetFactory->createNew(array('name'=>'e'));
+    $f = $alphabetFactory->createNew(array('name' => 'f'));
 
     $a->setBrotherEntity('implies',$b,null);
     $a->setBrotherEntity('implies',$c,null);
 
     $e->setBrotherEntity('implies',$b,null);
     $d->setBrotherEntity('implies',$b,null);
+
+    $f->setBrotherEntity('implies', $d, null);
+
+    $c->setBrotherEntity('something',$b,null);
 
 
 
@@ -80,7 +86,7 @@ final class EntityFactoryTest extends TestCase
     $alphabetFactory->getTriplets();
 
 
-    $this->assertCount(5,$alphabetFactory->entityArray);
+    $this->assertCount(6,$alphabetFactory->entityArray);
 
 
     $factoryWithOtherIsa = new \SandraCore\EntityFactory('somethingElse','algebraFile',$system);
@@ -93,16 +99,47 @@ final class EntityFactoryTest extends TestCase
 
 
     //advanced filters
+
+    //anything B
+    $anythingB = new \SandraCore\EntityFactory('algebra', 'algebraFile', $system);
+    $anythingB->setFilter(0,$b);
+    $anythingB->populateLocal();
+
+    $this->assertCount(4,$anythingB->entityArray);
+
     $impliesBorC = new \SandraCore\EntityFactory('algebra', 'algebraFile', $system);
 
-    $f = $alphabetFactory->createNew(array('name' => 'f'));
-    $f->setBrotherEntity('implies', $d, null);
+
+
 
     $impliesBorC->setFilter('implies', array($b, $d));
     $impliesBorC->populateLocal();
 
     //we should have a,d,e,f
-    $impliesBorC->dumpMeta();
+    $this->assertCount(4,$impliesBorC->entityArray);
+
+
+
+
+    //all with an imply
+    $allwithImply = new \SandraCore\EntityFactory('algebra', 'algebraFile', $system);
+    //$allHaveImply->setFilter('implies');
+    $allwithImply->setFilter('implies',0);
+
+    $allwithImply->populateLocal();
+    $this->assertCount(4,$allwithImply->entityArray);
+
+
+    //all don't have imply
+    $allNoImply = new \SandraCore\EntityFactory('algebra', 'algebraFile', $system);
+    $allNoImply->setFilter('implies',0,true);
+
+    $allNoImply->populateLocal();
+   $this->assertCount(2,$allNoImply->entityArray);
+
+
+
+
 
 
 

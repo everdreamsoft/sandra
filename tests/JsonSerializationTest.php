@@ -697,5 +697,280 @@ final class JsonSerializationTest extends TestCase
 
     }
 
+    public function testEdgeCase()
+    {
+
+        $sandra = TestService::getFlushTestDatagraph();
+
+        $json = '{
+  "gossiper": {
+    "updateOnReferenceShortname": "timestamp",
+    "shortNameDictionary": {
+      "0": "null_concept",
+      "1": "collectionId",
+      "2": "assetId",
+      "3": "code",
+      "4": "class_name",
+      "5": "timestamp",
+      "6": "txHash",
+      "7": "identifier",
+      "8": "entity:subject:0",
+      "9": "blockchain",
+      "10": "address",
+      "11": "id",
+      "12": "blockIndex",
+      "13": "entity:subject:1",
+      "14": "onBlockchain",
+      "15": "kusama",
+      "16": "entity:subject:2",
+      "17": "sn",
+      "18": "entity:subject:3",
+      "19": "entity:subject:4",
+      "20": "emoteId",
+      "21": "emote",
+      "22": "entity:subject:5",
+      "23": "onBlock",
+      "24": "blockchainEventType",
+      "25": "emoteEvent",
+      "26": "source",
+      "27": "targetContract",
+      "28": "targetToken"
+    }
+  },
+  "entityFactory": {
+    "is_a": "emoteEvent",
+    "contained_in_file": "emoteEventFile",
+    "entityArray": [
+      {
+        "id": 4,
+        "subjectUnid": 19,
+        "referenceArray": [
+          {
+            "refId": 0,
+            "concept": {
+              "isPureShortname": false,
+              "unid": 20,
+              "shortname": "emoteId",
+              "triplets": {},
+              "tripletsReferences": {}
+            },
+            "value": "myAddress_1F389_5105000-0aff6865bed3a66b-DLEP-DL15-sn-0000000000000001"
+          },
+          {
+            "refId": 0,
+            "concept": {
+              "isPureShortname": false,
+              "unid": 6,
+              "shortname": "txHash",
+              "triplets": {},
+              "tripletsReferences": {}
+            },
+            "value": "myHash"
+          },
+          {
+            "refId": 0,
+            "concept": {
+              "isPureShortname": false,
+              "unid": 5,
+              "shortname": "timestamp",
+              "triplets": {},
+              "tripletsReferences": {}
+            },
+            "value": "6542113"
+          },
+          {
+            "refId": 0,
+            "concept": {
+              "isPureShortname": false,
+              "unid": 21,
+              "shortname": "emote",
+              "triplets": {},
+              "tripletsReferences": {}
+            },
+            "value": "1F389"
+          }
+        ],
+        "triplets": {
+          "onBlock": [
+            22
+          ],
+          "onBlockchain": [
+            15
+          ],
+          "blockchainEventType": [
+            25
+          ],
+          "source": [
+            13
+          ],
+          "targetContract": [
+            18
+          ],
+          "targetToken": [
+            16
+          ]
+        },
+        "tripletsReferences": {
+          "targetToken": [
+            {
+              "targetUnid": 16,
+              "refs": [
+                {
+                  "conceptUnid": 17,
+                  "value": "0000000000000001"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "refMap": {},
+    "joinedFactory": [
+      {
+        "gossiper": {
+          "updateOnReferenceShortname": "blockIndex"
+        },
+        "entityFactory": {
+          "is_a": "kusamaBlock",
+          "contained_in_file": "blockchainBlocFile",
+          "entityArray": [
+            {
+              "id": 5,
+              "subjectUnid": 22,
+              "referenceArray": [
+                {
+                  "refId": 0,
+                  "concept": {
+                    "isPureShortname": false,
+                    "unid": 12,
+                    "shortname": "blockIndex",
+                    "triplets": {},
+                    "tripletsReferences": {}
+                  },
+                  "value": "123456"
+                },
+                {
+                  "refId": 0,
+                  "concept": {
+                    "isPureShortname": false,
+                    "unid": 5,
+                    "shortname": "timestamp",
+                    "triplets": {},
+                    "tripletsReferences": {}
+                  },
+                  "value": "6542113"
+                }
+              ]
+            }
+          ],
+          "refMap": {},
+          "joinedFactory": []
+        }
+      },
+      {
+        "gossiper": {
+          "updateOnReferenceShortname": "address"
+        },
+        "entityFactory": {
+          "is_a": "kusamaAddress",
+          "contained_in_file": "blockchainAddressFile",
+          "entityArray": [
+            {
+              "id": 1,
+              "subjectUnid": 13,
+              "referenceArray": [
+                {
+                  "refId": 0,
+                  "concept": {
+                    "isPureShortname": false,
+                    "unid": 10,
+                    "shortname": "address",
+                    "triplets": {},
+                    "tripletsReferences": {}
+                  },
+                  "value": "myAddress"
+                }
+              ],
+              "triplets": {
+                "onBlockchain": [
+                  15
+                ]
+              }
+            }
+          ],
+          "refMap": {},
+          "joinedFactory": []
+        }
+      },
+      {
+        "gossiper": {
+          "updateOnReferenceShortname": "id"
+        },
+        "entityFactory": {
+          "is_a": "rmrkContract",
+          "contained_in_file": "blockchainContractFile",
+          "entityArray": [
+            {
+              "id": 3,
+              "subjectUnid": 18,
+              "referenceArray": [
+                {
+                  "refId": 0,
+                  "concept": {
+                    "isPureShortname": false,
+                    "unid": 11,
+                    "shortname": "id",
+                    "triplets": {},
+                    "tripletsReferences": {}
+                  },
+                  "value": "5105000-0aff6865bed3a66b-DLEP-DL15"
+                }
+              ]
+            }
+          ],
+          "refMap": {},
+          "joinedFactory": []
+        }
+      },
+      {
+        "gossiper": {
+          "updateOnReferenceShortname": "class_name"
+        },
+        "entityFactory": {
+          "is_a": "blockchainStandard",
+          "contained_in_file": "blockchainStandardFile",
+          "entityArray": [
+            {
+              "id": 2,
+              "subjectUnid": 16,
+              "referenceArray": [
+                {
+                  "refId": 0,
+                  "concept": {
+                    "isPureShortname": false,
+                    "unid": 4,
+                    "shortname": "class_name",
+                    "triplets": {},
+                    "tripletsReferences": {}
+                  },
+                  "value": "d"
+                }
+              ]
+            }
+          ],
+          "refMap": {},
+          "joinedFactory": []
+        }
+      }
+    ]
+  }
+}' ;
+        $gossiper = new InnateSkills\Gossiper\Gossiper($sandra);
+        $entityFactory = $gossiper->receiveEntityFactory($json);
+        $this->assertEquals(1,1);
+
+    }
+
 
 }
