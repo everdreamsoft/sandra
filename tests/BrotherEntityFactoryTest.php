@@ -176,33 +176,33 @@ final class BrotherEntityFactoryTest extends TestCase
 
     }
 
-    public function testHotplugBrotherEntity()
-    {
-
-        $sandraToFlush = new SandraCore\System('phpUnit_', true);
-        \SandraCore\Setup::flushDatagraph($sandraToFlush);
-
-        $system = new \SandraCore\System('phpUnit_', true);
-        $alphabetFactory = new \SandraCore\EntityFactory('algebra', 'algebraFile', $system);
-
-
-        $a = $alphabetFactory->createNew(array('name' => 'a'));
-        $b = $alphabetFactory->createNew(array('name' => 'b'));
-
-
-        $alphabetFactory = new \SandraCore\EntityFactory('algebra', 'algebraFile', $system);
-        $alphabetFactory->populateLocal();
-        $alphabetFactory->populateBrotherEntities('equals');
-
-        $a = $alphabetFactory->first('name', 'a');
-        $b = $alphabetFactory->first('name', 'b');
-        $a->setBrotherEntity('equals', $b, []);
-
-
-        $aEquals = $a->getBrotherEntity('equals');
-
-
-    }
+//    public function testHotplugBrotherEntity()
+//    {
+//
+//        $sandraToFlush = new SandraCore\System('phpUnit_', true);
+//        \SandraCore\Setup::flushDatagraph($sandraToFlush);
+//
+//        $system = new \SandraCore\System('phpUnit_', true);
+//        $alphabetFactory = new \SandraCore\EntityFactory('algebra', 'algebraFile', $system);
+//
+//
+//        $a = $alphabetFactory->createNew(array('name' => 'a'));
+//        $b = $alphabetFactory->createNew(array('name' => 'b'));
+//
+//
+//        $alphabetFactory = new \SandraCore\EntityFactory('algebra', 'algebraFile', $system);
+//        $alphabetFactory->populateLocal();
+//        $alphabetFactory->populateBrotherEntities('equals');
+//
+//        $a = $alphabetFactory->first('name', 'a');
+//        $b = $alphabetFactory->first('name', 'b');
+//        $a->setBrotherEntity('equals', $b, []);
+//
+//
+//        $aEquals = $a->getBrotherEntity('equals');
+//
+//
+//    }
 
 
 }

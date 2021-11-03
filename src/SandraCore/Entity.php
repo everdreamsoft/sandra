@@ -345,7 +345,7 @@ class Entity implements Dumpable
     /**
      * @param bool $hard
      */
-    public function delete($hard = false)
+    public function delete($hard = false,$autocommit=true)
     {
 
 
@@ -353,7 +353,7 @@ class Entity implements Dumpable
 
             $deletedConcept = CommonFunctions::somethingToConcept($this->system->deletedUNID, $this->system);
 
-            $this->flag($deletedConcept);
+            $this->flag($deletedConcept,$autocommit);
 
         }
 
