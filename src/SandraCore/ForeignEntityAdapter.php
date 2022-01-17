@@ -34,11 +34,12 @@ class ForeignEntityAdapter extends EntityFactory
 
 
 
-    public function __construct($url,$pathToItem, System $system){
+    public function __construct($url, $pathToItem, System $system, $headerData = null)
+    {
 
 
         //$json = $this->testJson();
-        if (is_null($url)) return ;
+        if (is_null($url)) return;
 
         $this->mainEntityPath = "$pathToItem";
 
@@ -53,6 +54,11 @@ class ForeignEntityAdapter extends EntityFactory
             curl_setopt($ch, CURLOPT_URL, $url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
             curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+
+            if ($headerData) {
+                curl_setopt($ch, CURLOPT_HTTPHEADER, array($headerData));
+
+            }
 
 
             $json = curl_exec($ch);
