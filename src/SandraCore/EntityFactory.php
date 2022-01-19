@@ -287,10 +287,10 @@ class EntityFactory extends FactoryBase implements Dumpable
      * @return Entity[]
      */
 
-    public function populateFromSearchResults($search, $asConcept = 0)
+    public function populateFromSearchResults($search, $asConcept = 0,$limit=null)
     {
 
-        $conceptsArray = DatabaseAdapter::searchConcept($this->system, $search, $asConcept, $this->entityReferenceContainer, $this->entityContainedIn);
+        $conceptsArray = DatabaseAdapter::searchConcept($this->system, $search, $asConcept, $this->entityReferenceContainer, $this->entityContainedIn,$limit);
         if (!$conceptsArray) return array();
         $this->conceptArray = $conceptsArray;
         $this->populateLocal();
