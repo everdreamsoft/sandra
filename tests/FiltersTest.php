@@ -48,6 +48,8 @@ class FiltersTest extends TestCase
         // 2 entities on verb
         $tastes = $chocolateBar->getJoinedEntities('taste');
 
+        $this->assertEquals('ovomaltine', $ovomaltineFactory->entityIsa);
+
         // both entities are 'ovomaltine'
         $ovomaltines = [];
         foreach ($tastes as $taste){
