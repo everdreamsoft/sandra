@@ -965,10 +965,321 @@ final class JsonSerializationTest extends TestCase
       }
     ]
   }
-}' ;
+}';
         $gossiper = new InnateSkills\Gossiper\Gossiper($sandra);
         $entityFactory = $gossiper->receiveEntityFactory($json);
-        $this->assertEquals(1,1);
+        $this->assertEquals(1, 1);
+
+    }
+
+    public function testOnDuplicateVerb()
+    {
+
+        $json = '{
+"gossiper": {
+"updateOnReferenceShortname": "assetId",
+"shortNameDictionary": {
+"0": "null_concept",
+"1": "collectionId",
+"2": "assetId",
+"3": "code",
+"4": "class_name",
+"5": "blockchain",
+"6": "address",
+"7": "id",
+"8": "txHash",
+"9": "blockIndex",
+"10": "entity:subject:0",
+"11": "onBlockchain",
+"12": "kusama",
+"13": "entity:subject:1",
+"14": "entity:subject:2",
+"15": "name",
+"16": "imageUrl",
+"17": "description",
+"18": "entity:subject:3",
+"19": "imgUrl",
+"20": "entity:subject:4",
+"21": "contractStandard",
+"22": "bindToCollection",
+"23": "inCollection",
+"24": "source",
+"25": "bindToContract"
+}
+},
+"entityFactory": {
+    "is_a": "blockchainizableAsset",
+    "contained_in_file": "blockchainizableAssets",
+    "entityArray": [
+      {
+          "id": 3,
+        "subjectUnid": 18,
+        "referenceArray": [
+          {
+              "refId": 0,
+            "concept": {
+              "isPureShortname": false,
+              "unid": 2,
+              "shortname": "assetId",
+              "triplets": {},
+              "tripletsReferences": {}
+            },
+            "value": "A great asset I made"
+          },
+          {
+              "refId": 0,
+            "concept": {
+              "isPureShortname": false,
+              "unid": 19,
+              "shortname": "imgUrl",
+              "triplets": {},
+              "tripletsReferences": {}
+            },
+            "value": "https://picsum.photos/400"
+          },
+          {
+              "refId": 0,
+            "concept": {
+              "isPureShortname": false,
+              "unid": 17,
+              "shortname": "description",
+              "triplets": {},
+              "tripletsReferences": {}
+            },
+            "value": "hello"
+          }
+        ],
+        "triplets": {
+          "bindToCollection": [
+              14
+          ],
+          "bindToContract": [
+              20
+          ]
+        },
+        "tripletsParameters": [
+          ""
+      ],
+        "tripletsReferences": {
+          "bindToContract": [
+            {
+                "targetUnid": 20,
+              "updateOnExistingVerb": true,
+              "refs": [
+                {
+                    "conceptUnid": 24,
+                  "value": "canonizer"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "refMap": {},
+    "joinedFactory": [
+      {
+          "gossiper": {
+          "updateOnReferenceShortname": "collectionId"
+        },
+        "entityFactory": {
+          "is_a": "assetCollection",
+          "contained_in_file": "assetCollectionFile",
+          "entityArray": [
+            {
+                "id": 2,
+              "subjectUnid": 14,
+              "referenceArray": [
+                {
+                    "refId": 0,
+                  "concept": {
+                    "isPureShortname": false,
+                    "unid": 1,
+                    "shortname": "collectionId",
+                    "triplets": {},
+                    "tripletsReferences": {}
+                  },
+                  "value": "myCollection"
+                },
+                {
+                    "refId": 0,
+                  "concept": {
+                    "isPureShortname": false,
+                    "unid": 15,
+                    "shortname": "name",
+                    "triplets": {},
+                    "tripletsReferences": {}
+                  },
+                  "value": "my veryfirst collection"
+                },
+                {
+                    "refId": 0,
+                  "concept": {
+                    "isPureShortname": false,
+                    "unid": 16,
+                    "shortname": "imageUrl",
+                    "triplets": {},
+                    "tripletsReferences": {}
+                  },
+                  "value": "https://picsum.photos/400"
+                },
+                {
+                    "refId": 0,
+                  "concept": {
+                    "isPureShortname": false,
+                    "unid": 17,
+                    "shortname": "description",
+                    "triplets": {},
+                    "tripletsReferences": {}
+                  },
+                  "value": "dolor"
+                }
+              ]
+            }
+          ],
+          "refMap": {},
+          "joinedFactory": []
+        }
+      },
+      {
+          "gossiper": {
+          "updateOnReferenceShortname": "id"
+        },
+        "entityFactory": {
+          "is_a": "rmrkContract",
+          "contained_in_file": "blockchainContractFile",
+          "entityArray": [
+            {
+                "id": 4,
+              "subjectUnid": 20,
+              "referenceArray": [
+                {
+                    "refId": 0,
+                  "concept": {
+                    "isPureShortname": false,
+                    "unid": 7,
+                    "shortname": "id",
+                    "triplets": {},
+                    "tripletsReferences": {}
+                  },
+                  "value": "241B8516516F381A-FRACTAL"
+                }
+              ],
+              "triplets": {
+                "contractStandard": [
+                    13
+                ],
+                "inCollection": [
+                    14
+                ]
+              }
+            }
+          ],
+          "refMap": {},
+          "joinedFactory": [
+            {
+                "gossiper": {
+                "updateOnReferenceShortname": "class_name"
+              },
+              "entityFactory": {
+                "is_a": "blockchainStandard",
+                "contained_in_file": "blockchainStandardFile",
+                "entityArray": [
+                  {
+                      "id": 1,
+                    "subjectUnid": 13,
+                    "referenceArray": [
+                      {
+                          "refId": 0,
+                        "concept": {
+                          "isPureShortname": false,
+                          "unid": 4,
+                          "shortname": "class_name",
+                          "triplets": {},
+                          "tripletsReferences": {}
+                        },
+                        "value": ""
+                      }
+                    ]
+                  }
+                ],
+                "refMap": {},
+                "joinedFactory": []
+              }
+            },
+            {
+                "gossiper": {
+                "updateOnReferenceShortname": "collectionId"
+              },
+              "entityFactory": {
+                "is_a": "assetCollection",
+                "contained_in_file": "assetCollectionFile",
+                "entityArray": [
+                  {
+                      "id": 2,
+                    "subjectUnid": 14,
+                    "referenceArray": [
+                      {
+                          "refId": 0,
+                        "concept": {
+                          "isPureShortname": false,
+                          "unid": 1,
+                          "shortname": "collectionId",
+                          "triplets": {},
+                          "tripletsReferences": {}
+                        },
+                        "value": "myCollection"
+                      },
+                      {
+                          "refId": 0,
+                        "concept": {
+                          "isPureShortname": false,
+                          "unid": 15,
+                          "shortname": "name",
+                          "triplets": {},
+                          "tripletsReferences": {}
+                        },
+                        "value": "my veryfirst collection"
+                      },
+                      {
+                          "refId": 0,
+                        "concept": {
+                          "isPureShortname": false,
+                          "unid": 16,
+                          "shortname": "imageUrl",
+                          "triplets": {},
+                          "tripletsReferences": {}
+                        },
+                        "value": "https://picsum.photos/400"
+                      },
+                      {
+                          "refId": 0,
+                        "concept": {
+                          "isPureShortname": false,
+                          "unid": 17,
+                          "shortname": "description",
+                          "triplets": {},
+                          "tripletsReferences": {}
+                        },
+                        "value": "dolor"
+                      }
+                    ]
+                  }
+                ],
+                "refMap": {},
+                "joinedFactory": []
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}';
+
+        $sandra = TestService::getFlushTestDatagraph();
+        $gossiper = new InnateSkills\Gossiper\Gossiper($sandra);
+        $entityFactory = $gossiper->receiveEntityFactory($json);
 
     }
 

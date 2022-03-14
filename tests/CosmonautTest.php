@@ -55,7 +55,7 @@ final class CosmonautTest extends TestCase
         //creation of a new system concept spaceship is
         $this->assertEquals($sandraSC->get('spaceship'),$spaceshipUnid);
 
-        //creation test test if case is different still return same concept id
+        //Test if concept is case sensitive
         $this->assertEquals($sandraSC->get('Spaceship'),$sandra->systemConcept->get('spaceship'));
 
         //Ovni shouldn't exist yet so return null

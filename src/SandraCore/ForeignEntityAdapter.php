@@ -48,7 +48,7 @@ class ForeignEntityAdapter extends EntityFactory
 
             // Check if initialization had gone wrong*
             if ($ch === false) {
-                throw new Exception('failed to initialize');
+                throw new Exception('failed to initialize CURL on foreignEntityAdapter');
             }
 
             curl_setopt($ch, CURLOPT_URL, $url);
