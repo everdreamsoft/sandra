@@ -110,7 +110,12 @@ class ForeignEntityAdapter extends EntityFactory
 
         $i=0;
 
-        $pathedArray = $this->divideForeignPath($resultArray,$this->mainEntityPath);
+        try {
+            $pathedArray = $this->divideForeignPath($resultArray, $this->mainEntityPath);
+        }catch (Exception $e){
+
+            return array();
+        }
 
 
         //if the array is empty return
