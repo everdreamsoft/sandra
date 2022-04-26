@@ -216,7 +216,7 @@ class Entity implements Dumpable
 
     }
 
-    public function setBrotherEntity($brotherVerb,$brotherTarget,$referenceArray,$autocommit=true,$updateOnExistingVerb =false){
+    public function setBrotherEntity($brotherVerb,$brotherTarget,$referenceArray,$autocommit=true,$updateOnExistingVerb =false):Entity{
 
         $verbConceptId = CommonFunctions::somethingToConceptId($brotherVerb,$this->system);
         $targetConceptId = CommonFunctions::somethingToConceptId($brotherTarget,$this->system);
@@ -234,8 +234,26 @@ class Entity implements Dumpable
 
         $factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId][$targetConceptId] = $brotherEntity ;
 
-
         return $brotherEntity ;
+
+    }
+
+
+    /**
+     *
+     * Create a joined entity which is in fact a brother entity but force an entity as the target
+     *
+     * @param $brotherVerb
+     * @param Entity $targetEntity
+     * @param array $referenceArray
+     * @param bool $autocommit
+     * @param false $updateOnExistingVerb
+     * @return Entity
+     */
+    public function setJoinedEntity($brotherVerb, Entity $targetEntity, array $referenceArray, $autocommit=true, $updateOnExistingVerb =false):Entity{
+
+        return $this->setBrotherEntity($brotherVerb,  $targetEntity, $referenceArray,$autocommit,$updateOnExistingVerb);
+
 
     }
 
