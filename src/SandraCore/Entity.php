@@ -97,6 +97,8 @@ class Entity implements Dumpable
 
     public function getJoined($joinVerb,$referenceName){
 
+
+
         $verbConceptId = CommonFunctions::somethingToConceptId($joinVerb,$this->system);
         //No joined data
         if (!isset($this->subjectConcept->tripletArray[$verbConceptId]))return null ;
@@ -195,6 +197,56 @@ class Entity implements Dumpable
         return $entity ;
 
     }
+
+    /**
+     *
+     * Return an a brother entity with the verb and target if existing
+     *
+     * @param $brotherVerb Entity|string|int
+     * @param $brotherTarget Entity|string|int
+     * @return Entity|null
+     */
+    public function getBrotherEntityOnVerbAndTarget($brotherVerb,$brotherTarget):?Entity{
+
+            $verbConceptId = CommonFunctions::somethingToConceptId($brotherVerb, $this->system);
+            $targetConceptId = CommonFunctions::somethingToConceptId($brotherTarget, $this->system);
+
+            $this->factory->populateBrotherEntities($verbConceptId,$targetConceptId);
+
+            $factory = $this->factory;
+            //we find the brother entity
+            if (!isset($factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId][$targetConceptId])) return null;
+
+            $entity = $factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId][$targetConceptId];
+            return $entity ;
+
+
+    }
+
+    /**
+     *
+     * Return an array of brother entities having the verb passed in parameter
+     *
+     * @param $brotherVerb Entity|string|int
+     * @return Entity[]
+     */
+    public function getBrotherEntitiesOnVerb($brotherVerb){
+
+        //target is null then we should have only one target
+        $verbConceptId = CommonFunctions::somethingToConceptId($brotherVerb, $this->system);
+
+        $this->factory->populateBrotherEntities($verbConceptId);
+
+        $factory = $this->factory;
+        //we find the brother entity
+        if (!isset($factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId])) return array();
+
+        $entities = $factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId];
+
+        return $entities ;
+
+    }
+
 
     public function getBrotherReference($brotherVerb,$brotherTarget=null,$referenceName=null){
 

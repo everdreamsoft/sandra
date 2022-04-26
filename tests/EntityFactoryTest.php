@@ -175,8 +175,10 @@ final class EntityFactoryTest extends TestCase
         $controlBook = $bookFactoryControl->first('title','The Jungle Book');
 
         $controlJungleBook = $controlBook->getBrotherEntity('hasStorage','content');
+        $controlJungleBook2 = $controlBook->getBrotherEntityOnVerbAndTarget('hasStorage','content');
 
         $this->assertEquals($controlJungleBook->getStorage(),$jungleBookText->getStorage());
+        $this->assertEquals($controlJungleBook2->getStorage(),$controlJungleBook2->getStorage());
 
 
 
@@ -280,8 +282,9 @@ final class EntityFactoryTest extends TestCase
         $a->setBrotherEntity('implies',$b,null);
         $a->setBrotherEntity('implies',$c,null);
 
-        $e->setBrotherEntity('implies',$b,null);
-        $d->setBrotherEntity('implies',$b,null);
+        //setjoined and setBrother are the same functions
+        $e->setJoinedEntity('implies',$b,array());
+        $d->setJoinedEntity('implies',$b,array());
 
         $count = $alphabetFactory->countEntitiesOnRequest();
         $this->assertEquals(8, $count, 'error while counting SQL request');

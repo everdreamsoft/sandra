@@ -165,6 +165,7 @@ final class BrotherEntityFactoryTest extends TestCase
 
         $this->assertCount(2, $statuses);
 
+
         //the switch should have only one position
 
         //hotplug
@@ -174,6 +175,14 @@ final class BrotherEntityFactoryTest extends TestCase
         //coldplug
         $positionCold = $statuses = $coldPlugSwitch->getBrotherEntity('switch', null);
         $this->assertCount(1, $positionCold, 'coldplug brother on update failing');
+
+        $positionCold = $statuses = $coldPlugSwitch->getBrotherEntity('switch', null);
+        $positionCold2 = $statuses = $coldPlugSwitch->getBrotherEntitiesOnVerb('switch');
+        $this->assertCount(1, $positionCold, 'coldplug brother on update failing');
+        $this->assertCount(1, $positionCold2, 'coldplug brother on update failing');
+
+
+
 
 
     }
