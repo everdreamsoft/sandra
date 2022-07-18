@@ -5,7 +5,6 @@ namespace InnateSkills\Gossiper;
 
 
 use SandraCore\CommonFunctions;
-use SandraCore\Concept;
 use SandraCore\DatabaseAdapter;
 use SandraCore\Entity;
 use SandraCore\EntityFactory;
@@ -31,7 +30,7 @@ class Gossiper
      */
     private System $sandra;
     private $autocommit;
-    private $somethingToCommit = false ;
+    private $somethingToCommit = false;
     private $bufferTripletsRef = array();
     public $rawNewTripletCount = 0;
     public $rawNewTripletRefUpdate = 0;
@@ -103,12 +102,16 @@ class Gossiper
                     $this->bufferTripletRef($entity, $entityJson->tripletsReferences);
                 }
 
+                if (isset($entityJson->tripletParams)) {
+                    $this->bufferTripletParams($entity, $entityJson->tripletParams);
+                }
+
             }
 
         }
         if ($this->autocommit) {
             $this->executeTripletBuffer();
-             if ($this->somethingToCommit) DatabaseAdapter::commit();
+            if ($this->somethingToCommit) DatabaseAdapter::commit();
         }
 
         return $entityFactory;
@@ -234,14 +237,23 @@ class Gossiper
         return $this;
     }
 
-    private function executeTripletBuffer(): self
+    private function bufferTripletParams(Entity $entity, $tripletParamJson): self
     {
 
+        foreach ($tripletParamJson as $verb => $targets) {
+            foreach ($targets as $target) {
+                $this->bufferTripletParams[$entity->subjectConcept->idConcept][$verb][$target->targetUnid] = $target;
+            }
+        }
+        return $this;
+    }
+
+    private function executeTripletBuffer(): self
+    {
 
         foreach ($this->bufferTripletsArray ?? [] as $subject => $verbs) {
             foreach ($verbs as $verb => $targetList) {
                 foreach ($targetList as $target) {
-
 
                     //target is the unid of the foreign entity passed
                     //we need to find out our local entity
@@ -257,22 +269,16 @@ class Gossiper
                     }
 
                     if (strpos($verb, "entity:") === 0) {
-
-
                         $foreignEntityKey = array_search($verb, $this->shortnameDict);
                         $verb = $this->foreignEntityMap[$foreignEntityKey];
-
                     }
-
 
                     $saveRefArray = [];
 
                     //build the triplet reference array
                     if (isset($this->bufferTripletsRef[$subject][$verb][$target])) {
-
                         $referencesRawArray = $this->bufferTripletsRef[$subject][$verb][$target];
                         foreach ($referencesRawArray->refs as $ref) {
-
                             $saveRefArray[$this->shortnameDict[$ref->conceptUnid]] = $ref->value;
                         }
                     }
@@ -280,11 +286,23 @@ class Gossiper
                     $tripletCreated = false;
                     //triplet creating with entity
                     if (!$localEntity->hasVerbAndTarget($verb, $localTargetConcept)) {
+
+                        $update = 0;
+                        if (isset($this->bufferTripletParams[$subject][$verb][$target])) {
+                            $tripletParams = $this->bufferTripletParams[$subject][$verb][$target];
+                            if ($tripletParams) {
+                                foreach ($tripletParams->params as $param) {
+                                    $update = $param->updateOnExisting ? 1 : 0;
+                                }
+                            }
+                        }
+
                         $localEntity->subjectConcept->createTriplet(CommonFunctions::somethingToConcept($verb, $this->sandra),
-                            CommonFunctions::somethingToConcept($localTargetConcept, $this->sandra), $saveRefArray, 0, false);
+                            CommonFunctions::somethingToConcept($localTargetConcept, $this->sandra), $saveRefArray, $update, false);
                         $tripletCreated = true;
                         $this->rawNewTripletCount++;
-                        $this->somethingToCommit = true ;
+                        $this->somethingToCommit = true;
+
                     } else {
                         //the entity exist already
                         $localBrotherEntity = $localEntity->getBrotherEntity($verb, $localTargetConcept);
@@ -293,7 +311,7 @@ class Gossiper
                         foreach ($saveRefArray as $key => $value) {
                             if ($localBrotherEntity->get($key) != $value) {
                                 $localBrotherEntity->createOrUpdateRef($key, $value);
-                                $this->somethingToCommit = true ;
+                                $this->somethingToCommit = true;
                                 $this->rawNewTripletRefUpdate++;
                             }
                         }
@@ -353,7 +371,7 @@ class Gossiper
         $response['id'] = $entity->entityId;
         $response['subjectUnid'] = $entity->subjectConcept->idConcept;
 
-       // $response['referenceArray'] = $entity->getDisplayRef();
+        // $response['referenceArray'] = $entity->getDisplayRef();
         $referenceArrayData = array();
 
 //        echo"Ok dumpt the entity" ;
@@ -382,11 +400,11 @@ class Gossiper
         }
 
         $tripletArray = array();
-        $response['referenceArray'] = $referenceArrayData ;
+        $response['referenceArray'] = $referenceArrayData;
 
 
-        foreach ( $entity->subjectConcept->tripletArray ?? array() as $verb =>$targetArray) {
-            $verbShortname = $this->sandra->systemConcept->getSCS($verb) ?? $verb ;
+        foreach ($entity->subjectConcept->tripletArray ?? array() as $verb => $targetArray) {
+            $verbShortname = $this->sandra->systemConcept->getSCS($verb) ?? $verb;
             foreach ($targetArray as $tagetId) {
 
                 $tripletArray[$verbShortname][] = $tagetId;

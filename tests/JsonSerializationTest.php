@@ -9,7 +9,6 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../vendor/autoload.php'; // Autoload files using Composer autoload
 
-use InnateSkills\Gossiper\Gossiper;
 use PHPUnit\Framework\TestCase;
 use SandraCore\TestService;
 
@@ -354,7 +353,6 @@ final class JsonSerializationTest extends TestCase
     }
 
 
-
     public function testOverideRef()
     {
         $ageModif = 4;
@@ -413,7 +411,6 @@ final class JsonSerializationTest extends TestCase
 
 
     }
-
 
 
     public function testSeveralEntries()
@@ -965,12 +962,22 @@ final class JsonSerializationTest extends TestCase
       }
     ]
   }
-}' ;
+}';
         $gossiper = new InnateSkills\Gossiper\Gossiper($sandra);
         $entityFactory = $gossiper->receiveEntityFactory($json);
-        $this->assertEquals(1,1);
+        $this->assertEquals(1, 1);
 
     }
 
+    public function testBrotherEntityUpdateExisting()
+    {
+        $sandra = TestService::getFlushTestDatagraph();
+        $json = '{"gossiper":{"updateOnReferenceShortname":"name","shortNameDictionary":{"0":"null_concept","1":"name","2":"entity:subject:0","3":"entity:subject:1","4":"hasMoon","5":"hasWeather","6":"yes"}},"entityFactory":{"is_a":"planet","contained_in_file":"atlasFile","entityArray":[{"id":0,"subjectUnid":2,"referenceArray":[{"refId":0,"concept":{"isPureShortname":false,"unid":1,"shortname":"name","triplets":{},"tripletsReferences":{},"tripletParams":{}},"value":"jupiter"}],"triplets":{"hasMoon":[3],"hasWeather":[6]},"tripletParams":{"hasWeather":[{"targetUnid":6,"params":[{"updateOnExisting":"true"}]}]}}],"refMap":{"1":"name"},"joinedFactory":[{"gossiper":{"updateOnReferenceShortname":"name"},"entityFactory":{"is_a":"moon","contained_in_file":"moonFile","entityArray":[{"id":1,"subjectUnid":3,"referenceArray":[{"refId":1,"concept":{"isPureShortname":false,"unid":1,"shortname":"name","triplets":{},"tripletsReferences":{},"tripletParams":{}},"value":"iota"}]}],"refMap":{"1":"name"},"joinedFactory":[]}}]}}';
 
+        $gossiper = new InnateSkills\Gossiper\Gossiper($sandra);
+        $entityFactory = $gossiper->receiveEntityFactory($json);
+
+        //$this->assertEquals('cat', $entityFactory->entityIsa);
+
+    }
 }
