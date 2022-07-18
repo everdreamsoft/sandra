@@ -976,8 +976,9 @@ final class JsonSerializationTest extends TestCase
 
         $gossiper = new InnateSkills\Gossiper\Gossiper($sandra);
         $entityFactory = $gossiper->receiveEntityFactory($json);
-
-        //$this->assertEquals('cat', $entityFactory->entityIsa);
+        // fwrite(STDERR, print_r($gossiper->bufferTripletParams, TRUE));
+        $tripletParams = reset(reset($gossiper->bufferTripletParams)["hasWeather"]);
+        $this->assertEquals('true', $tripletParams->params[0]->updateOnExisting);
 
     }
 }
