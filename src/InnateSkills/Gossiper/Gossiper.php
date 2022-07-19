@@ -292,7 +292,9 @@ class Gossiper
                             $tripletParams = $this->bufferTripletParams[$subject][$verb][$target];
                             if ($tripletParams) {
                                 foreach ($tripletParams->params as $param) {
-                                    $update = $param->updateOnExisting ? 1 : 0;
+                                    if (isset($param->updateOnExisting)) {
+                                        $update = $param->updateOnExisting ? 1 : 0;
+                                    }
                                 }
                             }
                         }
