@@ -30,7 +30,7 @@ class DatabaseAdapter
         }
 
         $pdo = System::$pdo->get();
-        System::logDatabaseStart("rawCreateReference: Auto commit " . $autocommit ? 'On' : 'Off');
+        System::logDatabaseStart("Auto commit " . (($autocommit) ? 'On' : 'Off'));
 
         if (!self::$transactionStarted && $autocommit == false) {
             $pdo->beginTransaction();
@@ -73,7 +73,7 @@ class DatabaseAdapter
 
         $tableLink = $system->linkTable;
 
-        System::logDatabaseStart("rawCreateTriplet: Auto commit " . $autocommit ? 'On' : 'Off');
+        System::logDatabaseStart("Auto commit " . (($autocommit) ? 'On' : 'Off'));
 
         if (!self::$transactionStarted && $autocommit == false) {
             $pdo->beginTransaction();
@@ -139,7 +139,7 @@ class DatabaseAdapter
         $pdo = System::$pdo->get();
         $tableStorage = $entity->system->tableStorage;
 
-        System::logDatabaseStart("setStorage: Auto commit " . $autocommit ? 'On' : 'Off');
+        System::logDatabaseStart("Auto commit " . (($autocommit) ? 'On' : 'Off'));
 
         if (!self::$transactionStarted && $autocommit == false) {
             $pdo->beginTransaction();
@@ -206,7 +206,7 @@ class DatabaseAdapter
         $pdo = System::$pdo->get();
         $tableLink = $system->linkTable;
 
-        System::logDatabaseStart("rawFlag: Auto commit " . $autocommit ? 'On' : 'Off');
+        System::logDatabaseStart("Auto commit " . (($autocommit) ? 'On' : 'Off'));
 
         if (!self::$transactionStarted && $autocommit == false) {
             $pdo->beginTransaction();
@@ -236,7 +236,7 @@ class DatabaseAdapter
 
         $pdo = System::$pdo->get();
         $tableConcept = $system->conceptTable;
-        System::logDatabaseStart("rawCreateConcept: Auto commit " . $autocommit ? 'On' : 'Off');
+        System::logDatabaseStart("Auto commit " . (($autocommit) ? 'On' : 'Off'));
 
         if (!self::$transactionStarted && $autocommit == false) {
             $pdo->beginTransaction();
@@ -293,7 +293,7 @@ class DatabaseAdapter
         $hideLinks = '';
 
         $sql = "SELECT * FROM `$tableLink` WHERE  idConceptStart = $conceptStart" . $linkSQL . $targetSQL .
-                " AND flag = 0 " . $hideLinks;
+            " AND flag = 0 " . $hideLinks;
 
         try {
             $pdoResult = $pdo->prepare($sql);
@@ -466,8 +466,10 @@ class DatabaseAdapter
 
     public static function executeSQL($sql, $bindParamArray = null, $autocommit = true)
     {
+
         $pdo = System::$pdo->get();
-        System::logDatabaseStart("executeSQL: Auto commit " . $autocommit ? 'On' : 'Off');
+
+        System::logDatabaseStart("Auto commit " . (($autocommit) ? 'On' : 'Off'));
 
         if (!self::$transactionStarted && $autocommit == false) {
             $pdo->beginTransaction();
