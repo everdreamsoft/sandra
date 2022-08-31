@@ -6,8 +6,8 @@
 
 namespace SandraCore;
 
-use PDOException ;
 use PDO;
+use PDOException;
 
 class SystemConcept
 {
@@ -16,24 +16,19 @@ class SystemConcept
 
     private $pdo;
 
-    private  $_conceptsByTable = array();
-    private  $_conceptsByTableUnsensitive = array();
+    private $_conceptsByTable = array();
+    private $_conceptsByTableUnsensitive = array();
 
     private static $_tableLoaded = 'default';
 
     private static $_loadedTables = array();
 
     private static $_includePath = '';
-    private  $conceptTable = '';
+    private $conceptTable = '';
 
 
-
-
-    public function __construct(PdoConnexionWrapper $pdoConnexionWrapper,  $logger, $conceptTable)
+    public function __construct(PdoConnexionWrapper $pdoConnexionWrapper, $logger, $conceptTable)
     {
-
-
-
 
 
         $this->pdo = $pdoConnexionWrapper->get();
@@ -43,22 +38,18 @@ class SystemConcept
         $this->conceptTable = $conceptTable;
 
 
-
-
-        if(defined('SANDRA_INCLUDE_PATH'))
+        if (defined('SANDRA_INCLUDE_PATH'))
             self::$_includePath = SANDRA_INCLUDE_PATH;
 
     }
 
-    public  function getInstance()
+    public function getInstance()
     {
-
-
-        return $this ;
+        return $this;
     }
 
     //List every system concept from table
-    private  function listAll($table = null)
+    private function listAll($table = null)
     {
 
         $table = self::assignDefaultTable($table);
@@ -67,72 +58,54 @@ class SystemConcept
 
         try {
             $result = $this->pdo->query($sql);
-        }
-        catch(PDOException $exception){
-
+            System::logDatabaseStart($sql);
+        } catch (PDOException $exception) {
+            System::logDatabaseEnd($exception->getMessage());
             System::sandraException($exception);
-            return ;
+            return;
         }
-
-
-
 
         $concepts = array();
-        foreach($result->fetchAll(PDO::FETCH_OBJ) as $row)
-        {
-
+        foreach ($result->fetchAll(PDO::FETCH_OBJ) as $row) {
             $concepts[$row->shortname] = $row->id;
         }
 
-
-
+        System::logDatabaseEnd();
         return $concepts;
+
     }
 
     //Reversed function
-    public  function getShortname($concept_id, $table = null)
+    public function getShortname($concept_id, $table = null)
     {
 
         $table = $this->assignDefaultTable($table);
 
-
-        //print_r(self::$_conceptsByTable[$table]);
-
-
-        if(isset($this->_conceptsByTable[$table]))
-        {
-
+        if (isset($this->_conceptsByTable[$table])) {
 
             $key = array_search($concept_id, $this->_conceptsByTable[$table]);
 
-            if($key) {
-
+            if ($key) {
                 return $key;
-
-            }
-
-            else {
-                return null ;
-
+            } else {
+                return null;
             }
         }
 
         $concept = $this->getFromDBWithId($concept_id, $table);
 
 
-        if($concept != null)
-        {
+        if ($concept != null) {
             self::write($table);
             return $concept->shortname;
         }
     }
 
-    public  function getCode($concept_id, $table = null)
+    public function getCode($concept_id, $table = null)
     {
         $concept = $this->getFromDBWithIdIncludingCode($concept_id, $table);
 
-        if($concept != null)
-        {
+        if ($concept != null) {
             self::write($table);
             return $concept->code;
         }
@@ -140,39 +113,39 @@ class SystemConcept
         return null;
     }
 
-    public  function getConceptIdFromCode($code, $table = null)
+    public function getConceptIdFromCode($code, $table = null)
     {
         $concept = $this->getFromDBWithCode($code, $table);
-
         return $concept->id;
     }
 
-    private  function getFromDBWithCode($code, $table = null)
+    private function getFromDBWithCode($code, $table = null)
     {
-
 
         $sql = "SELECT * FROM $this->conceptTable WHERE `code` LIKE '" . $code . "'";
 
-        //$result = mysqli_query ($dbLink,$sql); //action;;
-
         try {
             $result = $this->pdo->query($sql);
-        }
-        catch(PDOException $exception){
-
+            System::logDatabaseStart($sql);
+        } catch (PDOException $exception) {
+            System::logDatabaseEnd($exception->getMessage());
             System::sandraException($exception);
-            return ;
+            return;
         }
 
-        if($result->rowCount() > 0) {
-            return $result->fetchAll(PDO::FETCH_OBJ);
+        if ($result->rowCount() > 0) {
+            $fetchResult = $result->fetchAll(PDO::FETCH_OBJ);
+            System::logDatabaseEnd();
+            return $fetchResult;
         }
 
+        System::logDatabaseEnd();
         return null;
+
     }
 
     //Find  specific concept from cache file or db
-    public  function get($shortname, $table = null, $forceCreate = true)
+    public function get($shortname, $table = null, $forceCreate = true)
     {
         $table = $this->assignDefaultTable($table);
 
@@ -180,35 +153,27 @@ class SystemConcept
         $shortnameCaseUnsensitive = strtolower($shortname);
 
         //if an id is provided already
-        if (is_numeric($shortname)) return $shortname ;
+        if (is_numeric($shortname)) return $shortname;
 
-        if(!isset($this->_conceptsByTable[$table]))
+        if (!isset($this->_conceptsByTable[$table]))
             try {
-
                 $this->load($table);
-            }catch(PDOException $exception) {
+            } catch (PDOException $exception) {
                 System::sandraException($exception);
-
             }
 
 
-        if(!isset($this->_conceptsByTableUnsensitive[$table][$shortnameCaseUnsensitive]))
-        {
+        if (!isset($this->_conceptsByTableUnsensitive[$table][$shortnameCaseUnsensitive])) {
             $concept = $this->getFromDB($shortname, $table);
 
-
-            if($concept != null)
-            {
+            if ($concept != null) {
                 $concept = reset($concept);
                 //self::write($table);	//reload all things from db and update json file
                 $this->_conceptsByTable[$table][$shortname] = $concept->id;
                 $this->_conceptsByTableUnsensitive[$table][$shortnameCaseUnsensitive] = $concept->id;
                 return $concept->id;
-            }
-            else
-            {
-                if($forceCreate)
-                {
+            } else {
+                if ($forceCreate) {
                     $id = self::create($shortname, $table);
                     $this->_conceptsByTable[$table][$shortname] = $id;
                     $this->_conceptsByTableUnsensitive[$table][$shortnameCaseUnsensitive] = $id;
@@ -217,217 +182,196 @@ class SystemConcept
                 return null;
             }
 
-        }
-        else{
+        } else {
             //echo"loading $shortname \n";
             return $this->_conceptsByTableUnsensitive[$table][$shortnameCaseUnsensitive];
         }
 
     }
 
-    private  function getFromDBWithId($concept_id, $table = null)
+    private function getFromDBWithId($concept_id, $table = null)
     {
 
 
         $table = $this->assignDefaultTable($table);
 
-        if(!is_numeric($concept_id))
+        if (!is_numeric($concept_id))
             throw new Exception("Bad request: concept_id must be numeric");
 
         $sql = "SELECT id,shortname FROM $this->conceptTable WHERE id = $concept_id;";
 
-
-
-
-        try {
+        try{
             $result = $this->pdo->query($sql);
-        }
-        catch(PDOException $exception){
-
+            System::logDatabaseStart($sql);
+        } catch (PDOException $exception) {
+            System::logDatabaseEnd($exception->getMessage());
             System::sandraException($exception);
-            return ;
+            return;
         }
 
-
-        if($result->rowCount() > 0) {
-
-            return $result->fetchAll(PDO::FETCH_OBJ);
-
+        if ($result->rowCount() > 0) {
+            $fetchResult = $result->fetchAll(PDO::FETCH_OBJ);
+            System::logDatabaseEnd();
+            return $fetchResult;
         }
 
-
+        System::logDatabaseEnd();
         return null;
+
     }
 
-    private  function getFromDBWithIdIncludingCode($concept_id, $table = null)
+    private function getFromDBWithIdIncludingCode($concept_id, $table = null)
     {
-
 
         $table = $this->assignDefaultTable($table);
 
-        if(!is_numeric($concept_id))
+        if (!is_numeric($concept_id))
             throw new Exception("Bad request: concept_id must be numeric");
 
         $sql = "SELECT id,code,shortname FROM $this->conceptTable WHERE id = $concept_id;";
 
-
         try {
             $result = $this->pdo->query($sql);
-        }
-        catch(PDOException $exception){
-
+            System::logDatabaseStart($sql);
+        } catch (PDOException $exception) {
+            System::logDatabaseEnd($exception->getMessage());
             System::sandraException($exception);
-            return ;
+            return;
         }
 
-
-        if($result->rowCount() > 0) {
-
-            return $result->fetchAll(PDO::FETCH_OBJ);
-
+        if ($result->rowCount() > 0) {
+            $fetchResult = $result->fetchAll(PDO::FETCH_OBJ);
+            System::logDatabaseEnd();
+            return $fetchResult;
         }
 
+        System::logDatabaseEnd();
 
         return null;
+
     }
 
     //Get one system concept from DB
-    private  function getFromDB($shortname, $table = null)
+    private function getFromDB($shortname, $table = null)
     {
 
-
         $table = $this->assignDefaultTable($table);
-
         $shortname = $this->pdo->quote($shortname);
-
-
         $sql = "SELECT id,shortname FROM $this->conceptTable WHERE shortname = $shortname";
-
 
         try {
             $result = $this->pdo->prepare($sql);
+            System::logDatabaseStart($sql);
             $result->execute();
-        }
-        catch(PDOException $exception){
-
+        } catch (PDOException $exception) {
+            System::logDatabaseEnd($exception->getMessage());
             System::sandraException($exception);
-            return ;
+            return;
         }
 
+        if ($result->rowCount() > 0) {
+            $fetchResult = $result->fetchAll(PDO::FETCH_OBJ);
+            System::logDatabaseEnd();
+            return $fetchResult;
+        }
 
-
-
-
-
-        if($result->rowCount() > 0)
-            return $result->fetchAll(PDO::FETCH_OBJ);
-
+        System::logDatabaseEnd();
         return null;
     }
 
-    private  function create ($shortname, $table = null)
+    private function create($shortname, $table = null)
     {
 
-
         $table = $this->assignDefaultTable($table);
-
 
         // $sql = "INSERT INTO $this->conceptTable id, code, shortname) VALUES (null, 'system concept $shortname', $shortname);";
         $sql = "INSERT INTO $this->conceptTable (id, code, shortname) VALUES (?, ?, ?)";
 
         try {
-
             $result = $this->pdo->prepare($sql);
+            System::logDatabaseStart($sql);
             $result->execute([null, "system concept $shortname", $shortname]);
-        }
-        catch(PDOException $exception){
-
+        } catch (PDOException $exception) {
+            System::logDatabaseEnd($exception->getMessage());
             System::sandraException($exception);
-            return ;
+            return;
         }
 
-
-        return 	$this->pdo->lastInsertId() ;
+        System::logDatabaseEnd();
+        return $this->pdo->lastInsertId();
     }
 
     //Find existings shortname in unidList and update database table
-    public  function migrateShortname($table = null, $unid = null)
+    public function migrateShortname($table = null, $unid = null)
     {
 
-
         $table = $this->assignDefaultTable($table);
-
         $list = is_null($unid) || !is_array($unid) ? $unidList : $unid;
 
-        foreach($list as $shortname => $id)
-        {
+        foreach ($list as $shortname => $id) {
             $sql = "UPDATE $this->conceptTable SET shortname = '$shortname' WHERE id = $id";
-            mysqli_query ($dbLink, $sql);
-
+            mysqli_query($dbLink, $sql);
+            System::logDatabaseStart($sql);
         }
+
+        System::logDatabaseEnd();
     }
 
     //Load concepts from cache file
-    public  function load($table = null)
+    public function load($table = null)
     {
         $table = $this->assignDefaultTable($table);
-
         $this->_conceptsByTable[$table] = $this->listAll($table);
 
-                //build the case insensitive array
-                foreach  ($this->_conceptsByTable[$table] as $key => $value){
-                    $key = strtolower($key);
-                    $this->_conceptsByTableUnsensitive[$table][$key] = $value ;
-                }
+        //build the case insensitive array
+        foreach ($this->_conceptsByTable[$table] as $key => $value) {
+            $key = strtolower($key);
+            $this->_conceptsByTableUnsensitive[$table][$key] = $value;
+        }
 
-/*
-                 Never write the cache
-                self::tryCreateFile($table);
-                $content = file_get_contents(sprintf(self::$_includePath . self::FILENAME, $table));
-                $json = json_decode($content);
-                self::$_concepts = array();
-                if((bool)empty($json))
-                    return array();
+        /*
+                         Never write the cache
+                        self::tryCreateFile($table);
+                        $content = file_get_contents(sprintf(self::$_includePath . self::FILENAME, $table));
+                        $json = json_decode($content);
+                        self::$_concepts = array();
+                        if((bool)empty($json))
+                            return array();
 
-                foreach($json as $k=>$v)
-                    self::$_concepts[$k] = $v;
+                        foreach($json as $k=>$v)
+                            self::$_concepts[$k] = $v;
 
-                self::$_tableLoaded = $table;
-                */
+                        self::$_tableLoaded = $table;
+                        */
     }
 
-    private  function assignDefaultTable($table = null)
+    private function assignDefaultTable($table = null)
     {
-
-
-        if(is_null($table))
+        if (is_null($table))
             $table = $this->conceptTable;
-
         return $table;
     }
 
 
-
     //Save concepts from cache file
-    public  function write($table = null)
+    public function write($table = null)
     {
         $table = $this->assignDefaultTable($table);
-
         self::tryCreateFile($table);
         $filename = sprintf(self::$_includePath . self::FILENAME, $table);
         $concepts = $this->listAll();
         file_put_contents($filename, json_encode($concepts));
     }
 
-    public  function tryCreateFile($table = null)
+    public function tryCreateFile($table = null)
     {
         $table = $this->assignDefaultTable($table);
 
-        if(!file_exists(self::$_includePath . self::DIRNAME))
+        if (!file_exists(self::$_includePath . self::DIRNAME))
             mkdir(self::$_includePath . self::DIRNAME);
 
         $filename = sprintf(self::$_includePath . self::FILENAME, $table);
-        if(!file_exists($filename))
+        if (!file_exists($filename))
             touch($filename);
     }
 

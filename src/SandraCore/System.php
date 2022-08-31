@@ -8,8 +8,6 @@
 
 namespace SandraCore;
 
-use PDO;
-
 
 class System
 {
@@ -44,12 +42,10 @@ class System
     public function __construct($env = '', $install = false, $dbHost = '127.0.0.1', $db = 'sandra', $dbUsername = 'root', $dbpassword = '')
     {
 
-        //$this->initDebugStack();
         if (!static::$pdo)
             static::$pdo = new PdoConnexionWrapper($dbHost, $db, $dbUsername, $dbpassword);
 
         $pdoWrapper = static::$pdo;
-        // $this->pdo =
 
         $prefix = $env;
         $this->tablePrefix = $prefix;
@@ -85,43 +81,33 @@ class System
 
     public function initDebugStack()
     {
-
         if (!self::$logger) {
             $debugStack = new DebugStack();
             //disable logger by default
             $debugStack->enabled = true;
             self::$logger = $debugStack;
         }
-
-
     }
 
     public function install()
     {
-
         SandraDatabaseDefinition::createEnvTables($this->conceptTable, $this->linkTable, $this->tableReference, $this->tableStorage, $this->tableConf);
-
-
     }
 
     public static function logDatabaseStart($query, $params = null, $types = null)
     {
-
         if (self::$logger) {
             self::$logger->startQuery($query, $params, $types);
         }
-
-
     }
 
     public static function logDatabaseEnd($error = null)
     {
-
         if (self::$logger) {
+            if ($error)
+                self::$logger->registerMessage("Error : $error ");
             self::$logger->stopQuery();
         }
-
-
     }
 
     public static function sandraException(\Exception $exception)
@@ -132,33 +118,22 @@ class System
 
             case '42S02' :
                 echo "unavailable database";
-
                 break;
-
-
         }
 
         print_r($exception->getMessage());
 
         $response['sandraErrorReported'] = $exception->getMessage();
 
-        //print_r($response);
-
-
         throw new $exception;
-
 
     }
 
     public function registerFactory(EntityFactory $factory)
     {
-
         if ($this->registerStructure) {
-
             $this->registerFactory[get_class($factory)] = $factory;
         }
-
-
     }
 
     public function systemError($code, $source, $level, $message)
@@ -169,8 +144,8 @@ class System
         //Level 3 Important
         //Level 4 Critical
 
-        if (self::$logger){
-        self::$logger->registerMessage("Error : $code From $source : " . $message);
+        if (self::$logger) {
+            self::$logger->registerMessage("Error : $code From $source : " . $message);
         }
 
         if (isset($level) && $level >= $this->errorLevelToKill) {
@@ -184,46 +159,32 @@ class System
 
     public function killingProcessLevel($code, $source, $level, $message)
     {
-
-
         die($message);
-
     }
 
     public function entityToClassStore($className, EntityFactory $factory)
     {
 
-
         if (!isset($this->entityClassStore[$className])) {
-
-
             $factory->populateLocal();
             $this->entityClassStore[$className] = $factory->getOrCreateFromRef('class_name', $className);
-
-
         }
-        return $this->entityClassStore[$className];
 
+        return $this->entityClassStore[$className];
 
     }
 
     public function destroy()
     {
-
-
         $this->factoryManager->destroy();
         $this->conceptFactory->destroy();
         $this->conceptFactory->system = null;
         $this->registerStructure = null;
-
-
     }
 
     public function startSqlLog()
     {
-
         $this->initDebugStack();
-
     }
 
 

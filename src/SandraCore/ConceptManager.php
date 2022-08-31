@@ -16,7 +16,7 @@ class ConceptManager
     private $pdo;
     private $deletedUnid;
     public $conceptArray = array();
-    public $mainQuerySQL = null ;
+    public $mainQuerySQL = null;
     private $bypassFlags = false;
     private $lastLinkJoined = null;
 
@@ -31,10 +31,7 @@ class ConceptManager
         $this->su = $su;
         $this->system = $system;
 
-
         $this->deletedUnid = $system->deletedUNID;
-
-
         $this->pdo = System::$pdo->get();
 
         //table as instance data
@@ -43,25 +40,21 @@ class ConceptManager
 
         } else {
             $this->tableLink = $tableLinkParam;
-
         }
 
         if ($tableReferenceParam == 'default') {
             $this->tableReference = $system->tableReference;
         } else {
-
             $this->tableReference = $tableReferenceParam;
         }
 
-        //$this->setFilter(array()); //
-        $this->setFilter(array()); //
+        $this->setFilter(array());
 
     }
 
     public function bypassFlags(bool $boolean)
     {
         $this->bypassFlags = $boolean;
-
     }
 
     public function setFilter($value, $limit = 0)
@@ -79,7 +72,6 @@ class ConceptManager
         global $tableLink, $tableReference, $existenseStatusUNID, $deletedUNID;
 
         $deletedUNID = $this->system->deletedUNID;
-
 
         //build the filter
         $join = '';
@@ -173,13 +165,10 @@ class ConceptManager
 
     public function getConcepts()
     {
-
-
         return $this->concepts;
     }
 
     //Check the followup if something needs to be done
-
 
 
     public function getResultsFromLink($linkId)
@@ -215,11 +204,10 @@ class ConceptManager
         else
             $limitSQL = '';
 
-        if (is_numeric($offset)){
+        if (is_numeric($offset)) {
             $offsetSQL = "OFFSET $offset ";
 
-        }
-        else{
+        } else {
             $offsetSQL = "";
         }
 
@@ -279,26 +267,26 @@ class ConceptManager
             $selector = "SELECT  COUNT(l.idConceptStart) AS result";
 
 
-
         $sql = "$selector FROM  $this->tableLink l " .
             $this->filterJoin . $joinSorter . "
 	WHERE l.idConceptLink = $linkConcept  
 	AND l.idConceptTarget = $targetConcept
 	$flag $sorterWhere
-	" . $this->filterCondition . " $hideLinks $orderBy $asc " . $limitSQL .$offsetSQL;
+	" . $this->filterCondition . " $hideLinks $orderBy $asc " . $limitSQL . $offsetSQL;
 
 
         // echoln( "su = $this->su access to file". $_SESSION['accessToFiles']);
-        
-        $this->mainQuerySQL = $sql ;
+
+        $this->mainQuerySQL = $sql;
 
 
         try {
             $pdoResult = $this->pdo->prepare($sql);
+            System::logDatabaseStart($sql);
             $pdoResult->execute();
 
         } catch (PDOException $exception) {
-
+            System::logDatabaseEnd($exception->getMessage());
             System::sandraException($exception);
             return;
         }
@@ -306,19 +294,21 @@ class ConceptManager
 
         foreach ($pdoResult->fetchAll(PDO::FETCH_ASSOC) as $result) {
 
-            if ($countOnly)
-                return $result['result'] ;
-
+            if ($countOnly) {
+                System::logDatabaseEnd();
+                return $result['result'];
+            }
             $idConceptStart = $result['idConceptStart'];
             $array[] = $idConceptStart;
             $this->concepts[] = new Concept($idConceptStart, $this->system);
             $this->conceptArray['conceptStartList'][] = $idConceptStart;
         }
 
+        System::logDatabaseEnd();
+
         if (isset($array))
             return $array;
     }
-
 
 
     public function getConceptsFromLink($linkConcept, $limit = 0, $debug = '')
@@ -333,7 +323,7 @@ class ConceptManager
         else
             $limitSQL = '';
 
-        //sub optimal to remove soon 
+        //sub optimal to remove soon
         if ($this->su == 0 && isset($_SESSION['accessToFiles'])) {
             $comma_separated = implode(",", $_SESSION['accessToFiles']);
             $hideLinks = "AND 
@@ -351,11 +341,7 @@ class ConceptManager
 
 
         $sql = "SELECT  l.idConceptStart, l.idConceptLink, l.`idConceptTarget` FROM  $this->tableLink l " .
-            $this->filterJoin . "
-	
-	AND l.idConceptLink = $linkConcept
-	$flag 
-	" . $this->filterCondition . " $hideLinks ORDER BY l.idConceptStart DESC " . $limitSQL;
+            $this->filterJoin . "	AND l.idConceptLink = $linkConcept	$flag 	" . $this->filterCondition . " $hideLinks ORDER BY l.idConceptStart DESC " . $limitSQL;
 
         if ($debug)
             echoln($sql);
@@ -477,9 +463,10 @@ class ConceptManager
 
             try {
                 $pdoResult = $this->pdo->prepare($sql);
+                System::logDatabaseStart($sql);
                 $pdoResult->execute();
             } catch (PDOException $exception) {
-
+                System::logDatabaseEnd($exception->getMessage());
                 System::sandraException($exception);
                 return;
             }
@@ -487,7 +474,6 @@ class ConceptManager
             $array = array();
 
             $resultArray = $pdoResult->fetchAll(PDO::FETCH_ASSOC);
-
 
             if ($byTripletid) {
                 foreach ($resultArray as $key => $result) {
@@ -497,9 +483,7 @@ class ConceptManager
                     $array[$idConcept][$result['id']]['linkId'] = $result['id'];
                     $array[$idConcept][$result['id']]['idConceptTarget'] = $result['idConceptTarget'];
                     $array[$idConcept][$result['id']]['idConceptLink'] = $result['idConceptLink'];
-
                 }
-
             } else {
 
                 foreach ($resultArray as $key => $result) {
@@ -514,15 +498,16 @@ class ConceptManager
             }
         }
 
-
+        System::logDatabaseEnd();
 
         return $array;
     }
-        public function getTriplets($lklkArray = null, $lktgArray = null, $getIds = 0)
+
+    public function getTriplets($lklkArray = null, $lktgArray = null, $getIds = 0)
     {
         global $tableReference, $tableLink, $deletedUNID, $dbLink;
 
-        if (!key_exists('conceptStartList',$this->conceptArray)) return array();
+        if (!key_exists('conceptStartList', $this->conceptArray)) return array();
 
         $array = null;
         if (is_array($this->conceptArray['conceptStartList']) && (sizeof($this->conceptArray['conceptStartList']) > 0)) {
@@ -544,9 +529,10 @@ class ConceptManager
 
             try {
                 $pdoResult = $this->pdo->prepare($sql);
+                System::logDatabaseStart($sql);
                 $pdoResult->execute();
             } catch (PDOException $exception) {
-
+                System::logDatabaseEnd($exception->getMessage());
                 System::sandraException($exception);
                 return null;
             }
@@ -564,6 +550,9 @@ class ConceptManager
                 }
             }
         }
+
+        System::logDatabaseEnd();
+
         return $array;
     }
 
@@ -595,14 +584,11 @@ class ConceptManager
 
     }
 
-    public function destroy(){
-
-        unset ($this->system) ;
-        unset ($this->pdo) ;
-
+    public function destroy()
+    {
+        unset ($this->system);
+        unset ($this->pdo);
     }
-
-
 
 
 }
