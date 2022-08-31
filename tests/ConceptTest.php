@@ -23,6 +23,8 @@ final class ConceptTest extends TestCase
         \SandraCore\Setup::flushDatagraph($sandraToFlush);
         $sandra = new \SandraCore\System('phpUnit', true);
 
+
+
         $animalFactory = new \SandraCore\EntityFactory('cat','catFile',$sandra);
         $localAnimalFactory = clone $animalFactory ;
 
@@ -50,6 +52,8 @@ final class ConceptTest extends TestCase
         $refs = $concept->getReferences(1);
 
         $this->assertEquals(1, 1); //No test
+
+
 
 
     }

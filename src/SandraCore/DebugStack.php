@@ -44,8 +44,9 @@ class DebugStack
 
     /**
      * @var array $connectionInfo
-     */
+
     public $connectionInfo = null;
+     * */
 
     /**
      * Logs a SQL statement somewhere.

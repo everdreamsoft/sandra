@@ -7,134 +7,131 @@
  */
 
 namespace SandraCore;
+
 use PDO;
 
 
 class System
 {
 
-    public $env = 'main' ;
-    public $tableSuffix = '' ;
-    public $tablePrefix = '' ;
-    public $factoryManager ;
-
-    public static $pdo ;
-
-    public static $logger = null; /** @var DebugStack $logger */
-    /** @var  DebugStack $debugStack DebugStack instance used to log sandra requests. */
-    private $debugStack;
-    public $systemConcept; // public for now, should be made private
-
-    private $testMode;
+    public static $pdo;
+    public static $logger = null;
+    public $env = 'main';
+    public $tableSuffix = '';
+    public $tablePrefix = '';
+    public $factoryManager;
+    /** @var DebugStack $logger */
+    public $systemConcept;
+    public $deletedUNID; // public for now, should be made private
+    public $conceptTable;
 
     // Assumptions
-    public  $deletedUNID ;
-
-    public $conceptTable;
     public $linkTable;
     public $tableReference;
     public $tableStorage;
-    public $tableConf ;
-    public $conceptFactory ;
-    public $foreignConceptFactory ;
-    public $errorLevelToKill = 3 ;
+    public $tableConf;
+    public $conceptFactory;
+    public $foreignConceptFactory;
+    public $errorLevelToKill = 3;
     public $registerStructure = false;
     public $registerFactory = array();
-    public $instanceId ;
+    public $instanceId;
+    /** @var  DebugStack $debugStack DebugStack instance used to log sandra requests. */
+    private $debugStack;
+    private $testMode;
     private $entityClassStore;
 
-    public  function __construct($env = '', $install = false, $dbHost='127.0.0.1', $db='sandra', $dbUsername='root', $dbpassword=''){
+    public function __construct($env = '', $install = false, $dbHost = '127.0.0.1', $db = 'sandra', $dbUsername = 'root', $dbpassword = '')
+    {
 
-        self::initDebugStack();
+        //$this->initDebugStack();
         if (!static::$pdo)
             static::$pdo = new PdoConnexionWrapper($dbHost, $db, $dbUsername, $dbpassword);
 
         $pdoWrapper = static::$pdo;
         // $this->pdo =
 
-        $prefix = $env ;
-        $this->tablePrefix = $prefix ;
+        $prefix = $env;
+        $this->tablePrefix = $prefix;
         $suffix = '';
         $this->env = $env;
 
-        $this->conceptTable = $prefix .'_SandraConcept' . $suffix;
-        $this->linkTable =  $prefix .'_SandraTriplets' . $suffix;
-        $this->tableReference =  $prefix .'_SandraReferences' . $suffix;
-        $this->tableStorage =  $prefix .'_SandraDatastorage' . $suffix;
-        $this->tableConf =  $prefix .'_SandraConfig' . $suffix;
+        $this->conceptTable = $prefix . '_SandraConcept' . $suffix;
+        $this->linkTable = $prefix . '_SandraTriplets' . $suffix;
+        $this->tableReference = $prefix . '_SandraReferences' . $suffix;
+        $this->tableStorage = $prefix . '_SandraDatastorage' . $suffix;
+        $this->tableConf = $prefix . '_SandraConfig' . $suffix;
 
         if ($install) $this->install();
 
 
         $this->systemConcept = new SystemConcept($pdoWrapper, self::$logger, $this->conceptTable);
+        $this->debugStack = new DebugStack();
 
         $this->deletedUNID = $this->systemConcept->get('deleted');
         //die("on system deleted ".$this->deletedUNID);
 
-        self::$logger->connectionInfo = array('Host' => $pdoWrapper->host, 'Database' => $pdoWrapper->database, 'Sandra environment' => $env);
+        //self::$logger->connectionInfo = array('Host' => $pdoWrapper->host, 'Database' => $pdoWrapper->database, 'Sandra environment' => $env);
 
         $this->factoryManager = new FactoryManager($this);
         $this->conceptFactory = new ConceptFactory($this);
 
-        $this->instanceId = rand(0,999)."-".rand(0,9999)."-".rand(0,999);
+        $this->instanceId = rand(0, 999) . "-" . rand(0, 9999) . "-" . rand(0, 999);
 
 
         //$this->logger->info('[Sandra] Started sandra ' . $env . ' environment successfully.');
 
     }
 
-    public function initDebugStack(){
+    public function initDebugStack()
+    {
 
         if (!self::$logger) {
             $debugStack = new DebugStack();
             //disable logger by default
-            $debugStack->enabled = false ;
+            $debugStack->enabled = true;
             self::$logger = $debugStack;
         }
 
 
     }
 
-    public function install(){
+    public function install()
+    {
 
-        SandraDatabaseDefinition::createEnvTables($this->conceptTable,$this->linkTable,$this->tableReference,$this->tableStorage,$this->tableConf);
+        SandraDatabaseDefinition::createEnvTables($this->conceptTable, $this->linkTable, $this->tableReference, $this->tableStorage, $this->tableConf);
 
 
     }
 
-    public function registerFactory(EntityFactory $factory)
+    public static function logDatabaseStart($query, $params = null, $types = null)
     {
 
-        if ($this->registerStructure) {
-
-            $this->registerFactory[get_class($factory)] = $factory;
+        if (self::$logger) {
+            self::$logger->startQuery($query, $params, $types);
         }
 
 
     }
 
-    public static function logDatabaseStart($query,$params=null,$types=null){
+    public static function logDatabaseEnd($error = null)
+    {
 
-        self::$logger->startQuery($query,$params,$types);
-
-
-    }
-
-    public static function logDatabaseEnd($error=null){
-
-        self::$logger->stopQuery();
+        if (self::$logger) {
+            self::$logger->stopQuery();
+        }
 
 
     }
 
-
-    public static function sandraException(\Exception $exception){
+    public static function sandraException(\Exception $exception)
+    {
 
         //print_r($exception);
-        switch ($exception->getCode()){
+        switch ($exception->getCode()) {
 
             case '42S02' :
-                echo"unavailable database";
+                echo "unavailable database";
 
                 break;
 
@@ -153,25 +150,40 @@ class System
 
     }
 
-    public function systemError($code, $source, $level, $message){
+    public function registerFactory(EntityFactory $factory)
+    {
+
+        if ($this->registerStructure) {
+
+            $this->registerFactory[get_class($factory)] = $factory;
+        }
+
+
+    }
+
+    public function systemError($code, $source, $level, $message)
+    {
 
         //Level 1 Simple notice
         //Level 2 Caution
         //Level 3 Important
         //Level 4 Critical
 
-        self::$logger->registerMessage("Error : $code From $source : ".$message);
-
-        if (isset($level)&&$level>=$this->errorLevelToKill) {
-
-            die("Error : $code From $source : ".$message);
+        if (self::$logger){
+        self::$logger->registerMessage("Error : $code From $source : " . $message);
         }
 
-        return $message ;
+        if (isset($level) && $level >= $this->errorLevelToKill) {
+
+            die("Error : $code From $source : " . $message);
+        }
+
+        return $message;
 
     }
 
-    public function killingProcessLevel($code, $source, $level, $message){
+    public function killingProcessLevel($code, $source, $level, $message)
+    {
 
 
         die($message);
@@ -195,14 +207,22 @@ class System
 
     }
 
-    public function destroy() {
+    public function destroy()
+    {
 
 
         $this->factoryManager->destroy();
         $this->conceptFactory->destroy();
-        $this->conceptFactory->system = null ;
-        $this->registerStructure = null ;
+        $this->conceptFactory->system = null;
+        $this->registerStructure = null;
 
+
+    }
+
+    public function startSqlLog()
+    {
+
+        $this->initDebugStack();
 
     }
 

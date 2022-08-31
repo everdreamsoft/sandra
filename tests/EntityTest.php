@@ -128,6 +128,7 @@ final class EntityTest extends TestCase
         //$this->assertCount(2,$entityFactory->entityArray,'Unpopulated search did not return 2 result');
         $dump = $entityFactory->dumpMeta();
 
+        //var_dump(\SandraCore\System::$logger->queries);
 
 
     }

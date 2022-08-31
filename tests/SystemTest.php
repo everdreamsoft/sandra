@@ -28,6 +28,11 @@ final class SystemTest extends TestCase
         $sandra = new SandraCore\System('_phpUnit', true);
         $this->sandra = $sandra ;
 
+        $sandra->startSqlLog();
+
+        $factory = new \SandraCore\EntityFactory('test','testFile',$sandra);
+        $factory->createNew(["testing"=>'test']);
+
 
         $sandra->systemError(1,self::class,2,"my jmessage");
         $logger = $sandra::$logger;
