@@ -58,7 +58,7 @@ class DatabaseAdapter
             $pdoResult->execute();
 
         } catch (PDOException $exception) {
-            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
+            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             System::sandraException($exception);
             return;
         }
@@ -112,7 +112,7 @@ class DatabaseAdapter
                 try {
                     $result = $pdo->query($sql);
                 } catch (PDOException $exception) {
-                    System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
+                    System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
                     System::sandraException($exception);
                     return;
                 }
@@ -130,9 +130,9 @@ class DatabaseAdapter
 
         try {
             $pdoResult = $pdo->prepare($sql);
-              $pdoResult->execute();
+            $pdoResult->execute();
         } catch (PDOException $exception) {
-            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
+            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             System::sandraException($exception);
             return;
         }
@@ -167,7 +167,7 @@ class DatabaseAdapter
             $pdoResult->bindParam(":linkId", $entity->entityId, PDO::PARAM_INT);
             $pdoResult->execute();
         } catch (PDOException $exception) {
-            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
+            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             System::sandraException($exception);
             return null;
         }
@@ -193,7 +193,7 @@ class DatabaseAdapter
             $pdoResult->execute();
         } catch (PDOException $exception) {
             System::sandraException($exception);
-            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
+            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             return;
         }
 
@@ -232,7 +232,7 @@ class DatabaseAdapter
             $pdoResult = $pdo->prepare($sql);
             $pdoResult->execute();
         } catch (PDOException $exception) {
-            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
+            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             System::sandraException($exception);
             return;
         }
@@ -263,7 +263,7 @@ class DatabaseAdapter
             $pdoResult = $pdo->prepare($sql);
             $pdoResult->execute();
         } catch (PDOException $exception) {
-            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
+            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             System::sandraException($exception);
             return;
         }
@@ -314,7 +314,7 @@ class DatabaseAdapter
             $pdoResult->execute();
         } catch (PDOException $exception) {
             System::sandraException($exception);
-            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
+            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             return;
         }
 
@@ -448,7 +448,7 @@ class DatabaseAdapter
             }
             $pdoResult->execute();
         } catch (PDOException $exception) {
-            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
+            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             System::sandraException($exception);
             return null;
         }
@@ -506,7 +506,7 @@ class DatabaseAdapter
             $pdoResult->execute();
 
         } catch (PDOException $exception) {
-            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
+            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             System::sandraException($exception);
             return null;
         }
@@ -522,5 +522,36 @@ class DatabaseAdapter
         self::$transactionStarted = false;
     }
 
+    /**
+     * Get memory allocation for given tables.
+     *
+     * @param string $tables Comma separated table names.
+     *
+     * @return void
+     */
+    public static function getAllocatedMemory(array $tables = [])
+    {
+        if (count($tables) == 0) return;
+
+        $pdo = System::$pdo->get();
+        $tables_str = implode("','", $tables);
+
+        $sql = "SELECT table_name, table_schema,
+                ROUND(((data_length + index_length)), 2) AS 'Bytes',
+                FROM information_schema.TABLES as iSchema
+                where iSchema.table_name in ($tables_str) and
+                iSchema.table_schema = 'lindt_helvetia';";
+
+        $start = microtime(true);
+
+        $result = $pdo->query($sql);
+
+        System::$sandraLogger->query($sql, microtime(true) - $start);
+
+        $rows = $result->fetchAll(PDO::FETCH_ASSOC);
+
+        System::$sandraLogger->info("DB Size fired");
+
+    }
 }
 

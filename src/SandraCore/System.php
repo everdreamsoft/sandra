@@ -21,13 +21,13 @@ class System
 
     /** @var  DebugStack $debugStack DebugStack instance used to log sandra requests. */
     private $debugStack;
+    /** @var DebugStack $logger */
     public static $logger = null;
 
     public $env = 'main';
     public $tableSuffix = '';
     public $tablePrefix = '';
     public $factoryManager;
-    /** @var DebugStack $logger */
     public $systemConcept;
     public $deletedUNID; // public for now, should be made private
     public $conceptTable;
