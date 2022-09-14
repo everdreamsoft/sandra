@@ -30,11 +30,12 @@ class DatabaseAdapter
         }
 
         $pdo = System::$pdo->get();
-        System::logDatabaseStart("Auto commit " . (($autocommit) ? 'On' : 'Off'));
+
+        System::$sandraLogger->query("Auto commit " . (($autocommit) ? 'On' : 'Off'), 0);
 
         if (!self::$transactionStarted && $autocommit == false) {
             $pdo->beginTransaction();
-            System::logDatabaseStart("Begin Transaction ");
+            System::$sandraLogger->query("Begin Transaction ", 0);
             self::$pdo = $pdo;
             self::$transactionStarted = true;
         }
@@ -49,19 +50,21 @@ class DatabaseAdapter
         if (strlen($value) > 255)
             $value = substr($value, 0, 255);
 
+        $start = microtime(true);
+
         try {
             $pdoResult = $pdo->prepare($sql);
             $pdoResult->bindParam(":value", $value, PDO::PARAM_STR, 50);
-            System::logDatabaseStart($sql);
             $pdoResult->execute();
 
         } catch (PDOException $exception) {
-            System::logDatabaseEnd($exception->getMessage());
+            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
             System::sandraException($exception);
             return;
         }
 
-        System::logDatabaseEnd();
+        System::$sandraLogger->query($sql, microtime(true) - $start);
+
         return $pdo->lastInsertId();
 
     }
@@ -73,11 +76,11 @@ class DatabaseAdapter
 
         $tableLink = $system->linkTable;
 
-        System::logDatabaseStart("Auto commit " . (($autocommit) ? 'On' : 'Off'));
+        System::$sandraLogger->query("Auto commit " . (($autocommit) ? 'On' : 'Off'), 0);
 
         if (!self::$transactionStarted && $autocommit == false) {
             $pdo->beginTransaction();
-            System::logDatabaseStart("Begin Transaction ");
+            System::$sandraLogger->query("Begin Transaction ", 0);
             self::$pdo = $pdo;
             self::$transactionStarted = true;
         }
@@ -91,8 +94,11 @@ class DatabaseAdapter
             $sql = "SELECT id FROM $tableLink 
                     WHERE idConceptStart = $conceptSubject AND idConceptLink = $conceptVerb AND flag != $system->deletedUNID";
 
+            $start = microtime(true);
+
             $result = $pdo->query($sql);
-            System::logDatabaseStart($sql);
+
+            System::$sandraLogger->query($sql, microtime(true) - $start);
 
             $rows = $result->fetchAll(PDO::FETCH_ASSOC);
 
@@ -101,33 +107,37 @@ class DatabaseAdapter
                 $updateID = $lastRow['id'];
 
                 $sql = "UPDATE $tableLink SET idConceptTarget = $conceptTarget  WHERE id = $updateID";
+                $start = microtime(true);
 
                 try {
                     $result = $pdo->query($sql);
-                    System::logDatabaseStart($sql);
                 } catch (PDOException $exception) {
-                    System::logDatabaseEnd($exception->getMessage());
+                    System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
                     System::sandraException($exception);
                     return;
                 }
+
+                System::$sandraLogger->query($sql, microtime(true) - $start);
                 return $updateID;
+
             }
         }
 
 
         $sql = "INSERT INTO $tableLink (idConceptStart ,idConceptLink ,idConceptTarget,flag) VALUES ('$conceptSubject', '$conceptVerb', '$conceptTarget',0) ON DUPLICATE KEY UPDATE flag = 0, id=LAST_INSERT_ID(id)";
 
+        $start = microtime(true);
+
         try {
             $pdoResult = $pdo->prepare($sql);
-            System::logDatabaseStart($sql);
-            $pdoResult->execute();
+              $pdoResult->execute();
         } catch (PDOException $exception) {
-            System::logDatabaseEnd($exception->getMessage());
+            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
             System::sandraException($exception);
             return;
         }
 
-        System::logDatabaseEnd();
+        System::$sandraLogger->query($sql, microtime(true) - $start);
 
         return $pdo->lastInsertId();
 
@@ -139,30 +149,30 @@ class DatabaseAdapter
         $pdo = System::$pdo->get();
         $tableStorage = $entity->system->tableStorage;
 
-        System::logDatabaseStart("Auto commit " . (($autocommit) ? 'On' : 'Off'));
+        System::$sandraLogger->query("Auto commit " . (($autocommit) ? 'On' : 'Off'), 0);
 
         if (!self::$transactionStarted && $autocommit == false) {
             $pdo->beginTransaction();
-            System::logDatabaseStart("Begin Transaction ");
+            System::$sandraLogger->query("Begin Transaction ", 0);
             self::$pdo = $pdo;
             self::$transactionStarted = true;
         }
 
         $sql = "INSERT INTO $tableStorage (linkReferenced ,`value` ) VALUES (:linkId,  :storeValue) ON DUPLICATE KEY UPDATE value = :storeValue";
+        $start = microtime(true);
 
         try {
             $pdoResult = $pdo->prepare($sql);
             $pdoResult->bindParam(':storeValue', $value, PDO::PARAM_STR);
             $pdoResult->bindParam(":linkId", $entity->entityId, PDO::PARAM_INT);
-            System::logDatabaseStart($sql);
             $pdoResult->execute();
         } catch (PDOException $exception) {
-            System::logDatabaseEnd($exception->getMessage());
+            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
             System::sandraException($exception);
             return null;
         }
 
-        System::logDatabaseEnd();
+        System::$sandraLogger->query($sql, microtime(true) - $start);
 
         return $value;
 
@@ -175,20 +185,20 @@ class DatabaseAdapter
         $tableStorage = $entity->system->tableStorage;
 
         $sql = "SELECT `value` from $tableStorage WHERE linkReferenced = " . $entity->entityId . " LIMIT 1";
+        $start = microtime(true);
+
 
         try {
             $pdoResult = $pdo->prepare($sql);
-            System::logDatabaseStart($sql);
             $pdoResult->execute();
         } catch (PDOException $exception) {
             System::sandraException($exception);
-            System::logDatabaseEnd($exception->getMessage());
+            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
             return;
         }
 
         $results = $pdoResult->fetchAll(PDO::FETCH_ASSOC);
-
-        System::logDatabaseEnd();
+        System::$sandraLogger->query($sql, microtime(true) - $start);
 
         $value = null;
 
@@ -206,28 +216,28 @@ class DatabaseAdapter
         $pdo = System::$pdo->get();
         $tableLink = $system->linkTable;
 
-        System::logDatabaseStart("Auto commit " . (($autocommit) ? 'On' : 'Off'));
+        System::$sandraLogger->query("Auto commit " . (($autocommit) ? 'On' : 'Off'), 0);
 
         if (!self::$transactionStarted && $autocommit == false) {
             $pdo->beginTransaction();
-            System::logDatabaseStart("Begin Transaction ");
+            System::$sandraLogger->query("Begin Transaction ", 0);
             self::$pdo = $pdo;
             self::$transactionStarted = true;
         }
 
         $sql = "UPDATE $tableLink SET flag = $flag->idConcept  WHERE id = $entity->entityId";
+        $start = microtime(true);
 
         try {
             $pdoResult = $pdo->prepare($sql);
-            System::logDatabaseStart($sql);
             $pdoResult->execute();
         } catch (PDOException $exception) {
-            System::logDatabaseEnd($exception->getMessage());
+            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
             System::sandraException($exception);
             return;
         }
 
-        System::logDatabaseEnd();
+        System::$sandraLogger->query($sql, microtime(true) - $start);
 
     }
 
@@ -236,28 +246,30 @@ class DatabaseAdapter
 
         $pdo = System::$pdo->get();
         $tableConcept = $system->conceptTable;
-        System::logDatabaseStart("Auto commit " . (($autocommit) ? 'On' : 'Off'));
+        System::$sandraLogger->query("Auto commit " . (($autocommit) ? 'On' : 'Off'), 0);
 
         if (!self::$transactionStarted && $autocommit == false) {
             $pdo->beginTransaction();
-            System::logDatabaseStart("Begin Transaction ");
+            System::$sandraLogger->query("Begin Transaction ", 0);
             self::$pdo = $pdo;
             self::$transactionStarted = true;
         }
 
         $sql = "INSERT INTO $tableConcept (code) VALUES ('$code');";
 
+        $start = microtime(true);
+
         try {
             $pdoResult = $pdo->prepare($sql);
-            System::logDatabaseStart($sql);
             $pdoResult->execute();
         } catch (PDOException $exception) {
-            System::logDatabaseEnd($exception->getMessage());
+            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
             System::sandraException($exception);
             return;
         }
 
-        System::logDatabaseEnd();
+        System::$sandraLogger->query($sql, microtime(true) - $start);
+
         return $pdo->lastInsertId();
 
     }
@@ -294,20 +306,21 @@ class DatabaseAdapter
 
         $sql = "SELECT * FROM `$tableLink` WHERE  idConceptStart = $conceptStart" . $linkSQL . $targetSQL .
             " AND flag = 0 " . $hideLinks;
+        $start = microtime(true);
+
 
         try {
             $pdoResult = $pdo->prepare($sql);
-            System::logDatabaseStart($sql);
             $pdoResult->execute();
         } catch (PDOException $exception) {
             System::sandraException($exception);
-            System::logDatabaseEnd($exception->getMessage());
+            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
             return;
         }
 
         $results = $pdoResult->fetchAll(PDO::FETCH_ASSOC);
 
-        System::logDatabaseEnd();
+        System::$sandraLogger->query($sql, microtime(true) - $start);
 
         $value = null;
         $array = array();
@@ -425,6 +438,7 @@ class DatabaseAdapter
             AND `$tableReference`.linkReferenced = $tableLink.id 
             $linkConceptSQL $targetConceptSQL $randomSQL $limitSQL ";
 
+        $start = microtime(true);
 
         try {
 
@@ -432,17 +446,16 @@ class DatabaseAdapter
             foreach ($bindParamArray as $key => &$value) {
                 $pdoResult->bindParam("$key", $value, PDO::PARAM_STR);
             }
-            System::logDatabaseStart($sql);
             $pdoResult->execute();
         } catch (PDOException $exception) {
-            System::logDatabaseEnd($exception->getMessage());
+            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
             System::sandraException($exception);
             return null;
         }
 
         $results = $pdoResult->fetchAll(PDO::FETCH_ASSOC);
 
-        System::logDatabaseEnd();
+        System::$sandraLogger->query($sql, microtime(true) - $start);
 
         $array = null;
 
@@ -469,11 +482,11 @@ class DatabaseAdapter
 
         $pdo = System::$pdo->get();
 
-        System::logDatabaseStart("Auto commit " . (($autocommit) ? 'On' : 'Off'));
+        System::$sandraLogger->query("Auto commit " . (($autocommit) ? 'On' : 'Off'), 0);
 
         if (!self::$transactionStarted && $autocommit == false) {
             $pdo->beginTransaction();
-            System::logDatabaseStart("Begin Transaction");
+            System::$sandraLogger->query("Begin Transaction ", 0);
             self::$pdo = $pdo;
             self::$transactionStarted = true;
         }
@@ -488,22 +501,23 @@ class DatabaseAdapter
                 }
             }
 
-            System::logDatabaseStart($sql);
+            $start = microtime(true);
+
             $pdoResult->execute();
 
         } catch (PDOException $exception) {
-            System::logDatabaseEnd($exception->getMessage());
+            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
             System::sandraException($exception);
             return null;
         }
 
-        System::logDatabaseEnd();
+        System::$sandraLogger->query($sql, microtime(true) - $start);
 
     }
 
     public static function commit()
     {
-        System::logDatabaseStart("Commit Called");
+        System::$sandraLogger->query("Commit ", 0);
         self::$pdo->commit();
         self::$transactionStarted = false;
     }

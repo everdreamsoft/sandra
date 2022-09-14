@@ -176,7 +176,12 @@ class ConceptManager
         global $tableLink, $dbLink;
 
         $sql = "SELECT  l.idConceptStart, l.idConceptLink, l.`idConceptTarget` FROM  $this->tableLink l WHERE l.id = $linkId";
+
+        $start = microtime(true);
+
         $resultat = mysqli_query($dbLink, $sql);
+
+        System::$sandraLogger->query($sql, microtime(true) - $start);
 
         while ($result = mysqli_fetch_array($resultat)) {
             $idConceptStart = $result['idConceptStart'];
@@ -279,23 +284,21 @@ class ConceptManager
 
         $this->mainQuerySQL = $sql;
 
+        $start = microtime(true);
 
         try {
             $pdoResult = $this->pdo->prepare($sql);
-            System::logDatabaseStart($sql);
             $pdoResult->execute();
-
         } catch (PDOException $exception) {
-            System::logDatabaseEnd($exception->getMessage());
+            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
             System::sandraException($exception);
             return;
         }
 
+        System::$sandraLogger->query($sql, microtime(true) - $start);
 
         foreach ($pdoResult->fetchAll(PDO::FETCH_ASSOC) as $result) {
-
             if ($countOnly) {
-                System::logDatabaseEnd();
                 return $result['result'];
             }
             $idConceptStart = $result['idConceptStart'];
@@ -304,7 +307,6 @@ class ConceptManager
             $this->conceptArray['conceptStartList'][] = $idConceptStart;
         }
 
-        System::logDatabaseEnd();
 
         if (isset($array))
             return $array;
@@ -347,7 +349,11 @@ class ConceptManager
             echoln($sql);
 
         //echo"$sql";
+        $start = microtime(true);
+
         $resultat = mysqli_query($dbLink, $sql); //action;;
+
+        System::$sandraLogger->query($sql, microtime(true) - $start);
 
         while ($result = mysqli_fetch_array($resultat)) {
             $idConceptStart = $result['idConceptStart'];
@@ -460,16 +466,18 @@ class ConceptManager
    $filter " . $flag . $orderBy;
             //AND flag != $deletedUNID";
 
+            $start = microtime(true);
 
             try {
                 $pdoResult = $this->pdo->prepare($sql);
-                System::logDatabaseStart($sql);
                 $pdoResult->execute();
             } catch (PDOException $exception) {
-                System::logDatabaseEnd($exception->getMessage());
+                System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
                 System::sandraException($exception);
                 return;
             }
+
+            System::$sandraLogger->query($sql, microtime(true) - $start);
 
             $array = array();
 
@@ -498,8 +506,6 @@ class ConceptManager
             }
         }
 
-        System::logDatabaseEnd();
-
         return $array;
     }
 
@@ -526,16 +532,18 @@ class ConceptManager
             }
             // AND `$this->tableReference`.linkReferenced =  $this->tableLink.id
             // AND `$this->tableReference`.idConcept IN ($refs)
+            $start = microtime(true);
 
             try {
                 $pdoResult = $this->pdo->prepare($sql);
-                System::logDatabaseStart($sql);
                 $pdoResult->execute();
             } catch (PDOException $exception) {
-                System::logDatabaseEnd($exception->getMessage());
+                System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
                 System::sandraException($exception);
                 return null;
             }
+
+            System::$sandraLogger->query($sql, microtime(true) - $start);
 
             $array = array();
             $resultArray = $pdoResult->fetchAll(PDO::FETCH_ASSOC);
@@ -550,8 +558,6 @@ class ConceptManager
                 }
             }
         }
-
-        System::logDatabaseEnd();
 
         return $array;
     }

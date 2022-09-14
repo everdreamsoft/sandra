@@ -55,22 +55,23 @@ class SystemConcept
         $table = self::assignDefaultTable($table);
 
         $sql = "SELECT id, shortname FROM $this->conceptTable WHERE shortname != '' ";
+        $start = microtime(true);
 
         try {
             $result = $this->pdo->query($sql);
-            System::logDatabaseStart($sql);
         } catch (PDOException $exception) {
-            System::logDatabaseEnd($exception->getMessage());
+            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
             System::sandraException($exception);
             return;
         }
+
+        System::$sandraLogger->query($sql, microtime(true) - $start);
 
         $concepts = array();
         foreach ($result->fetchAll(PDO::FETCH_OBJ) as $row) {
             $concepts[$row->shortname] = $row->id;
         }
 
-        System::logDatabaseEnd();
         return $concepts;
 
     }
@@ -123,23 +124,22 @@ class SystemConcept
     {
 
         $sql = "SELECT * FROM $this->conceptTable WHERE `code` LIKE '" . $code . "'";
+        $start = microtime(true);
 
         try {
             $result = $this->pdo->query($sql);
-            System::logDatabaseStart($sql);
         } catch (PDOException $exception) {
-            System::logDatabaseEnd($exception->getMessage());
+            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
             System::sandraException($exception);
             return;
         }
 
+        System::$sandraLogger->query($sql, microtime(true) - $start);
+
         if ($result->rowCount() > 0) {
-            $fetchResult = $result->fetchAll(PDO::FETCH_OBJ);
-            System::logDatabaseEnd();
-            return $fetchResult;
+            return $result->fetchAll(PDO::FETCH_OBJ);
         }
 
-        System::logDatabaseEnd();
         return null;
 
     }
@@ -200,22 +200,22 @@ class SystemConcept
 
         $sql = "SELECT id,shortname FROM $this->conceptTable WHERE id = $concept_id;";
 
+        $start = microtime(true);
+
         try{
             $result = $this->pdo->query($sql);
-            System::logDatabaseStart($sql);
         } catch (PDOException $exception) {
-            System::logDatabaseEnd($exception->getMessage());
+            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
             System::sandraException($exception);
             return;
         }
 
+        System::$sandraLogger->query($sql, microtime(true) - $start);
+
         if ($result->rowCount() > 0) {
-            $fetchResult = $result->fetchAll(PDO::FETCH_OBJ);
-            System::logDatabaseEnd();
-            return $fetchResult;
+            return $result->fetchAll(PDO::FETCH_OBJ);
         }
 
-        System::logDatabaseEnd();
         return null;
 
     }
@@ -229,23 +229,21 @@ class SystemConcept
             throw new Exception("Bad request: concept_id must be numeric");
 
         $sql = "SELECT id,code,shortname FROM $this->conceptTable WHERE id = $concept_id;";
+        $start = microtime(true);
 
         try {
             $result = $this->pdo->query($sql);
-            System::logDatabaseStart($sql);
         } catch (PDOException $exception) {
-            System::logDatabaseEnd($exception->getMessage());
+            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
             System::sandraException($exception);
             return;
         }
 
-        if ($result->rowCount() > 0) {
-            $fetchResult = $result->fetchAll(PDO::FETCH_OBJ);
-            System::logDatabaseEnd();
-            return $fetchResult;
-        }
+        System::$sandraLogger->query($sql, microtime(true) - $start);
 
-        System::logDatabaseEnd();
+        if ($result->rowCount() > 0) {
+            return $result->fetchAll(PDO::FETCH_OBJ);
+        }
 
         return null;
 
@@ -258,24 +256,23 @@ class SystemConcept
         $table = $this->assignDefaultTable($table);
         $shortname = $this->pdo->quote($shortname);
         $sql = "SELECT id,shortname FROM $this->conceptTable WHERE shortname = $shortname";
+        $start = microtime(true);
 
         try {
             $result = $this->pdo->prepare($sql);
-            System::logDatabaseStart($sql);
             $result->execute();
         } catch (PDOException $exception) {
-            System::logDatabaseEnd($exception->getMessage());
+            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
             System::sandraException($exception);
             return;
         }
 
+        System::$sandraLogger->query($sql, microtime(true) - $start);
+
         if ($result->rowCount() > 0) {
-            $fetchResult = $result->fetchAll(PDO::FETCH_OBJ);
-            System::logDatabaseEnd();
-            return $fetchResult;
+            return $result->fetchAll(PDO::FETCH_OBJ);
         }
 
-        System::logDatabaseEnd();
         return null;
     }
 
@@ -286,18 +283,19 @@ class SystemConcept
 
         // $sql = "INSERT INTO $this->conceptTable id, code, shortname) VALUES (null, 'system concept $shortname', $shortname);";
         $sql = "INSERT INTO $this->conceptTable (id, code, shortname) VALUES (?, ?, ?)";
+        $start = microtime(true);
 
         try {
             $result = $this->pdo->prepare($sql);
-            System::logDatabaseStart($sql);
             $result->execute([null, "system concept $shortname", $shortname]);
         } catch (PDOException $exception) {
-            System::logDatabaseEnd($exception->getMessage());
+            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
             System::sandraException($exception);
             return;
         }
 
-        System::logDatabaseEnd();
+        System::$sandraLogger->query($sql, microtime(true) - $start);
+
         return $this->pdo->lastInsertId();
     }
 
@@ -310,11 +308,11 @@ class SystemConcept
 
         foreach ($list as $shortname => $id) {
             $sql = "UPDATE $this->conceptTable SET shortname = '$shortname' WHERE id = $id";
+            $start = microtime(true);
             mysqli_query($dbLink, $sql);
-            System::logDatabaseStart($sql);
+            System::$sandraLogger->query($sql, microtime(true) - $start);
         }
 
-        System::logDatabaseEnd();
     }
 
     //Load concepts from cache file

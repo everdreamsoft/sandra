@@ -9,11 +9,20 @@
 namespace SandraCore;
 
 
+use Opcodes\LogViewer\Log;
+
 class System
 {
 
     public static $pdo;
+
+    /** @var ILogger $sandraLogger */
+    public static ILogger $sandraLogger;
+
+    /** @var  DebugStack $debugStack DebugStack instance used to log sandra requests. */
+    private $debugStack;
     public static $logger = null;
+
     public $env = 'main';
     public $tableSuffix = '';
     public $tablePrefix = '';
@@ -34,13 +43,13 @@ class System
     public $registerStructure = false;
     public $registerFactory = array();
     public $instanceId;
-    /** @var  DebugStack $debugStack DebugStack instance used to log sandra requests. */
-    private $debugStack;
     private $testMode;
     private $entityClassStore;
 
-    public function __construct($env = '', $install = false, $dbHost = '127.0.0.1', $db = 'sandra', $dbUsername = 'root', $dbpassword = '')
+    public function __construct($env = '', $install = false, $dbHost = '127.0.0.1', $db = 'sandra', $dbUsername = 'root', $dbpassword = '', $logger = null)
     {
+
+        self::$sandraLogger = new Logger();
 
         if (!static::$pdo)
             static::$pdo = new PdoConnexionWrapper($dbHost, $db, $dbUsername, $dbpassword);
@@ -74,6 +83,7 @@ class System
 
         $this->instanceId = rand(0, 999) . "-" . rand(0, 9999) . "-" . rand(0, 999);
 
+        self::$sandraLogger = $logger  ?: new Logger();
 
         //$this->logger->info('[Sandra] Started sandra ' . $env . ' environment successfully.');
 
@@ -110,8 +120,12 @@ class System
         }
     }
 
+    /** @noinspection PhpUnhandledExceptionInspection */
     public static function sandraException(\Exception $exception)
     {
+
+        // Pass exception to log
+        self::$sandraLogger->error($exception);
 
         //print_r($exception);
         switch ($exception->getCode()) {
@@ -125,7 +139,7 @@ class System
 
         $response['sandraErrorReported'] = $exception->getMessage();
 
-        throw new $exception;
+        throw $exception;
 
     }
 

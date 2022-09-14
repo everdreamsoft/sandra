@@ -86,6 +86,8 @@ class Gossiper
 
         }
 
+        $start = microtime(true);
+
         $entityFactory->populateFromSearchResults($this->indexRef, $this->updateOnRef);
         $entityFactory->getTriplets();
         $entityFactory->populateBrotherEntities();
@@ -113,6 +115,12 @@ class Gossiper
             $this->executeTripletBuffer();
             if ($this->somethingToCommit) DatabaseAdapter::commit();
         }
+
+        $time_elapsed_secs = microtime(true) - $start;
+
+        $this->sandra::$sandraLogger->info("Gossip isa " .
+            $isa . " containedIn " . $containedIn . " length " . count($entityFactoryJson->entityArray)
+            . " executionTime " . $time_elapsed_secs);
 
         return $entityFactory;
 
