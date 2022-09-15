@@ -12,15 +12,11 @@ require_once __DIR__ . '/../vendor/autoload.php'; // Autoload files using Compos
 use PHPUnit\Framework\TestCase;
 
 
-
-
-
 final class SystemTest extends TestCase
 {
 
     public function testLogger()
     {
-
 
         $sandraToFlush = new SandraCore\System('_phpUnit', true);
         \SandraCore\Setup::flushDatagraph($sandraToFlush);
@@ -28,27 +24,18 @@ final class SystemTest extends TestCase
         $sandra = new SandraCore\System('_phpUnit', true);
         $this->sandra = $sandra ;
 
-        $sandra->startSqlLog();
-
         $factory = new \SandraCore\EntityFactory('test','testFile',$sandra);
         $factory->createNew(["testing"=>'test']);
 
-
         $sandra->systemError(1,self::class,2,"my jmessage");
-        $logger = $sandra::$logger;
-
 
         //TODO implement the tests
         $this->assertEquals(1, 1);
-
-
-
 
     }
 
     public function testConnections()
     {
-
 
         /*while(1) {
             $sandra = new SandraCore\System('_phpUnit', true);

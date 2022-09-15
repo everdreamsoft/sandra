@@ -20,7 +20,6 @@ class SystemConcept
     private $_conceptsByTableUnsensitive = array();
 
     private static $_tableLoaded = 'default';
-
     private static $_loadedTables = array();
 
     private static $_includePath = '';
@@ -30,13 +29,11 @@ class SystemConcept
     public function __construct(PdoConnexionWrapper $pdoConnexionWrapper, $logger, $conceptTable)
     {
 
-
         $this->pdo = $pdoConnexionWrapper->get();
 
         $this->logger = $logger;
 
         $this->conceptTable = $conceptTable;
-
 
         if (defined('SANDRA_INCLUDE_PATH'))
             self::$_includePath = SANDRA_INCLUDE_PATH;
@@ -60,7 +57,7 @@ class SystemConcept
         try {
             $result = $this->pdo->query($sql);
         } catch (PDOException $exception) {
-            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
+            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             System::sandraException($exception);
             return;
         }
@@ -95,7 +92,6 @@ class SystemConcept
 
         $concept = $this->getFromDBWithId($concept_id, $table);
 
-
         if ($concept != null) {
             self::write($table);
             return $concept->shortname;
@@ -129,7 +125,7 @@ class SystemConcept
         try {
             $result = $this->pdo->query($sql);
         } catch (PDOException $exception) {
-            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
+            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             System::sandraException($exception);
             return;
         }
@@ -202,10 +198,10 @@ class SystemConcept
 
         $start = microtime(true);
 
-        try{
+        try {
             $result = $this->pdo->query($sql);
         } catch (PDOException $exception) {
-            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
+            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             System::sandraException($exception);
             return;
         }
@@ -234,7 +230,7 @@ class SystemConcept
         try {
             $result = $this->pdo->query($sql);
         } catch (PDOException $exception) {
-            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
+            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             System::sandraException($exception);
             return;
         }
@@ -262,7 +258,7 @@ class SystemConcept
             $result = $this->pdo->prepare($sql);
             $result->execute();
         } catch (PDOException $exception) {
-            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
+            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             System::sandraException($exception);
             return;
         }
@@ -289,7 +285,7 @@ class SystemConcept
             $result = $this->pdo->prepare($sql);
             $result->execute([null, "system concept $shortname", $shortname]);
         } catch (PDOException $exception) {
-            System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
+            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             System::sandraException($exception);
             return;
         }
