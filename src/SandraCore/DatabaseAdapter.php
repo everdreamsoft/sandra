@@ -525,22 +525,23 @@ class DatabaseAdapter
     /**
      * Get memory allocation for given tables.
      *
-     * @param string $tables Comma separated table names.
+     * @param array $tables Array of table names.
+     * @param string $schema Database name
      *
-     * @return void
+     * @return array
      */
-    public static function getAllocatedMemory(array $tables = [])
+    public static function getAllocatedMemory(array $tables = [], string $schema): array
     {
-        if (count($tables) == 0) return;
+        if (count($tables) == 0) return [];
 
         $pdo = System::$pdo->get();
         $tables_str = implode("','", $tables);
 
-        $sql = "SELECT table_name, table_schema,
-                ROUND(((data_length + index_length)), 2) AS 'Bytes',
+        $sql = "SELECT table_name,                
+                ROUND(((data_length + index_length)), 2) AS 'bytes'
                 FROM information_schema.TABLES as iSchema
-                where iSchema.table_name in ($tables_str) and
-                iSchema.table_schema = 'lindt_helvetia';";
+                where iSchema.table_name in ('$tables_str') and
+                iSchema.table_schema = '$schema'";
 
         $start = microtime(true);
 
@@ -548,9 +549,7 @@ class DatabaseAdapter
 
         System::$sandraLogger->query($sql, microtime(true) - $start);
 
-        $rows = $result->fetchAll(PDO::FETCH_ASSOC);
-
-        System::$sandraLogger->info("DB Size fired");
+        return $result->fetchAll(PDO::FETCH_ASSOC);
 
     }
 }
