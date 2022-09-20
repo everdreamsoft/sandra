@@ -491,20 +491,17 @@ class DatabaseAdapter
             self::$transactionStarted = true;
         }
 
+
+        $start = microtime(true);
+
         try {
-
             $pdoResult = $pdo->prepare($sql);
-
             if (is_array($bindParamArray)) {
                 foreach ($bindParamArray as $key => &$value) {
                     $pdoResult->bindParam("$key", $value, PDO::PARAM_STR);
                 }
             }
-
-            $start = microtime(true);
-
             $pdoResult->execute();
-
         } catch (PDOException $exception) {
             System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             System::sandraException($exception);
