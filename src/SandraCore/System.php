@@ -17,29 +17,29 @@ class System
     public static $pdo;
     public static ILogger $sandraLogger;
 
-    public string $env = 'main';
-    public string $tableSuffix = '';
-    public string $tablePrefix = '';
+    public $env = 'main';
+    public $tableSuffix = '';
+    public $tablePrefix = '';
 
-    public FactoryManager $factoryManager;
-    public SystemConcept $systemConcept;
-    public ConceptFactory $conceptFactory;
+    public $factoryManager;
+    public $systemConcept;
+    public $conceptFactory;
 
     //TODO Public for now, should be made private
     public $deletedUNID;
 
     // Assumptions
-    public string $conceptTable;
-    public string $linkTable;
-    public string $tableReference;
-    public string $tableStorage;
-    public string $tableConf;
+    public $conceptTable;
+    public $linkTable;
+    public $tableReference;
+    public $tableStorage;
+    public $tableConf;
     public $foreignConceptFactory;
 
-    public int $errorLevelToKill = 3;
-    public ?bool $registerStructure = false;
-    public array $registerFactory = array();
-    public string $instanceId;
+    public $errorLevelToKill = 3;
+    public $registerStructure = false;
+    public $registerFactory = array();
+    public $instanceId;
 
     private $entityClassStore;
 
@@ -75,6 +75,11 @@ class System
         if ($logger)
             self::$sandraLogger = $logger;
 
+    }
+
+    public function initDebugStack()
+    {
+        // Function removed.
     }
 
     public function install()
