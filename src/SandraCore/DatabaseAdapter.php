@@ -527,7 +527,7 @@ class DatabaseAdapter
      *
      * @return array
      */
-    public static function getAllocatedMemory(array $tables = [], string $schema): array
+    public static function getAllocatedMemory(array $tables = [], string $schema = ""): array
     {
         if (count($tables) == 0) return [];
 
