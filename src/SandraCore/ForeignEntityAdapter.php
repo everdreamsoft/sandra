@@ -34,71 +34,49 @@ class ForeignEntityAdapter extends EntityFactory
 
 
 
-    public function __construct($url, $pathToItem, System $system, $headerData = null)
+    public function __construct($url, $pathToItem, System $system, $headerData = null, $foreignArray = [])
     {
-
-
-        //$json = $this->testJson();
         if (is_null($url)) return;
 
         $this->mainEntityPath = "$pathToItem";
 
-        try {
-            $ch = curl_init();
+        if(!empty($url)){
+            try {
+                $ch = curl_init();
 
-            // Check if initialization had gone wrong*
-            if ($ch === false) {
-                throw new Exception('failed to initialize');
+                // Check if initialization had gone wrong*
+                if ($ch === false) {
+                    throw new Exception('failed to initialize');
+                }
+
+                curl_setopt($ch, CURLOPT_URL, $url);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+
+                if ($headerData) {
+                    curl_setopt($ch, CURLOPT_HTTPHEADER, array($headerData));
+                }
+
+                $json = curl_exec($ch);
+
+                // Check the return value of curl_exec(), too
+                if ($json === false) {
+                    throw new Exception(curl_error($ch), curl_errno($ch));
+                }
+
+                // Close curl handle
+                curl_close($ch);
+                $foreignArray = json_decode($json, 1);
+            } catch(Exception $e) {
+                throw new Exception($e);
             }
-
-            curl_setopt($ch, CURLOPT_URL, $url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-
-            if ($headerData) {
-                curl_setopt($ch, CURLOPT_HTTPHEADER, array($headerData));
-
-            }
-
-
-            $json = curl_exec($ch);
-
-            // Check the return value of curl_exec(), too
-            if ($json === false) {
-                throw new Exception(curl_error($ch), curl_errno($ch));
-            }
-
-            /* Process $content here */
-
-            // Close curl handle
-            curl_close($ch);
-        } catch(Exception $e) {
-
-            throw new Exception($e);
-
-
-
         }
 
-
-
-        $this->foreignRawArray = json_decode($json,1);
-
+        $this->foreignRawArray = $foreignArray;
         $this->system = $system ;
-
-
-
-        //echo" X $json $url";
-
-
-
-        // print_r($this->foreignRawArray);
-        //die();
-
-
-
-
     }
+
+
     public function populate($limit = 0){
 
 
@@ -110,7 +88,12 @@ class ForeignEntityAdapter extends EntityFactory
 
         $i=0;
 
-        $pathedArray = $this->divideForeignPath($resultArray,$this->mainEntityPath);
+        try {
+            $pathedArray = $this->divideForeignPath($resultArray, $this->mainEntityPath);
+        }catch (Exception $e){
+
+            return array();
+        }
 
 
         //if the array is empty return
