@@ -20,6 +20,7 @@ final class BrotherEntityFactoryTest extends TestCase
 
     public function testEntity()
     {
+
         $sandraToFlush = new SandraCore\System('phpUnit_', true);
         \SandraCore\Setup::flushDatagraph($sandraToFlush);
         $system = new \SandraCore\System('phpUnit_',true);
@@ -76,6 +77,7 @@ final class BrotherEntityFactoryTest extends TestCase
 
     public function testPartialTriplet()
     {
+
 
         $system = new \SandraCore\System('phpUnit_',true);
 
@@ -197,7 +199,7 @@ final class BrotherEntityFactoryTest extends TestCase
 //        $a = $alphabetFactory->first('name', 'a');
 //        $b = $alphabetFactory->first('name', 'b');
 //        $a->setBrotherEntity('equals', $b, []);
-//
+//958668
 //
 //        $aEquals = $a->getBrotherEntity('equals');
 //
