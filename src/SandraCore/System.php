@@ -45,7 +45,10 @@ class System
 
     public  function __construct($env = '', $install = false, $dbHost='127.0.0.1', $db='sandra', $dbUsername='root', $dbpassword=''){
 
-        self::initDebugStack();
+        $debugStack = new DebugStack();
+        $debugStack->enabled = false;
+        self::$logger = $debugStack;
+
         if (!static::$pdo)
             static::$pdo = new PdoConnexionWrapper($dbHost, $db, $dbUsername, $dbpassword);
 
@@ -115,6 +118,11 @@ class System
 
     public static function logDatabaseStart($query,$params=null,$types=null){
 
+        if(is_null(self::$logger)){
+            $debugStack = new DebugStack();
+            $debugStack->enabled = false;
+            self::$logger = $debugStack;
+        }
         self::$logger->startQuery($query,$params,$types);
 
 
