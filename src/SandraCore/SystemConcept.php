@@ -29,6 +29,10 @@ class SystemConcept
     public function __construct(PdoConnexionWrapper $pdoConnexionWrapper, $logger, $conceptTable)
     {
 
+        if(!isset(System::$sandraLogger) || is_null(System::$sandraLogger)){
+            System::$sandraLogger = new Logger();
+        }
+
         $this->pdo = $pdoConnexionWrapper->get();
 
         $this->logger = $logger;
