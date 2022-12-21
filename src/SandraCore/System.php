@@ -16,6 +16,7 @@ class System
 
     public static $pdo;
     public static ILogger $sandraLogger;
+    public static $logger = null;
 
     public $env = 'main';
     public $tableSuffix = '';
