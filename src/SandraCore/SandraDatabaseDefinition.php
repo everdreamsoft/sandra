@@ -68,7 +68,7 @@ class SandraDatabaseDefinition
         $sql = "CREATE TABLE IF NOT EXISTS `$tablestorage` 
                 (
                     `linkReferenced` int(11) NOT NULL,
-                    `value` mediumtext CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,
+                    `value` mediumtext CHARACTER SET utf8mb4 NOT NULL,
                 PRIMARY KEY (`linkReferenced`)
                 ) 
                 ENGINE=MyISAM 
