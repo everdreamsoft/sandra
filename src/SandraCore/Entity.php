@@ -340,7 +340,7 @@ class Entity implements Dumpable
             /** @var EntityFactory $factory */
             foreach ($currentRefmap ? $currentRefmap : array() as $index => $entity) {
 
-                if ($entity == $this) {
+                if ($entity->entityId == $this->entityId) {
                     unset($factory->refMap[$referenceConcept->idConcept][$old][$index]);
                     //if none existing anymore remove this reference
                     if (empty($factory->refMap[$referenceConcept->idConcept][$old])) {

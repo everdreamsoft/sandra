@@ -32,6 +32,7 @@ final class EntityTest extends TestCase
         //should create a new planet
         $jupiterEntity = $entityFactory->getOrCreateFromRef('name', 'jupiter');
 
+
         $this->assertInstanceOf(
             \SandraCore\Entity::class,
             $jupiterEntity
@@ -39,6 +40,9 @@ final class EntityTest extends TestCase
 
         //we add a paremeter
         $radiusRef = $jupiterEntity->getOrInitReference('radius[km]',69911);
+
+        $radiusRef = $jupiterEntity->getOrInitReference('radius[km]',69911);
+
 
         $this->assertInstanceOf(
             \SandraCore\Reference::class,
