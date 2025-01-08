@@ -143,7 +143,7 @@ class Concept extends DatagraphUnit implements Dumpable
     }
 
 
-    public function createTriplet(Concept $verb, Concept $target, array $sandraRefArray = null, $updateOnExistingLk = 0, $autocommit = true)
+    public function createTriplet(Concept $verb, Concept $target, ?array $sandraRefArray, $updateOnExistingLk = 0, $autocommit = true)
     {
 
 

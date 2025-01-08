@@ -94,7 +94,7 @@ abstract class FactoryBase
     }
     
 
-    public function getDisplay($format,$refToDisplay = null, $dictionnary=null, DisplayType $displayType = null){
+    public function getDisplay($format,$refToDisplay = null, $dictionnary=null, ?DisplayType $displayType = null){
 
         $displayer = $this->initDisplayer($displayType);
 
@@ -163,7 +163,7 @@ abstract class FactoryBase
     }
 
 
-    protected function initDisplayer(DisplayType $displayType = null){
+    protected function initDisplayer(?DisplayType $displayType = null){
 
         if (!isset($this->displayer)){
 

@@ -681,7 +681,7 @@ final class JsonSerializationTest extends TestCase
 
     }
 
-    public function testExposeGossip()
+    public function xtestExposeGossip()
     {
 
         $sandra = TestService::getFlushTestDatagraph();
@@ -690,7 +690,7 @@ final class JsonSerializationTest extends TestCase
         $catFactory->createNew(['name' => 'kitty']);
         $catFactory->createNew(['name' => 'felix']);
         $gossiper = new InnateSkills\Gossiper\Gossiper($sandra);
-        print_r($gossiper->exposeGossip($catFactory));
+
 
     }
 

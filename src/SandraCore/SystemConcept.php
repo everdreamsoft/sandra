@@ -15,6 +15,7 @@ class SystemConcept
     const FILENAME = 'dependencies/cache/system_concepts_%s.json';
 
     private $pdo;
+    private $logger;
 
     private $_conceptsByTable = array();
     private $_conceptsByTableUnsensitive = array();

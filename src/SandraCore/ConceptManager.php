@@ -19,6 +19,10 @@ class ConceptManager
     public $mainQuerySQL = null;
     private $bypassFlags = false;
     private $lastLinkJoined = null;
+    protected $filterJoin = '';
+    protected $filterCondition = '';
+    protected $su = 1;
+    protected $tableReference;
 
     public function __construct(System $system, $su = 1, $tableLinkParam = 'default', $tableReferenceParam = 'default')
     {

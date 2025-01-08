@@ -514,7 +514,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     }
 
-    public function foreignPopulate(ForeignEntityAdapter $foreignAdapter = null,$limit = 0)
+    public function foreignPopulate(?ForeignEntityAdapter $foreignAdapter = null,$limit = 0)
     {
 
 

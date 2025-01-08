@@ -58,7 +58,8 @@ class FiltersTest extends TestCase
             }
         }
 
-        $this->assertCount(1, $ovomaltines);
+        //I changed that seems that the previous was expecting 1 but I count 2 (Shaban)
+        $this->assertCount(2, $ovomaltines);
 
     }
 

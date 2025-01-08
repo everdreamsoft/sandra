@@ -28,7 +28,7 @@ class Displayer
     public $displayKeyMap = array();
     public  $displayType ;
 
-    public function __construct(EntityFactory $factory, DisplayType $displayType = null)
+    public function __construct(EntityFactory $factory, ?DisplayType $displayType = null)
     {
 
         $this->factoryArray[] = $factory;
