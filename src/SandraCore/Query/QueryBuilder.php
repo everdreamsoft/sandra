@@ -159,10 +159,12 @@ class QueryBuilder
      */
     private function executeQuery(EntityFactory $factory): array
     {
-        $limit = 10000;
+        // When ref filters exist, load all entities so in-memory filtering
+        // sees the complete dataset (no artificial cap)
+        $limit = $this->hasRefClauses() ? PHP_INT_MAX : 10000;
         $offset = 0;
 
-        // Only pass limit/offset to SQL if there are no ref filters
+        // Only pass user limit/offset to SQL if there are no ref filters
         if (!$this->hasRefClauses()) {
             if ($this->limitValue !== null) {
                 $limit = $this->limitValue;
