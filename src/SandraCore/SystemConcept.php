@@ -333,7 +333,7 @@ class SystemConcept
 
         //build the case insensitive array
         foreach ($this->_conceptsByTable[$table] as $key => $value) {
-            $key = strtolower($key);
+            $key = strtolower((string)$key);
             $this->_conceptsByTableUnsensitive[$table][$key] = $value;
         }
 
