@@ -532,6 +532,165 @@ Tests: 186, Assertions: 361, Errors: 1, Failures: 3, Risky: 1
 
 ---
 
+## Plan 02 Phase 3 - Multi-Database, Full-Text Search, REST API
+
+### [HAUTE] Support Multi-Database
+
+**Fichiers crees :**
+- `src/SandraCore/Driver/DatabaseDriverInterface.php` - Interface abstraite pour drivers DB
+  - `getDsn()`, `getCreateTableSQL()`, `getUpsertReferenceSQL()`, `getUpsertTripletSQL()`
+  - `getUpsertStorageSQL()`, `getRandomOrderSQL()`, `getCastNumericSQL()`, `getName()`
+- `src/SandraCore/Driver/MySQLDriver.php` - Driver MySQL (retourne le SQL existant tel quel)
+- `src/SandraCore/Driver/SQLiteDriver.php` - Driver SQLite
+  - DSN: `sqlite:$database`
+  - Tables: `INTEGER PRIMARY KEY AUTOINCREMENT`
+  - Upsert: `ON CONFLICT ... DO UPDATE SET`
+  - Storage: `INSERT OR REPLACE`
+  - Random: `RANDOM()`, Cast: `CAST($col AS REAL)`
+
+**Fichiers modifies :**
+- `src/SandraCore/PdoConnexionWrapper.php` : parametre optionnel `?DatabaseDriverInterface $driver`, utilise `$driver->getDsn()` si fourni
+- `src/SandraCore/SandraDatabaseDefinition.php` : parametre optionnel driver, utilise `getCreateTableSQL()` par table
+- `src/SandraCore/DatabaseAdapter.php` : propriete statique `$driver`, methodes upsert utilisent le driver si defini, fallback SQLite pour `lastInsertId()`
+- `src/SandraCore/System.php` : parametre optionnel `$driver` au constructeur, propage aux composants, getter `getDriver()`
+- `src/SandraCore/ConceptManager.php` : `getCastNumericSQL()` via driver pour le tri numerique
+
+**Tests :** 14 tests, 42 assertions (`tests/MultiDatabaseTest.php`)
+- Theme: bibliotheque de livres (titre, auteur, genre, pages)
+- SQLiteDriver: getDsn, createTableSQL, upsertSQL, random, cast, getName
+- MySQLDriver: memes verifications
+- Integration SQLite: creer System en memoire, creer des livres, populateLocal, getAllWith
+- Round-trip SQLite: creer livres, repopuler factory, verifier donnees
+
+---
+
+### [HAUTE] Recherche Full-Text
+
+**Fichiers crees :**
+- `src/SandraCore/Search/SearchInterface.php` - Interface de recherche (`search`, `searchByField`)
+- `src/SandraCore/Search/BasicSearch.php` - Recherche en memoire compatible toutes bases
+  - Filtre post-chargement sur les references via `mb_stripos`
+  - Multi-mots: split sur espaces, logique AND (chaque mot doit matcher)
+  - Tri par pertinence: match exact (3) > commence par (2) > contient (1)
+
+**Fichiers modifies :**
+- `src/SandraCore/FactoryBase.php` : methode `search(string $query, int $limit): array` comme raccourci
+
+**Tests :** 10 tests, 25 assertions (`tests/FullTextSearchTest.php`)
+- Theme: annuaire de contacts (nom, prenom, ville, email)
+- Chercher "Dupont" trouve le contact
+- Chercher "xyz" ne trouve rien
+- Recherche insensible a la casse
+- Match partiel ("Dup" trouve "Dupont")
+- Multi-mots ("Jean Paris" trouve Jean Dupont a Paris)
+- searchByField sur un champ specifique (ville uniquement)
+- Limite de resultats respectee
+- Recherche vide retourne vide
+- Tri par pertinence (exact > debut > contient)
+- Raccourci factory->search()
+
+---
+
+### [HAUTE] API REST Auto-Generee
+
+**Fichiers crees :**
+- `src/SandraCore/Api/ApiRequest.php` - Objet requete simple (method, path, query, body)
+- `src/SandraCore/Api/ApiResponse.php` - Objet reponse (status, data, error, toJson, isSuccess)
+- `src/SandraCore/Api/ApiHandler.php` - Handler agnostique de framework
+  - `register(name, factory, options)` - Enregistre une factory comme ressource
+  - `handle(ApiRequest): ApiResponse` - Route et traite la requete
+  - Routes generees: GET liste paginee, GET par ID, POST creation, PUT mise a jour, DELETE soft delete
+  - Options: `read`, `create`, `update`, `delete`, `searchable`
+  - Serialisation: `{id: conceptId, refs: {refName: value, ...}}`
+
+**Tests :** 15 tests, 51 assertions (`tests/RestApiTest.php`)
+- Theme: gestion de restaurant (plats, prix, categorie, disponibilite)
+- GET liste des plats, GET avec pagination, GET par ID
+- GET plat inexistant -> 404
+- POST cree un plat -> 201
+- POST avec erreur validation -> 422
+- PUT met a jour un plat
+- DELETE supprime un plat -> 200
+- GET avec ?search=pizza
+- Route non enregistree -> 404
+- Methode non supportee -> 405
+- Factory read-only rejette POST/PUT/DELETE
+- Plusieurs factories enregistrees
+- Liste vide -> 200 avec array vide
+- Format JSON de la reponse
+
+---
+
+### Etat final des tests - Plan 02 Phase 3
+```
+Tests: 225, Assertions: 479, Errors: 1, Failures: 3, Risky: 1
+```
++39 tests, +118 assertions vs Plan 02 Phase 2. Memes erreurs/failures pre-existantes.
+
+---
+
+## Plan 02 Phase 4 - Support Brother Entity dans l'API REST
+
+### [HAUTE] Brother Entity Support dans ApiHandler
+
+**Fichier modifie :**
+- `src/SandraCore/Api/ApiHandler.php`
+  - Ajout `'brothers' => []` dans `$defaultOptions`
+  - `serializeEntity()` accepte `$options` et serialise les brothers (target, targetConceptId, refs) groupes par verb
+  - `handleGet()` passe `$options` a `serializeEntity()` (single, list, search)
+  - `handlePost()` extrait `brothers` du body, cree l'entite, puis appelle `setBrotherEntity()` pour chaque verb/target autorise
+  - `handlePut()` meme logique que POST pour ajouter des brothers lors de la mise a jour
+  - Seuls les verbs declares dans l'option `brothers` sont acceptes (opt-in)
+
+**Fichier modifie :**
+- `docs/api-guide.md` - Section "Brother Entities (Graph Relationships)" ajoutee avec exemples GET/POST/PUT
+
+**Tests :** 8 nouveaux tests dans `tests/RestApiTest.php` (23 tests, 83 assertions total)
+- `testGetPlatWithBrothers` - GET single entite inclut brothers
+- `testGetListWithBrothers` - GET liste inclut brothers sur chaque item
+- `testPostCreatePlatWithBrothers` - POST avec brothers cree entite + liens
+- `testPutUpdateAddBrother` - PUT ajoute un nouveau brother
+- `testGetWithoutBrothersOptionExcludesBrothers` - factory sans option brothers = pas de cle brothers
+- `testBrothersWithReferences` - brother entity a ses references serialisees
+- `testGetPlatBrothersMultipleEntries` - entite avec plusieurs brothers sous meme verb
+- `testPostBrothersOnReadOnlyRejectsWrite` - factory read-only rejette POST avec brothers
+
+### Etat final des tests - Plan 02 Phase 4
+```
+Tests: 233, Assertions: 511, Errors: 1, Failures: 3, Risky: 1
+```
++8 tests, +32 assertions vs Plan 02 Phase 3. Memes erreurs/failures pre-existantes.
+
+---
+
+## Plan 02 Phase 4b - Support Joined Entity dans l'API REST
+
+### [HAUTE] Joined Entity Support dans ApiHandler
+
+**Fichier modifie :**
+- `src/SandraCore/Api/ApiHandler.php`
+  - Ajout `'joined' => []` dans `$defaultOptions`
+  - `register()` appelle `joinFactory(verb, factory)` pour chaque verb/factory dans l'option `joined`
+  - `handleGet()` appelle `joinPopulate()` si `joined` est non-vide (charge les entites jointes)
+  - `serializeEntity()` serialise les entites jointes comme `{id, refs}` groupees par verb
+  - `handlePost()` extrait `joined` du body, trouve les entites par concept ID, appelle `setJoinedEntity()`
+  - `handlePut()` meme logique que POST pour ajouter des joined lors de la mise a jour
+  - Seuls les verbs declares dans l'option `joined` sont acceptes (opt-in)
+
+**Fichier modifie :**
+- `docs/api-guide.md` - Section "Joined Entities (Cross-Factory Links)" ajoutee avec exemples GET/POST/PUT
+
+**Tests :** 7 nouveaux tests dans `tests/RestApiTest.php`
+- `testGetPlatWithJoined` - GET single entite inclut joined avec ingredients
+- `testGetListWithJoined` - GET liste inclut joined sur chaque item
+- `testPostCreatePlatWithJoined` - POST avec joined cree entite + liens
+- `testPutUpdateAddJoined` - PUT ajoute un nouveau joined
+- `testGetWithoutJoinedOptionExcludesJoined` - factory sans option joined = pas de cle joined
+- `testGetJoinedMultipleEntities` - entite jointe a plusieurs entites sous meme verb
+- `testJoinedEntityRefsAreSerialized` - entites jointes ont id (int) et refs serialisees
+
+---
+
 ## Plan 01 - TERMINE
 
 Toutes les 14 taches du plan d'amelioration code sont maintenant **FAIT** :

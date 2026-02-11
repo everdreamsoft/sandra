@@ -8,12 +8,22 @@
 
 namespace SandraCore;
 
+use SandraCore\Driver\DatabaseDriverInterface;
 
 class SandraDatabaseDefinition
 {
 
-    public static function createEnvTables($tableConcept, $tableTriplet, $tableReference, $tablestorage, $tableConf)
+    public static function createEnvTables($tableConcept, $tableTriplet, $tableReference, $tablestorage, $tableConf, ?DatabaseDriverInterface $driver = null)
     {
+
+        if ($driver !== null) {
+            System::$pdo->get()->exec($driver->getCreateTableSQL($tableConcept, 'concept'));
+            System::$pdo->get()->exec($driver->getCreateTableSQL($tableTriplet, 'triplet'));
+            System::$pdo->get()->exec($driver->getCreateTableSQL($tableReference, 'reference'));
+            System::$pdo->get()->exec($driver->getCreateTableSQL($tablestorage, 'storage'));
+            System::$pdo->get()->exec($driver->getCreateTableSQL($tableConf, 'config'));
+            return;
+        }
 
         $sql = "create table IF NOT EXISTS $tableConcept
                 (
@@ -24,12 +34,12 @@ class SandraDatabaseDefinition
                 UNIQUE KEY `shortname` (`shortname`)
                 )
                 engine = InnoDB
-                DEFAULT CHARSET=utf8mb4 
+                DEFAULT CHARSET=utf8mb4
                 COLLATE=utf8mb4_unicode_ci;";
 
         System::$pdo->get()->query($sql);
 
-        $sql = "CREATE TABLE  IF NOT EXISTS `$tableTriplet` 
+        $sql = "CREATE TABLE  IF NOT EXISTS `$tableTriplet`
                 (
                     `id` int(11) NOT NULL AUTO_INCREMENT,
                     `idConceptStart` int(11) NOT NULL,
@@ -40,14 +50,14 @@ class SandraDatabaseDefinition
                 UNIQUE KEY `idx_name` (`idConceptStart`,`idConceptLink`,`idConceptTarget`),
                 KEY `idConceptTarget` (`idConceptTarget`,`idConceptLink`,`idConceptStart`),
                 KEY `idConceptLink` (`idConceptLink`,`idConceptTarget`,`idConceptStart`)
-               ) 
-                ENGINE=InnoDB 
-                DEFAULT CHARSET=utf8mb4 
+               )
+                ENGINE=InnoDB
+                DEFAULT CHARSET=utf8mb4
                 COLLATE=utf8mb4_unicode_ci;";
 
         System::$pdo->get()->query($sql);
 
-        $sql = "CREATE TABLE  IF NOT EXISTS `$tableReference` 
+        $sql = "CREATE TABLE  IF NOT EXISTS `$tableReference`
                 (
                   `id` int(11) NOT NULL AUTO_INCREMENT,
                   `idConcept` int(11) NOT NULL,
@@ -57,35 +67,35 @@ class SandraDatabaseDefinition
                 UNIQUE KEY `unique_ref` (`idConcept`,`linkReferenced`),
                 KEY `linkReferenced` (`linkReferenced`),
                 KEY `ValueReference` (`value`)
-                ) 
-                ENGINE=InnoDB  
-                DEFAULT CHARSET=utf8mb4 
+                )
+                ENGINE=InnoDB
+                DEFAULT CHARSET=utf8mb4
                 COLLATE=utf8mb4_unicode_ci;";
 
 
         System::$pdo->get()->query($sql);
 
-        $sql = "CREATE TABLE IF NOT EXISTS `$tablestorage` 
+        $sql = "CREATE TABLE IF NOT EXISTS `$tablestorage`
                 (
                     `linkReferenced` int(11) NOT NULL,
                     `value` mediumtext CHARACTER SET utf8mb4 NOT NULL,
                 PRIMARY KEY (`linkReferenced`)
-                ) 
-                ENGINE=MyISAM 
-                DEFAULT CHARSET=utf8mb4 
+                )
+                ENGINE=MyISAM
+                DEFAULT CHARSET=utf8mb4
                 COLLATE=utf8mb4_unicode_ci;";
 
 
         System::$pdo->get()->query($sql);
 
-        $sql = "CREATE TABLE  IF NOT EXISTS `$tableConf` 
+        $sql = "CREATE TABLE  IF NOT EXISTS `$tableConf`
                 (
                     `id` int(11) NOT NULL AUTO_INCREMENT,
                     `name` varchar(255) NOT NULL,
                     `value` varchar(255) NOT NULL,
                 PRIMARY KEY (`id`)
-                ) 
-                ENGINE=InnoDB  
+                )
+                ENGINE=InnoDB
                 DEFAULT CHARSET=utf8;";
 
         System::$pdo->get()->query($sql);

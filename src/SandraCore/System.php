@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace SandraCore;
 
+use SandraCore\Driver\DatabaseDriverInterface;
 use SandraCore\Exception\CriticalSystemException;
 
 /**
@@ -40,6 +41,8 @@ class System
 
     private array $entityClassStore = [];
 
+    private ?DatabaseDriverInterface $driver = null;
+
     /**
      * Initialize a Sandra system.
      *
@@ -50,14 +53,21 @@ class System
      * @param string $dbUsername Database username
      * @param string $dbpassword Database password
      * @param ILogger|null $logger Optional logger implementation
+     * @param DatabaseDriverInterface|null $driver Optional database driver for multi-DB support
      */
-    public function __construct($env = '', $install = false, $dbHost = '127.0.0.1', $db = 'sandra', $dbUsername = 'root', $dbpassword = '', ?ILogger $logger = null)
+    public function __construct($env = '', $install = false, $dbHost = '127.0.0.1', $db = 'sandra', $dbUsername = 'root', $dbpassword = '', ?ILogger $logger = null, ?DatabaseDriverInterface $driver = null)
     {
 
         self::$sandraLogger = new Logger();
 
+        $this->driver = $driver;
+
+        if ($driver !== null) {
+            DatabaseAdapter::$driver = $driver;
+        }
+
         if (!static::$pdo)
-            static::$pdo = new PdoConnexionWrapper($dbHost, $db, $dbUsername, $dbpassword);
+            static::$pdo = new PdoConnexionWrapper($dbHost, $db, $dbUsername, $dbpassword, $driver);
 
         $pdoWrapper = static::$pdo;
 
@@ -85,6 +95,11 @@ class System
 
     }
 
+    public function getDriver(): ?DatabaseDriverInterface
+    {
+        return $this->driver;
+    }
+
     /**
      * Get the PDO connection instance.
      * Prefer using this over the static System::$pdo for testability.
@@ -105,7 +120,7 @@ class System
 
     public function install(): void
     {
-        SandraDatabaseDefinition::createEnvTables($this->conceptTable, $this->linkTable, $this->tableReference, $this->tableStorage, $this->tableConf);
+        SandraDatabaseDefinition::createEnvTables($this->conceptTable, $this->linkTable, $this->tableReference, $this->tableStorage, $this->tableConf, $this->driver);
     }
 
 

@@ -267,7 +267,10 @@ class ConceptManager
             if (!$numberSort) {
                 $orderBy = " ORDER BY refSorter.value";
             } else {
-                $orderBy = " ORDER BY CAST(refSorter.value AS DECIMAL)";
+                $castExpr = DatabaseAdapter::$driver !== null
+                        ? DatabaseAdapter::$driver->getCastNumericSQL('refSorter.value')
+                        : 'CAST(refSorter.value AS DECIMAL)';
+                    $orderBy = " ORDER BY $castExpr";
             }
         }
 
@@ -437,7 +440,10 @@ class ConceptManager
                 if (!$numberSort) {
                     $orderBy = " ORDER BY refSorter.value";
                 } else {
-                    $orderBy = " ORDER BY CAST(refSorter.value AS DECIMAL)";
+                    $castExpr = DatabaseAdapter::$driver !== null
+                        ? DatabaseAdapter::$driver->getCastNumericSQL('refSorter.value')
+                        : 'CAST(refSorter.value AS DECIMAL)';
+                    $orderBy = " ORDER BY $castExpr";
                 }
 
             }

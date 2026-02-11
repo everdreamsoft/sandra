@@ -498,10 +498,10 @@ $snapshot = $factory->snapshotAt('2024-01-01');
 5. Systeme d'Evenements - FAIT
 6. Export/Import CSV - FAIT
 
-### Phase 3 - Ecosystem
-7. API REST auto-generee
-8. Recherche full-text
-9. Support multi-database
+### Phase 3 - Ecosystem - FAIT
+7. API REST auto-generee - FAIT
+8. Recherche full-text - FAIT
+9. Support multi-database - FAIT
 
 ### Phase 4 - Enterprise
 10. Migrations

@@ -8,6 +8,7 @@ use SandraCore\Validation\Validator;
 use SandraCore\Cache\CacheInterface;
 use SandraCore\Events\EventDispatcher;
 use SandraCore\Events\EntityEvent;
+use SandraCore\Search\BasicSearch;
 
 /**
  * Created by EverdreamSoft.
@@ -401,5 +402,18 @@ abstract class FactoryBase
             return $event;
         }
         return $this->eventDispatcher->dispatch($name, $event);
+    }
+
+    /**
+     * Search entities in this factory using basic full-text search.
+     * Factory must be populated before calling this method.
+     *
+     * @return Entity[]
+     */
+    public function search(string $query, int $limit = 50): array
+    {
+        /** @var EntityFactory $this */
+        $searcher = new BasicSearch();
+        return $searcher->search($this, $query, $limit);
     }
 }

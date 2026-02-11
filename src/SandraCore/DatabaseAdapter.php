@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace SandraCore;
 
 use PDO;
+use SandraCore\Driver\DatabaseDriverInterface;
 
 
 /**
@@ -14,6 +15,7 @@ use PDO;
  */
 class DatabaseAdapter
 {
+    public static ?DatabaseDriverInterface $driver = null;
 
     /**
      * Create or update a reference value for a triplet.
@@ -47,6 +49,28 @@ class DatabaseAdapter
         $value = (string)$value;
         if (strlen($value) > 255)
             $value = substr($value, 0, 255);
+
+        if (self::$driver !== null) {
+            $sql = self::$driver->getUpsertReferenceSQL($targetTable);
+            $params = [
+                ':conceptId' => [$conceptId, PDO::PARAM_INT],
+                ':tripletId' => [$tripletId, PDO::PARAM_INT],
+                ':value' => $value,
+            ];
+            if (self::$driver->getName() === 'mysql') {
+                $params[':value2'] = $value;
+            }
+            $id = QueryExecutor::insert($pdo, $sql, $params);
+            // SQLite upsert doesn't update last_insert_rowid on conflict
+            if (self::$driver->getName() === 'sqlite' && ($id === '0' || $id === false)) {
+                $rows = QueryExecutor::fetchAll($pdo, "SELECT id FROM `$targetTable` WHERE idConcept = :c AND linkReferenced = :t", [
+                    ':c' => [$conceptId, PDO::PARAM_INT],
+                    ':t' => [$tripletId, PDO::PARAM_INT],
+                ]);
+                $id = isset($rows[0]['id']) ? (string)$rows[0]['id'] : null;
+            }
+            return $id;
+        }
 
         $sql = "INSERT INTO `$targetTable`
                 (idConcept, linkReferenced, value) VALUES (:conceptId, :tripletId, :value)
@@ -119,13 +143,29 @@ class DatabaseAdapter
         }
 
 
-        $sql = "INSERT INTO $tableLink (idConceptStart, idConceptLink, idConceptTarget, flag) VALUES (:subject, :verb, :target, 0) ON DUPLICATE KEY UPDATE flag = 0, id=LAST_INSERT_ID(id)";
+        if (self::$driver !== null) {
+            $sql = self::$driver->getUpsertTripletSQL($tableLink);
+        } else {
+            $sql = "INSERT INTO $tableLink (idConceptStart, idConceptLink, idConceptTarget, flag) VALUES (:subject, :verb, :target, 0) ON DUPLICATE KEY UPDATE flag = 0, id=LAST_INSERT_ID(id)";
+        }
 
-        return QueryExecutor::insert($pdo, $sql, [
+        $id = QueryExecutor::insert($pdo, $sql, [
             ':subject' => [$conceptSubject, PDO::PARAM_INT],
             ':verb' => [$conceptVerb, PDO::PARAM_INT],
             ':target' => [$conceptTarget, PDO::PARAM_INT],
         ]);
+
+        // SQLite upsert doesn't update last_insert_rowid on conflict
+        if (self::$driver !== null && self::$driver->getName() === 'sqlite' && ($id === '0' || $id === false)) {
+            $rows = QueryExecutor::fetchAll($pdo, "SELECT id FROM $tableLink WHERE idConceptStart = :s AND idConceptLink = :l AND idConceptTarget = :t", [
+                ':s' => [$conceptSubject, PDO::PARAM_INT],
+                ':l' => [$conceptVerb, PDO::PARAM_INT],
+                ':t' => [$conceptTarget, PDO::PARAM_INT],
+            ]);
+            $id = isset($rows[0]['id']) ? (string)$rows[0]['id'] : null;
+        }
+
+        return $id;
     }
 
     /**
@@ -146,13 +186,25 @@ class DatabaseAdapter
             TransactionManager::begin($pdo);
         }
 
-        $sql = "INSERT INTO $tableStorage (linkReferenced ,`value` ) VALUES (:linkId,  :storeValue) ON DUPLICATE KEY UPDATE value = :storeValue2";
+        if (self::$driver !== null) {
+            $sql = self::$driver->getUpsertStorageSQL($tableStorage);
+            $params = [
+                ':storeValue' => $value,
+                ':linkId' => [(int)$entity->entityId, PDO::PARAM_INT],
+            ];
+            if (self::$driver->getName() === 'mysql') {
+                $params[':storeValue2'] = $value;
+            }
+        } else {
+            $sql = "INSERT INTO $tableStorage (linkReferenced ,`value` ) VALUES (:linkId,  :storeValue) ON DUPLICATE KEY UPDATE value = :storeValue2";
+            $params = [
+                ':storeValue' => $value,
+                ':storeValue2' => $value,
+                ':linkId' => [(int)$entity->entityId, PDO::PARAM_INT],
+            ];
+        }
 
-        $stmt = QueryExecutor::execute($pdo, $sql, [
-            ':storeValue' => $value,
-            ':storeValue2' => $value,
-            ':linkId' => [(int)$entity->entityId, PDO::PARAM_INT],
-        ]);
+        $stmt = QueryExecutor::execute($pdo, $sql, $params);
 
         return $stmt !== null ? $value : null;
     }
@@ -394,7 +446,8 @@ class DatabaseAdapter
         }
 
         if ($random) {
-            $randomSQL = 'ORDER BY RAND()';
+            $randomFunc = self::$driver !== null ? self::$driver->getRandomOrderSQL() : 'RAND()';
+            $randomSQL = "ORDER BY $randomFunc";
         }
 
         $deletedUNID = (int)$system->deletedUNID;
