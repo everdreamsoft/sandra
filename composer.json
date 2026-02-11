@@ -6,18 +6,15 @@
     "minimum-stability": "dev",
 
     "autoload": {
-        "psr-0": {
-            "SandraCore": "src/",
-            "InnateSkills": "src/"
-        },
-        "classmap": [
-            "src/"
-        ]
-
+        "psr-4": {
+            "SandraCore\\": "src/SandraCore/",
+            "InnateSkills\\": "src/InnateSkills/"
+        }
     },
 
 
     "require": {
+        "php": ">=8.0",
         "ext-json": "*"
     },
     "require-dev": {

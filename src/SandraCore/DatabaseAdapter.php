@@ -1,27 +1,30 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: shaban
- * Date: 12.02.19
- * Time: 15:22
- */
+declare(strict_types=1);
 
 namespace SandraCore;
 
 use PDO;
-use PDOException;
 
 
+/**
+ * Low-level database operations for the Sandra graph model.
+ *
+ * Provides static methods for creating concepts, triplets, references,
+ * and managing data storage. Uses QueryExecutor for execution and logging.
+ */
 class DatabaseAdapter
 {
 
-    private static $transactionStarted = false;
-    private static $pdo;
-
-    public static function getSujectConcept()
-    {
-    }
-
+    /**
+     * Create or update a reference value for a triplet.
+     *
+     * @param mixed $tripletId The triplet (link) ID to attach the reference to
+     * @param mixed $conceptId The concept ID defining the reference type
+     * @param mixed $value The reference value (truncated to 255 chars)
+     * @param System $system The Sandra system instance
+     * @param bool $autocommit If false, wraps in a transaction
+     * @return string|null The inserted/updated reference ID, or null on error
+     */
     public static function rawCreateReference($tripletId, $conceptId, $value, System $system, $autocommit = true)
     {
 
@@ -29,300 +32,257 @@ class DatabaseAdapter
             return;
         }
 
-        $pdo = System::$pdo->get();
+        $pdo = $system->getConnection();
 
-        System::$sandraLogger->query("Auto commit " . (($autocommit) ? 'On' : 'Off'), 0);
-
-        if (!self::$transactionStarted && $autocommit == false) {
-            $pdo->beginTransaction();
-            System::$sandraLogger->query("Begin Transaction ", 0);
-            self::$pdo = $pdo;
-            self::$transactionStarted = true;
+        if ($autocommit == false) {
+            TransactionManager::begin($pdo);
         }
 
         $targetTable = $system->tableReference;
 
-        $sql = "INSERT INTO `$targetTable` 
-                (idConcept, linkReferenced, value) VALUES ($conceptId, $tripletId, :value)
-                ON DUPLICATE KEY UPDATE  value = :value, id=LAST_INSERT_ID(id)";
+        $conceptId = (int)$conceptId;
+        $tripletId = (int)$tripletId;
 
         //do we reach the max column data
+        $value = (string)$value;
         if (strlen($value) > 255)
             $value = substr($value, 0, 255);
 
-        $start = microtime(true);
+        $sql = "INSERT INTO `$targetTable`
+                (idConcept, linkReferenced, value) VALUES (:conceptId, :tripletId, :value)
+                ON DUPLICATE KEY UPDATE  value = :value2, id=LAST_INSERT_ID(id)";
 
-        try {
-            $pdoResult = $pdo->prepare($sql);
-            $pdoResult->bindParam(":value", $value, PDO::PARAM_STR, 50);
-            $pdoResult->execute();
-
-        } catch (PDOException $exception) {
-            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
-            System::sandraException($exception);
-            return;
-        }
-
-        System::$sandraLogger->query($sql, microtime(true) - $start);
-
-        return $pdo->lastInsertId();
-
+        return QueryExecutor::insert($pdo, $sql, [
+            ':conceptId' => [$conceptId, PDO::PARAM_INT],
+            ':tripletId' => [$tripletId, PDO::PARAM_INT],
+            ':value' => $value,
+            ':value2' => $value,
+        ]);
     }
 
-    public static function rawCreateTriplet($conceptSubject, $conceptVerb, $conceptTarget, System $system, $udateOnExistingLK = 0, $autocommit = true)
+    /**
+     * Create a triplet (Subject-Verb-Object link) in the graph.
+     *
+     * @param mixed $conceptSubject Subject concept ID
+     * @param mixed $conceptVerb Verb (link type) concept ID
+     * @param mixed $conceptTarget Target concept ID
+     * @param System $system The Sandra system instance
+     * @param int $updateOnExistingLK If 1, update existing link instead of creating a new one
+     * @param bool $autocommit If false, wraps in a transaction
+     * @return string|int|null The triplet ID, or null on error
+     */
+    public static function rawCreateTriplet($conceptSubject, $conceptVerb, $conceptTarget, System $system, $updateOnExistingLK = 0, $autocommit = true)
     {
 
-        $pdo = System::$pdo->get();
+        $pdo = $system->getConnection();
 
         $tableLink = $system->linkTable;
 
-        System::$sandraLogger->query("Auto commit " . (($autocommit) ? 'On' : 'Off'), 0);
-
-        if (!self::$transactionStarted && $autocommit == false) {
-            $pdo->beginTransaction();
-            System::$sandraLogger->query("Begin Transaction ", 0);
-            self::$pdo = $pdo;
-            self::$transactionStarted = true;
+        if ($autocommit == false) {
+            TransactionManager::begin($pdo);
         }
 
-        $updateID = null;
+        $conceptSubject = (int)$conceptSubject;
+        $conceptVerb = (int)$conceptVerb;
+        $conceptTarget = (int)$conceptTarget;
 
         //if the link is existing and we try to update it instead of adding a new. For example card - set rarity - rare and we want to change the rarity
         //and not add a new link
-        if ($udateOnExistingLK == 1) {
+        if ($updateOnExistingLK == 1) {
 
-            $sql = "SELECT id FROM $tableLink 
-                    WHERE idConceptStart = $conceptSubject AND idConceptLink = $conceptVerb AND flag != $system->deletedUNID";
+            $sql = "SELECT id FROM $tableLink
+                    WHERE idConceptStart = :subject AND idConceptLink = :verb AND flag != :deletedFlag";
 
-            $start = microtime(true);
-
-            $result = $pdo->query($sql);
-
-            System::$sandraLogger->query($sql, microtime(true) - $start);
-
-            $rows = $result->fetchAll(PDO::FETCH_ASSOC);
+            $rows = QueryExecutor::fetchAll($pdo, $sql, [
+                ':subject' => [$conceptSubject, PDO::PARAM_INT],
+                ':verb' => [$conceptVerb, PDO::PARAM_INT],
+                ':deletedFlag' => [(int)$system->deletedUNID, PDO::PARAM_INT],
+            ]);
 
             if ($rows) {
                 $lastRow = end($rows);
-                $updateID = $lastRow['id'];
+                $updateID = (int)$lastRow['id'];
 
-                $sql = "UPDATE $tableLink SET idConceptTarget = $conceptTarget  WHERE id = $updateID";
-                $start = microtime(true);
+                $sql = "UPDATE $tableLink SET idConceptTarget = :target WHERE id = :updateId";
 
-                try {
-                    $result = $pdo->query($sql);
-                } catch (PDOException $exception) {
-                    System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
-                    System::sandraException($exception);
+                $stmt = QueryExecutor::execute($pdo, $sql, [
+                    ':target' => [$conceptTarget, PDO::PARAM_INT],
+                    ':updateId' => [$updateID, PDO::PARAM_INT],
+                ]);
+
+                if ($stmt === null) {
                     return;
                 }
 
-                System::$sandraLogger->query($sql, microtime(true) - $start);
                 return $updateID;
-
             }
         }
 
 
-        $sql = "INSERT INTO $tableLink (idConceptStart ,idConceptLink ,idConceptTarget,flag) VALUES ('$conceptSubject', '$conceptVerb', '$conceptTarget',0) ON DUPLICATE KEY UPDATE flag = 0, id=LAST_INSERT_ID(id)";
+        $sql = "INSERT INTO $tableLink (idConceptStart, idConceptLink, idConceptTarget, flag) VALUES (:subject, :verb, :target, 0) ON DUPLICATE KEY UPDATE flag = 0, id=LAST_INSERT_ID(id)";
 
-        $start = microtime(true);
-
-        try {
-            $pdoResult = $pdo->prepare($sql);
-            $pdoResult->execute();
-        } catch (PDOException $exception) {
-            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
-            System::sandraException($exception);
-            return;
-        }
-
-        System::$sandraLogger->query($sql, microtime(true) - $start);
-
-        return $pdo->lastInsertId();
-
+        return QueryExecutor::insert($pdo, $sql, [
+            ':subject' => [$conceptSubject, PDO::PARAM_INT],
+            ':verb' => [$conceptVerb, PDO::PARAM_INT],
+            ':target' => [$conceptTarget, PDO::PARAM_INT],
+        ]);
     }
 
+    /**
+     * Store a large data value for an entity (DataStorage table).
+     *
+     * @param Entity $entity The entity to store data for
+     * @param mixed $value The value to store
+     * @param bool $autocommit If false, wraps in a transaction
+     * @return mixed|null The stored value, or null on error
+     */
     public static function setStorage(Entity $entity, $value, $autocommit = true)
     {
 
-        $pdo = System::$pdo->get();
+        $pdo = $entity->system->getConnection();
         $tableStorage = $entity->system->tableStorage;
 
-        System::$sandraLogger->query("Auto commit " . (($autocommit) ? 'On' : 'Off'), 0);
-
-        if (!self::$transactionStarted && $autocommit == false) {
-            $pdo->beginTransaction();
-            System::$sandraLogger->query("Begin Transaction ", 0);
-            self::$pdo = $pdo;
-            self::$transactionStarted = true;
+        if ($autocommit == false) {
+            TransactionManager::begin($pdo);
         }
 
-        $sql = "INSERT INTO $tableStorage (linkReferenced ,`value` ) VALUES (:linkId,  :storeValue) ON DUPLICATE KEY UPDATE value = :storeValue";
-        $start = microtime(true);
+        $sql = "INSERT INTO $tableStorage (linkReferenced ,`value` ) VALUES (:linkId,  :storeValue) ON DUPLICATE KEY UPDATE value = :storeValue2";
 
-        try {
-            $pdoResult = $pdo->prepare($sql);
-            $pdoResult->bindParam(':storeValue', $value, PDO::PARAM_STR);
-            $pdoResult->bindParam(":linkId", $entity->entityId, PDO::PARAM_INT);
-            $pdoResult->execute();
-        } catch (PDOException $exception) {
-            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
-            System::sandraException($exception);
-            return null;
-        }
+        $stmt = QueryExecutor::execute($pdo, $sql, [
+            ':storeValue' => $value,
+            ':storeValue2' => $value,
+            ':linkId' => [(int)$entity->entityId, PDO::PARAM_INT],
+        ]);
 
-        System::$sandraLogger->query($sql, microtime(true) - $start);
-
-        return $value;
-
+        return $stmt !== null ? $value : null;
     }
 
+    /**
+     * Retrieve the stored data value for an entity.
+     *
+     * @param Entity $entity The entity to retrieve data for
+     * @return string|null The stored value, or null if not found
+     */
     public static function getStorage(Entity $entity)
     {
 
-        $pdo = System::$pdo->get();
+        $pdo = $entity->system->getConnection();
         $tableStorage = $entity->system->tableStorage;
 
-        $sql = "SELECT `value` from $tableStorage WHERE linkReferenced = " . $entity->entityId . " LIMIT 1";
-        $start = microtime(true);
+        $sql = "SELECT `value` from $tableStorage WHERE linkReferenced = :entityId LIMIT 1";
 
+        $results = QueryExecutor::fetchAll($pdo, $sql, [
+            ':entityId' => [(int)$entity->entityId, PDO::PARAM_INT],
+        ]);
 
-        try {
-            $pdoResult = $pdo->prepare($sql);
-            $pdoResult->execute();
-        } catch (PDOException $exception) {
-            System::sandraException($exception);
-            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
+        if ($results === null) {
             return;
         }
 
-        $results = $pdoResult->fetchAll(PDO::FETCH_ASSOC);
-        System::$sandraLogger->query($sql, microtime(true) - $start);
-
         $value = null;
-
         foreach ($results as $result) {
             $value = $result['value'];
         }
 
         return $value;
-
     }
 
+    /**
+     * Set a flag on an entity's triplet (e.g., mark as deleted).
+     *
+     * @param Entity $entity The entity to flag
+     * @param Concept $flag The flag concept (e.g., deleted)
+     * @param System $system The Sandra system instance
+     * @param bool $autocommit If false, wraps in a transaction
+     */
     public static function rawFlag(Entity $entity, Concept $flag, System $system, $autocommit = true)
     {
 
-        $pdo = System::$pdo->get();
+        $pdo = $system->getConnection();
         $tableLink = $system->linkTable;
 
-        System::$sandraLogger->query("Auto commit " . (($autocommit) ? 'On' : 'Off'), 0);
-
-        if (!self::$transactionStarted && $autocommit == false) {
-            $pdo->beginTransaction();
-            System::$sandraLogger->query("Begin Transaction ", 0);
-            self::$pdo = $pdo;
-            self::$transactionStarted = true;
+        if ($autocommit == false) {
+            TransactionManager::begin($pdo);
         }
 
-        $sql = "UPDATE $tableLink SET flag = $flag->idConcept  WHERE id = $entity->entityId";
-        $start = microtime(true);
+        $sql = "UPDATE $tableLink SET flag = :flagId WHERE id = :entityId";
 
-        try {
-            $pdoResult = $pdo->prepare($sql);
-            $pdoResult->execute();
-        } catch (PDOException $exception) {
-            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
-            System::sandraException($exception);
-            return;
-        }
-
-        System::$sandraLogger->query($sql, microtime(true) - $start);
-
+        QueryExecutor::execute($pdo, $sql, [
+            ':flagId' => [(int)$flag->idConcept, PDO::PARAM_INT],
+            ':entityId' => [(int)$entity->entityId, PDO::PARAM_INT],
+        ]);
     }
 
+    /**
+     * Create a new concept in the concept table.
+     *
+     * @param mixed $code The concept code/identifier
+     * @param System $system The Sandra system instance
+     * @param bool $autocommit If false, wraps in a transaction
+     * @return string|null The new concept ID, or null on error
+     */
     public static function rawCreateConcept($code, System $system, $autocommit = true)
     {
 
-        $pdo = System::$pdo->get();
+        $pdo = $system->getConnection();
         $tableConcept = $system->conceptTable;
-        System::$sandraLogger->query("Auto commit " . (($autocommit) ? 'On' : 'Off'), 0);
-
-        if (!self::$transactionStarted && $autocommit == false) {
-            $pdo->beginTransaction();
-            System::$sandraLogger->query("Begin Transaction ", 0);
-            self::$pdo = $pdo;
-            self::$transactionStarted = true;
+        if ($autocommit == false) {
+            TransactionManager::begin($pdo);
         }
 
-        $sql = "INSERT INTO $tableConcept (code) VALUES ('$code');";
+        $sql = "INSERT INTO $tableConcept (code) VALUES (:code)";
 
-        $start = microtime(true);
-
-        try {
-            $pdoResult = $pdo->prepare($sql);
-            $pdoResult->execute();
-        } catch (PDOException $exception) {
-            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
-            System::sandraException($exception);
-            return;
-        }
-
-        System::$sandraLogger->query($sql, microtime(true) - $start);
-
-        return $pdo->lastInsertId();
-
+        return QueryExecutor::insert($pdo, $sql, [
+            ':code' => $code,
+        ]);
     }
 
+    /**
+     * Get all triplets originating from a concept, optionally filtered by verb and target.
+     *
+     * @param System $system The Sandra system instance
+     * @param mixed $conceptStart The subject concept ID
+     * @param int $conceptLink Filter by verb concept ID (0 = any)
+     * @param int $conceptTarget Filter by target concept ID (0 = any)
+     * @param int $getIds If true, include link IDs in the result
+     * @param int $su Super user mode (forced to 1)
+     * @return array|null Triplets grouped by verb concept ID
+     */
     public static function rawGetTriplets(System $system, $conceptStart, $conceptLink = 0, $conceptTarget = 0, $getIds = 0, $su = 0)
     {
         // Force into Super User
         $su = 1;
 
-        $pdo = System::$pdo->get();
+        $pdo = $system->getConnection();
         $tableLink = $system->linkTable;
 
-        if ($conceptLink != 0)
-            $linkSQL = " AND idConceptLink = $conceptLink";
-        else
-            $linkSQL = "";
+        $conceptStart = (int)$conceptStart;
+        $conceptLink = (int)$conceptLink;
+        $conceptTarget = (int)$conceptTarget;
 
-        if ($conceptTarget != 0)
-            $targetSQL = " AND idConceptTarget = $conceptTarget";
-        else
-            $targetSQL = "";
+        $linkSQL = "";
+        $targetSQL = "";
+        $params = [':conceptStart' => [$conceptStart, PDO::PARAM_INT]];
 
-        //hide links for non Super users
-        //        if ($su == 0) {
-        //            $hideLinks = "AND
-        //                        (
-        //                        idConceptLink IN(SELECT idConceptStart FROM $tableLink WHERE idConceptTarget IN($comma_separated) AND idConceptLink IN ($includeCid, $containsInFileCid ) )
-        //                        OR idConceptLink NOT IN ( SELECT idConceptStart FROM `$tableLink` WHERE idConceptLink IN ($includeCid, $containsInFileCid) )
-        //                        )";
-        //        } else
-        //             $hideLinks = '';
+        if ($conceptLink != 0) {
+            $linkSQL = " AND idConceptLink = :conceptLink";
+            $params[':conceptLink'] = [$conceptLink, PDO::PARAM_INT];
+        }
 
-        $hideLinks = '';
+        if ($conceptTarget != 0) {
+            $targetSQL = " AND idConceptTarget = :conceptTarget";
+            $params[':conceptTarget'] = [$conceptTarget, PDO::PARAM_INT];
+        }
 
-        $sql = "SELECT * FROM `$tableLink` WHERE  idConceptStart = $conceptStart" . $linkSQL . $targetSQL .
-            " AND flag = 0 " . $hideLinks;
-        $start = microtime(true);
+        $sql = "SELECT * FROM `$tableLink` WHERE idConceptStart = :conceptStart" . $linkSQL . $targetSQL .
+            " AND flag = 0";
 
+        $results = QueryExecutor::fetchAll($pdo, $sql, $params);
 
-        try {
-            $pdoResult = $pdo->prepare($sql);
-            $pdoResult->execute();
-        } catch (PDOException $exception) {
-            System::sandraException($exception);
-            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
+        if ($results === null) {
             return;
         }
 
-        $results = $pdoResult->fetchAll(PDO::FETCH_ASSOC);
-
-        System::$sandraLogger->query($sql, microtime(true) - $start);
-
-        $value = null;
         $array = array();
         foreach ($results as $result) {
             $idLink = $result['id'];
@@ -347,11 +307,22 @@ class DatabaseAdapter
 
     }
 
+    /**
+     * Search for concepts by reference value, with optional filters.
+     *
+     * @param System $system The Sandra system instance
+     * @param mixed $valueToSearch Value or array of values to search for (true = any non-null)
+     * @param mixed $referenceUNID Reference concept to search in ('IS NOT NULL' for any)
+     * @param mixed $conceptLinkConcept Filter by verb concept (empty = any)
+     * @param mixed $conceptTargetConcept Filter by target concept (empty = any)
+     * @param mixed $limit Max results (empty = unlimited)
+     * @param mixed $random If truthy, randomize order
+     * @param mixed $advanced If true, return detailed result arrays
+     * @return array|null Array of concept IDs (or detailed arrays if $advanced)
+     */
     public static function searchConcept(System $system, $valueToSearch, $referenceUNID = 'IS NOT NULL', $conceptLinkConcept = '',
                                                 $conceptTargetConcept = '', $limit = '', $random = '', $advanced = null)
     {
-        $limitSQL = '';
-        $randomSQL = '';
         $targetConceptSQL = '';
         $linkConceptSQL = '';
         $randomSQL = '';
@@ -373,7 +344,7 @@ class DatabaseAdapter
             $referenceUNID = CommonFunctions::somethingToConceptId($referenceUNID, $system);
 
 
-        $pdo = System::$pdo->get();
+        $pdo = $system->getConnection();
 
 
         $tableLink = $system->linkTable;
@@ -392,70 +363,61 @@ class DatabaseAdapter
 
                 if (!$initialStatement) {
                     $orStatement .= " OR value = :value_$i";
-                    $bindParamArray["value_$i"] = $uniqueValue;
+                    $bindParamArray[":value_$i"] = $uniqueValue;
                 }
                 $initialStatement = 0;
                 $i++;
             }
 
             $valueToSearchStatement = "(value = :value_0" . $orStatement . ")";
-            $bindParamArray["value_0"] = $valueToSearch[0];
+            $bindParamArray[":value_0"] = $valueToSearch[0];
         } else if ($valueToSearch === true) {
             $valueToSearchStatement = 'value IS NOT NULL';
         } else {
-            //$valueToSearch = mysqli_real_escape_string($dbLink, $valueToSearch);
             $valueToSearchStatement = "value = :value_$i";
-            $bindParamArray["value_$i"] = $valueToSearch;
+            $bindParamArray[":value_$i"] = $valueToSearch;
         }
 
 
-        if ($referenceUNID == 'IS NOT NULL') {
-            $equalSeparator = '';
-        } else {
-            $equalSeparator = '=';
-        } //This fix is because the request says references.idConcept = IS NOT NULL raising an sql error. When is not null the equal need to be striped
-
         if ($conceptLinkConcept) {
-            $linkConceptSQL = "AND $tableLink.idConceptLink =  $conceptLinkConcept";
+            $linkConceptSQL = "AND $tableLink.idConceptLink = :linkConcept";
+            $bindParamArray[':linkConcept'] = [(int)$conceptLinkConcept, PDO::PARAM_INT];
         }
 
         if ($conceptTargetConcept) {
-            $targetConceptSQL = "AND $tableLink.idConceptTarget =  $conceptTargetConcept";
+            $targetConceptSQL = "AND $tableLink.idConceptTarget = :targetConcept";
+            $bindParamArray[':targetConcept'] = [(int)$conceptTargetConcept, PDO::PARAM_INT];
         }
 
         if ($limit && is_numeric($limit)) {
-            $limitSQL = "LIMIT $limit";
+            $limitSQL = "LIMIT " . (int)$limit;
         }
 
         if ($random) {
             $randomSQL = 'ORDER BY RAND()';
         }
 
-        $sql = " SELECT * FROM `$tableReference`, $tableLink 
-            WHERE $valueToSearchStatement 
-            AND `$tableReference`.idConcept $equalSeparator $referenceUNID
-            AND `$tableLink`.flag != $system->deletedUNID
-            AND `$tableReference`.linkReferenced = $tableLink.id 
-            $linkConceptSQL $targetConceptSQL $randomSQL $limitSQL ";
-
-        $start = microtime(true);
-
-        try {
-
-            $pdoResult = $pdo->prepare($sql);
-            foreach ($bindParamArray as $key => &$value) {
-                $pdoResult->bindParam("$key", $value, PDO::PARAM_STR);
-            }
-            $pdoResult->execute();
-        } catch (PDOException $exception) {
-            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
-            System::sandraException($exception);
-            return null;
+        $deletedUNID = (int)$system->deletedUNID;
+        if ($referenceUNID == 'IS NOT NULL') {
+            $refUNIDSQL = "AND `$tableReference`.idConcept IS NOT NULL";
+        } else {
+            $refUNIDSQL = "AND `$tableReference`.idConcept = :refUNID";
+            $bindParamArray[':refUNID'] = [(int)$referenceUNID, PDO::PARAM_INT];
         }
 
-        $results = $pdoResult->fetchAll(PDO::FETCH_ASSOC);
+        $sql = " SELECT * FROM `$tableReference`, $tableLink
+            WHERE $valueToSearchStatement
+            $refUNIDSQL
+            AND `$tableLink`.flag != :deletedFlag
+            AND `$tableReference`.linkReferenced = $tableLink.id
+            $linkConceptSQL $targetConceptSQL $randomSQL $limitSQL ";
+        $bindParamArray[':deletedFlag'] = [$deletedUNID, PDO::PARAM_INT];
 
-        System::$sandraLogger->query($sql, microtime(true) - $start);
+        $results = QueryExecutor::fetchAll($pdo, $sql, $bindParamArray);
+
+        if ($results === null) {
+            return null;
+        }
 
         $array = null;
 
@@ -477,46 +439,29 @@ class DatabaseAdapter
 
     }
 
-    public static function executeSQL($sql, $bindParamArray = null, $autocommit = true)
+    /**
+     * Execute an arbitrary SQL statement.
+     *
+     * @param string $sql The SQL query
+     * @param array|null $bindParamArray Parameters to bind
+     * @param bool $autocommit If false, wraps in a transaction
+     * @param System|null $system Optional system instance for connection
+     */
+    public static function executeSQL($sql, $bindParamArray = null, $autocommit = true, ?System $system = null)
     {
 
-        $pdo = System::$pdo->get();
+        $pdo = $system ? $system->getConnection() : System::$pdo->get();
 
-        System::$sandraLogger->query("Auto commit " . (($autocommit) ? 'On' : 'Off'), 0);
-
-        if (!self::$transactionStarted && $autocommit == false) {
-            $pdo->beginTransaction();
-            System::$sandraLogger->query("Begin Transaction ", 0);
-            self::$pdo = $pdo;
-            self::$transactionStarted = true;
+        if ($autocommit == false) {
+            TransactionManager::begin($pdo);
         }
 
-
-        $start = microtime(true);
-
-        try {
-            $pdoResult = $pdo->prepare($sql);
-            if (is_array($bindParamArray)) {
-                foreach ($bindParamArray as $key => &$value) {
-                    $pdoResult->bindParam("$key", $value, PDO::PARAM_STR);
-                }
-            }
-            $pdoResult->execute();
-        } catch (PDOException $exception) {
-            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
-            System::sandraException($exception);
-            return null;
-        }
-
-        System::$sandraLogger->query($sql, microtime(true) - $start);
-
+        QueryExecutor::execute($pdo, $sql, is_array($bindParamArray) ? $bindParamArray : []);
     }
 
     public static function commit()
     {
-        System::$sandraLogger->query("Commit ", 0);
-        self::$pdo->commit();
-        self::$transactionStarted = false;
+        TransactionManager::commit();
     }
 
     /**
@@ -527,27 +472,29 @@ class DatabaseAdapter
      *
      * @return array
      */
-    public static function getAllocatedMemory(array $tables = [], string $schema = ""): array
+    public static function getAllocatedMemory(array $tables = [], string $schema = "", ?System $system = null): array
     {
         if (count($tables) == 0) return [];
 
-        $pdo = System::$pdo->get();
-        $tables_str = implode("','", $tables);
+        $pdo = $system ? $system->getConnection() : System::$pdo->get();
 
-        $sql = "SELECT table_name,                
+        $params = [];
+        $placeholders = [];
+        foreach ($tables as $i => $table) {
+            $key = ":table_$i";
+            $placeholders[] = $key;
+            $params[$key] = $table;
+        }
+        $placeholderStr = implode(",", $placeholders);
+
+        $sql = "SELECT table_name,
                 ROUND(((data_length + index_length)), 2) AS 'bytes'
                 FROM information_schema.TABLES as iSchema
-                where iSchema.table_name in ('$tables_str') and
-                iSchema.table_schema = '$schema'";
+                where iSchema.table_name in ($placeholderStr) and
+                iSchema.table_schema = :schema";
+        $params[':schema'] = $schema;
 
-        $start = microtime(true);
-
-        $result = $pdo->query($sql);
-
-        System::$sandraLogger->query($sql, microtime(true) - $start);
-
-        return $result->fetchAll(PDO::FETCH_ASSOC);
+        return QueryExecutor::fetchAll($pdo, $sql, $params) ?? [];
 
     }
 }
-

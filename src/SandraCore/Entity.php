@@ -1,16 +1,17 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: shaban
- * Date: 12.02.19
- * Time: 16:08
- */
+declare(strict_types=1);
 
 namespace SandraCore;
 
 
 use SandraCore\queryTraits\EntityQueryTrait;
 
+/**
+ * Represents an entity in the Sandra graph.
+ *
+ * An entity is a pair of triplets: (concept is_a type) + (concept contained_in_file file).
+ * Each entity has a subject concept, references (key-value data), and optional data storage.
+ */
 class Entity implements Dumpable
 {
 
@@ -83,10 +84,15 @@ class Entity implements Dumpable
 
     }
 
+    /**
+     * Get a reference value by its shortname.
+     *
+     * @param string $referenceName The reference shortname (e.g., 'name', 'age')
+     * @return mixed|null The reference value, or null if not found
+     */
     public function get($referenceName){
 
         $refId = $this->system->systemConcept->get($referenceName);
-        //echoln("getting $referenceName is $refId");
 
         if (!isset($this->entityRefs[$refId]))
             return null ;
@@ -95,6 +101,13 @@ class Entity implements Dumpable
 
     }
 
+    /**
+     * Get a reference value from a joined entity.
+     *
+     * @param mixed $joinVerb The verb linking to the joined entity
+     * @param string $referenceName The reference shortname to retrieve from the joined entity
+     * @return mixed|null The reference value, or null if not found
+     */
     public function getJoined($joinVerb,$referenceName){
 
 
@@ -103,8 +116,8 @@ class Entity implements Dumpable
         //No joined data
         if (!isset($this->subjectConcept->tripletArray[$verbConceptId]))return null ;
 
-        $joindedConceptId = reset($this->subjectConcept->tripletArray[$verbConceptId]);
-        $joinedConcept = $this->system->conceptFactory->getConceptFromId($joindedConceptId);
+        $joinedConceptId = reset($this->subjectConcept->tripletArray[$verbConceptId]);
+        $joinedConcept = $this->system->conceptFactory->getConceptFromId($joinedConceptId);
 
         /** @var $factory EntityFactory */
         $factory = $this->factory ;
@@ -140,7 +153,7 @@ class Entity implements Dumpable
         //No joined data
         if (!isset($this->subjectConcept->tripletArray[$verbConceptId])) return null;
 
-        $joindedConceptIds = $this->subjectConcept->tripletArray[$verbConceptId];
+        $joinedConceptIds = $this->subjectConcept->tripletArray[$verbConceptId];
 
 
         /** @var $factory EntityFactory */
@@ -154,7 +167,7 @@ class Entity implements Dumpable
 
 
         /** @var $joinedFactory EntityFactory */
-        foreach ($joindedConceptIds ? $joindedConceptIds : array() as $conceptId) {
+        foreach ($joinedConceptIds ? $joinedConceptIds : array() as $conceptId) {
 
             if (isset($joinedFactory->entityArray[$conceptId])) {
                 $entities[] = $joinedFactory->entityArray[$conceptId];
@@ -188,8 +201,6 @@ class Entity implements Dumpable
         $factory = $this->factory;
         //we find the brother entity
         if (!isset($factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId])) return null;
-        // if(count($factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId])>1)
-        //   $this->system->systemError('400','entityFactory','critical',"multiple targets for verb". $brotherVerb) ;
 
         $entity = $factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId];
 
@@ -268,6 +279,16 @@ class Entity implements Dumpable
 
     }
 
+    /**
+     * Create a brother entity linked from this entity's subject concept.
+     *
+     * @param mixed $brotherVerb The verb for the brother link
+     * @param mixed $brotherTarget The target concept for the brother link
+     * @param array $referenceArray References to attach to the new entity
+     * @param bool $autocommit If false, wraps in a transaction
+     * @param bool $updateOnExistingVerb If true, update existing link instead of creating new
+     * @return Entity The created/updated brother entity
+     */
     public function setBrotherEntity($brotherVerb,$brotherTarget,$referenceArray,$autocommit=true,$updateOnExistingVerb =false):Entity{
 
         $verbConceptId = CommonFunctions::somethingToConceptId($brotherVerb,$this->system);
@@ -310,6 +331,12 @@ class Entity implements Dumpable
     }
 
 
+    /**
+     * Get the Reference object by shortname.
+     *
+     * @param string $referenceName The reference shortname
+     * @return Reference|null The Reference object, or null if not found
+     */
     public function getReference($referenceName): ?Reference
     {
 
@@ -322,6 +349,14 @@ class Entity implements Dumpable
 
     }
 
+    /**
+     * Create or update a reference on this entity.
+     *
+     * @param string $referenceShortname The reference shortname (e.g., 'name')
+     * @param mixed $value The new value
+     * @param bool $autocommit If false, wraps in a transaction
+     * @return Reference The created/updated reference
+     */
     public function createOrUpdateRef($referenceShortname, $value, $autocommit = true): Reference
     {
 
@@ -358,6 +393,13 @@ class Entity implements Dumpable
 
     }
 
+    /**
+     * Get an existing reference or create it with the given value if not found.
+     *
+     * @param string $referenceShortname The reference shortname
+     * @param mixed $value Default value if reference doesn't exist
+     * @return Reference The existing or newly created reference
+     */
     public function getOrInitReference($referenceShortname,$value): Reference{
 
         $reference = $this->getReference($referenceShortname);
@@ -413,7 +455,10 @@ class Entity implements Dumpable
 
 
     /**
-     * @param bool $hard
+     * Delete this entity (soft-delete by default, sets deleted flag).
+     *
+     * @param bool $hard If true, performs hard delete (not yet implemented)
+     * @param bool $autocommit If false, wraps in a transaction
      */
     public function delete($hard = false,$autocommit=true)
     {
@@ -431,6 +476,12 @@ class Entity implements Dumpable
     }
 
 
+    /**
+     * Set a flag on this entity's triplet.
+     *
+     * @param Concept $flagConcept The flag concept to set
+     * @param bool $autocommit If false, wraps in a transaction
+     */
     public function flag(Concept $flagConcept, $autocommit = true)
     {
 
@@ -445,8 +496,6 @@ class Entity implements Dumpable
 
         if (!is_numeric($this->entityId)) return true;
         else return false;
-
-        // return $this->isForeign ;
 
 
     }

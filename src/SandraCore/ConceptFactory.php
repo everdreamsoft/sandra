@@ -1,14 +1,9 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: shaban
- * Date: 12.02.19
- * Time: 16:32
- */
+declare(strict_types=1);
 
 namespace SandraCore;
 
-
+use SandraCore\Exception\ConceptNotFoundException;
 
 class ConceptFactory
 {
@@ -37,7 +32,6 @@ class ConceptFactory
             else {
 
                 $concept = new Concept($conceptId,$this->system);
-                //$concept->getDisplayName();
             }
 
             $this->conceptMapFromId[$conceptId] = $concept;
@@ -51,9 +45,6 @@ class ConceptFactory
     public  function getConceptFromShortnameOrId($conceptWeDontKnow)
     {
 
-        //echoln("getting SC ".getSC('sandraAllowAccess'));
-
-
         //we received a shortname
         if (!($conceptWeDontKnow instanceof Concept)) {
 
@@ -64,9 +55,9 @@ class ConceptFactory
                 $conceptId = $this->system->systemConcept->get($conceptWeDontKnow) ;
 
                 if(!$conceptId){
-                    die("invalid concept $conceptWeDontKnow");
+                    throw new ConceptNotFoundException("invalid concept $conceptWeDontKnow");
                 }
-                
+
 
             }
             else{
@@ -88,8 +79,6 @@ class ConceptFactory
 
     public  function getConceptFromShortnameOrIdOrCreateShortname($conceptWeDontKnow)
     {
-
-        //echoln("getting SC ".getSC('sandraAllowAccess'));
 
 
         //we received a shortname

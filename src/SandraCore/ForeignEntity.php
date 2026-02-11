@@ -1,10 +1,5 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: shaban
- * Date: 12.02.19
- * Time: 16:15
- */
+declare(strict_types=1);
 
 namespace SandraCore;
 
@@ -26,8 +21,6 @@ class ForeignEntity extends Entity
 
         $this->system = $system ;
 
-        //print_r($sandraReferencesArray);
-
         foreach ($sandraReferencesArray as $sandraReferenceConceptId => $sandraReferenceValue){
 
             //is it a foreign reference or is the reference mapped ?
@@ -46,7 +39,6 @@ class ForeignEntity extends Entity
             $ref = new Reference(0, $referenceConcept, $this, $sandraReferenceValue, $system);
             $this->entityRefs[$sandraReferenceConceptId] = $ref;
             $this->entityId = $entityId ;
-            //$this->factory = $factory ;
 
         }
 
@@ -84,10 +76,6 @@ class ForeignEntity extends Entity
         $this->entityRefs[$referenceConcept->idConcept] = $ref;
 
         return $ref;
-
-        //Todo rebuild factory index
-
-
     }
 
     public function save(EntityFactory $factory){

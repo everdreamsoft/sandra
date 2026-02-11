@@ -1,10 +1,5 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: shaban
- * Date: 12.02.19
- * Time: 15:27
- */
+declare(strict_types=1);
 
 namespace SandraCore;
 
@@ -77,8 +72,6 @@ class Concept extends DatagraphUnit implements Dumpable
     public function setConceptId($value)
     {
 
-        if (is_nan($value))
-            conceptNaNExeption();
         $this->idConcept = $value;
 
     }
@@ -115,11 +108,6 @@ class Concept extends DatagraphUnit implements Dumpable
 
     public function setConceptTriplets($su = 0)
     {
-
-        global $tableLink, $tableReference;
-        //look at the followup object
-
-
         $this->tripletArray = DatabaseAdapter::rawGetTriplets($this->system,$this->idConcept, 0, 0, 0, 1);
 
         return $this->tripletArray ;
@@ -198,7 +186,6 @@ class Concept extends DatagraphUnit implements Dumpable
         $natural = array();
         if (!is_null($this->tripletArray)){
             $tripletArrayWithoutSelf = reset($this->tripletArray);
-           // die(print_r($this->tripletArray));
             foreach ($tripletArrayWithoutSelf as $verb => $value){
                 //each verb
 

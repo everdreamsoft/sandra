@@ -30,7 +30,8 @@ class Setup
         System::$pdo->get()->query($sql);
 
 
-        $sql="DROP TABLE  $system->tableConf";
+        $tableConf = $system->getTableConf();
+        $sql="DROP TABLE  $tableConf";
         System::$pdo->get()->query($sql);
 
         $sql="DROP TABLE  $system->tableStorage";

@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 namespace SandraCore;
 /**
  * Created by PhpStorm.
@@ -10,6 +12,19 @@ namespace SandraCore;
 
 use SandraCore\displayer\Displayer;
 
+/**
+ * Factory for creating, loading, and querying entities of a given type.
+ *
+ * An EntityFactory manages a collection of entities that share the same
+ * "is_a" type and "contained_in_file" scope. It provides CRUD operations,
+ * population from database, filtering, and brother/joined entity support.
+ *
+ * @example
+ *   $factory = new EntityFactory('animal', 'animalFile', $system);
+ *   $factory->createNew(['name' => 'Fido', 'breed' => 'Labrador']);
+ *   $factory->populateLocal();
+ *   $entities = $factory->getEntities();
+ */
 class EntityFactory extends FactoryBase implements Dumpable
 {
 
@@ -21,17 +36,17 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     /* @var $conceptManager ConceptManager */
     private $factoryTable;
-    public $populated; //is the factory populated from database
-    public $foreignPopulated = false; //is full if we got all the entities without the filter
-    public $populatedFull = false; //is full if we got all the entities without the filter
+    protected $populated; //is the factory populated from database
+    private $foreignPopulated = false; //is full if we got all the entities without the filter
+    private $populatedFull = false; //is full if we got all the entities without the filter
 
     private $indexUnid;
-    public $tripletRetreived;
+    public $tripletRetrieved;
 
 
     public $entityReferenceContainer = 'contained_in_file';
 
-    public $sandraReferenceMap =array();
+    protected $sandraReferenceMap =array();
 
     public $entityIndexMap;
     public $refMap;
@@ -53,7 +68,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     public $brotherEntities ; //to delete ?
     public $brotherEntitiesArray = array();
-    public $brotherMap; // in order to store the the path from source entities with their verb and target for example Simon is friend with Alexis and we want to get every entity friend with alexis
+    private $brotherMap; // in order to store the the path from source entities with their verb and target for example Simon is friend with Alexis and we want to get every entity friend with alexis
     public $brotherByTarget;
     public $brotherEntitiesVerified = null;
 
@@ -106,6 +121,21 @@ class EntityFactory extends FactoryBase implements Dumpable
 
 
 
+    public function isPopulated(): bool
+    {
+        return (bool)$this->populated;
+    }
+
+    public function isFullyPopulated(): bool
+    {
+        return (bool)$this->populatedFull;
+    }
+
+    public function getReferenceMap(): ?array
+    {
+        return $this->sandraReferenceMap;
+    }
+
     public function mergeRefFromBrotherEntities($brotherVerb, $brotherTarget)
     {
 
@@ -114,13 +144,13 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     }
 
-    public function countEntitiesOnRequest():int {
+    public function countEntitiesOnRequest(): int {
 
         $entityReferenceContainer = $this->sc->get($this->entityReferenceContainer);
         $this->buildFilters();
         $count = $this->conceptManager->getConceptsFromLinkAndTarget($entityReferenceContainer, $this->sc->get($this->entityContainedIn), null, null, null, true);
 
-        return $count ;
+        return (int)$count;
     }
 
 
@@ -165,6 +195,16 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     /**
      * @return Entity[]
+     */
+    /**
+     * Load entities from the database into this factory.
+     *
+     * @param int $limit Maximum entities to load (default 10000)
+     * @param int $offset Starting offset for pagination
+     * @param string $asc Sort direction ('ASC' or 'DESC')
+     * @param string|null $sortByRef Reference shortname to sort by
+     * @param bool $numberSort If true, sort numerically instead of alphabetically
+     * @return Entity[]|null The loaded entities
      */
     public function populateLocal($limit = 10000, $offset = 0, $asc = 'ASC', $sortByRef = null, $numberSort = false)
     {
@@ -279,6 +319,40 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         return $this->entityArray;
 
+    }
+
+    /**
+     * Stream entities in chunks using a Generator.
+     * Unlike populateLocal() which loads all entities into memory,
+     * this yields entities one by one, loading in chunks from the database.
+     *
+     * @param int $chunkSize Number of entities to load per database query
+     * @param string $asc Sort direction (ASC or DESC)
+     * @param string|null $sortByRef Optional reference concept to sort by
+     * @param bool $numberSort If true, sort by numeric value
+     * @return \Generator<Entity>
+     */
+    public function streamEntities(int $chunkSize = 1000, string $asc = 'ASC', ?string $sortByRef = null, bool $numberSort = false): \Generator
+    {
+        $offset = 0;
+
+        do {
+            // Reset concept manager state for each chunk
+            $this->conceptManager->conceptArray = [];
+            $this->conceptManager->concepts = [];
+            $this->entityArray = [];
+
+            $entities = $this->populateLocal($chunkSize, $offset, $asc, $sortByRef, $numberSort);
+            $count = is_array($entities) ? count($entities) : 0;
+
+            if ($count > 0) {
+                foreach ($entities as $entity) {
+                    yield $entity;
+                }
+            }
+
+            $offset += $chunkSize;
+        } while ($count === $chunkSize);
     }
 
     /**
@@ -433,22 +507,18 @@ class EntityFactory extends FactoryBase implements Dumpable
 
             $this->entityArray = $this->entityArray + $entityArray;
             if (is_array($referenceMap)) {
-                //reference map should be investigated
-                //$this->sandraReferenceMap = $this->sandraReferenceMap + $referenceMap;
             }
         } else {
 
             $this->entityArray = $entityArray;
             if (is_array($referenceMap)) {
-                //reference map should be investigated
-                //$this->sandraReferenceMap = $this->sandraReferenceMap + $referenceMap;
                 $this->sandraReferenceMap = $referenceMap;
             }
 
         }
 
         //we nullify the fact that we loaded triplets
-        $this->tripletRetreived = false;
+        $this->tripletRetrieved = false;
 
     }
 
@@ -597,8 +667,6 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     public function mergeEntities($foreignRef, $localRefName)
     {
-
-        //$this->foreignAdapter->addToLocalVocabulary($foreignRef,$localRefName);
 
         $localRefConcept = $this->system->conceptFactory->getConceptFromShortnameOrId($localRefName);
         $foreignRefConcept = $this->system->conceptFactory->getForeignConceptFromId($foreignRef);
@@ -753,7 +821,7 @@ class EntityFactory extends FactoryBase implements Dumpable
             }
 
             foreach ($valueTargetArray ? $valueTargetArray : array() as $targetConcept => $targetArray) {
-                if (!($this->tripletRetreived)) $this->getTriplets();
+                if (!($this->tripletRetrieved)) $this->getTriplets();
 
 
                 if (!is_array($targetArray)) {
@@ -842,6 +910,14 @@ class EntityFactory extends FactoryBase implements Dumpable
     }
 
 
+    /**
+     * Create a new entity with the given references and optional links.
+     *
+     * @param array $dataArray Associative array of reference shortname => value
+     * @param array|null $linArray Optional array of additional triplet links
+     * @param bool $autocommit If false, wraps in a transaction (call DatabaseAdapter::commit() when done)
+     * @return Entity The newly created entity
+     */
     public function createNew($dataArray, $linArray = null, $autocommit = true): Entity
     {
         $conceptId = DatabaseAdapter::rawCreateConcept("A " . $this->entityIsa, $this->system, false);
@@ -1153,8 +1229,6 @@ class EntityFactory extends FactoryBase implements Dumpable
         $factoryData['entities'] = $entities ;
 
         $refMap = array();
-        //print_r($this->refMap);
-
         if (is_array($this->refMap)) {
 
             foreach ($this->refMap as $conceptId => $valueArray) {
@@ -1176,7 +1250,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
     public function getTriplets()
     {
-        if ($this->tripletRetreived == false) {
+        if ($this->tripletRetrieved == false) {
 
             $tripletArray = $this->conceptManager->getTriplets();
             if (is_array($tripletArray)) {
@@ -1197,7 +1271,7 @@ class EntityFactory extends FactoryBase implements Dumpable
                 }
             }
         }
-        $this->tripletRetreived = true;
+        $this->tripletRetrieved = true;
     }
 
     public function destroy()

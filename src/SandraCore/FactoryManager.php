@@ -1,10 +1,5 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: shaban
- * Date: 12.02.19
- * Time: 15:38
- */
+declare(strict_types=1);
 
 namespace SandraCore;
 
@@ -87,8 +82,6 @@ class FactoryManager
         $dogFactory->populateLocal();
 
         $dogFactory->createNewWithAutoIncrementIndex($dogData);
-
-        //print_r($dogFactory);
 
         return $dogFactory->return2dArray();
 

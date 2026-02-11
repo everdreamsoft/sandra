@@ -1,8 +1,5 @@
 <?php
-
-/*
-	2016.11.08 Cache system has been removed to avoid collision between table switch
-*/
+declare(strict_types=1);
 
 namespace SandraCore;
 
@@ -120,11 +117,13 @@ class SystemConcept
     private function getFromDBWithCode($code, $table = null)
     {
 
-        $sql = "SELECT * FROM $this->conceptTable WHERE `code` LIKE '" . $code . "'";
+        $sql = "SELECT * FROM $this->conceptTable WHERE `code` LIKE :code";
         $start = microtime(true);
 
         try {
-            $result = $this->pdo->query($sql);
+            $result = $this->pdo->prepare($sql);
+            $result->bindValue(':code', $code, PDO::PARAM_STR);
+            $result->execute();
         } catch (PDOException $exception) {
             System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             System::sandraException($exception);
@@ -146,11 +145,11 @@ class SystemConcept
     {
         $table = $this->assignDefaultTable($table);
 
-        //we have to lowecase the shortname
-        $shortnameCaseUnsensitive = strtolower($shortname);
-
         //if an id is provided already
         if (is_numeric($shortname)) return $shortname;
+
+        //we have to lowercase the shortname
+        $shortnameCaseUnsensitive = strtolower((string)$shortname);
 
         if (!isset($this->_conceptsByTable[$table]))
             try {
@@ -180,7 +179,6 @@ class SystemConcept
             }
 
         } else {
-            //echo"loading $shortname \n";
             return $this->_conceptsByTableUnsensitive[$table][$shortnameCaseUnsensitive];
         }
 
@@ -195,12 +193,14 @@ class SystemConcept
         if (!is_numeric($concept_id))
             throw new Exception("Bad request: concept_id must be numeric");
 
-        $sql = "SELECT id,shortname FROM $this->conceptTable WHERE id = $concept_id;";
+        $sql = "SELECT id,shortname FROM $this->conceptTable WHERE id = :conceptId";
 
         $start = microtime(true);
 
         try {
-            $result = $this->pdo->query($sql);
+            $result = $this->pdo->prepare($sql);
+            $result->bindValue(':conceptId', (int)$concept_id, PDO::PARAM_INT);
+            $result->execute();
         } catch (PDOException $exception) {
             System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             System::sandraException($exception);
@@ -225,11 +225,13 @@ class SystemConcept
         if (!is_numeric($concept_id))
             throw new Exception("Bad request: concept_id must be numeric");
 
-        $sql = "SELECT id,code,shortname FROM $this->conceptTable WHERE id = $concept_id;";
+        $sql = "SELECT id,code,shortname FROM $this->conceptTable WHERE id = :conceptId";
         $start = microtime(true);
 
         try {
-            $result = $this->pdo->query($sql);
+            $result = $this->pdo->prepare($sql);
+            $result->bindValue(':conceptId', (int)$concept_id, PDO::PARAM_INT);
+            $result->execute();
         } catch (PDOException $exception) {
             System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             System::sandraException($exception);
@@ -251,12 +253,12 @@ class SystemConcept
     {
 
         $table = $this->assignDefaultTable($table);
-        $shortname = $this->pdo->quote($shortname);
-        $sql = "SELECT id,shortname FROM $this->conceptTable WHERE shortname = $shortname";
+        $sql = "SELECT id,shortname FROM $this->conceptTable WHERE shortname = :shortname";
         $start = microtime(true);
 
         try {
             $result = $this->pdo->prepare($sql);
+            $result->bindValue(':shortname', $shortname, PDO::PARAM_STR);
             $result->execute();
         } catch (PDOException $exception) {
             System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
@@ -301,12 +303,23 @@ class SystemConcept
     {
 
         $table = $this->assignDefaultTable($table);
-        $list = is_null($unid) || !is_array($unid) ? $unidList : $unid;
+        $list = is_null($unid) || !is_array($unid) ? [] : $unid;
 
         foreach ($list as $shortname => $id) {
-            $sql = "UPDATE $this->conceptTable SET shortname = '$shortname' WHERE id = $id";
+            $sql = "UPDATE $this->conceptTable SET shortname = :shortname WHERE id = :id";
             $start = microtime(true);
-            mysqli_query($dbLink, $sql);
+
+            try {
+                $stmt = $this->pdo->prepare($sql);
+                $stmt->bindValue(':shortname', $shortname, PDO::PARAM_STR);
+                $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
+                $stmt->execute();
+            } catch (PDOException $exception) {
+                System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
+                System::sandraException($exception);
+                return;
+            }
+
             System::$sandraLogger->query($sql, microtime(true) - $start);
         }
 
@@ -381,41 +394,3 @@ class SystemConcept
     }
 
 }
-
-/*
-//Get system concept, if not exists create it and write list to cache
-function getSC($shortname, $table = null)
-{
-    return SystemConcept::get($shortname, $table);
-}
-
-function getCode($concept_id, $table = null)
-{
-    return SystemConcept::getCode($concept_id, $table);
-}
-
-function getConceptFromCode($code, $table = null) {
-    return SystemConcept::getConceptIdFromCode($code);
-}
-
-function getSCS($concept_id, $table = null)
-{
-    return SystemConcept::getShortname($concept_id, $tableConcept);
-}
-
-function getSCSCheck($concept,$table = null)
-{
-    if (is_numeric($concept)) {
-        return getSCS($concept,$tableConcept);
-    } elseif (is_string ($concept) && tryGetSC ($concept,$tableConcept)) {
-        return $concept ;
-    } else{
-        return 0;
-    }
-}
-
-function tryGetSC($shortname, $table = null)
-{
-    return SystemConcept::get($shortname, $tableConcept, false);
-}
-*/

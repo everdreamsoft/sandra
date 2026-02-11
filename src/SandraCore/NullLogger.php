@@ -5,10 +5,12 @@ namespace SandraCore;
 
 use Exception;
 
-class Logger implements ILogger
+/**
+ * No-op logger that silently discards all log messages.
+ * Use this in production when logging is not needed.
+ */
+class NullLogger implements ILogger
 {
-    public function __construct() {}
-
     public function info(string $message): void
     {
     }

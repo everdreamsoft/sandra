@@ -1,10 +1,5 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: shaban
- * Date: 12.02.19
- * Time: 17:18
- */
+declare(strict_types=1);
 
 namespace SandraCore;
 use Exception;
@@ -66,7 +61,7 @@ class ForeignEntityAdapter extends EntityFactory
 
                 // Close curl handle
                 curl_close($ch);
-                $foreignArray = json_decode($json, 1);
+                $foreignArray = json_decode($json, true);
             } catch(Exception $e) {
                 throw new Exception($e);
             }
@@ -80,11 +75,7 @@ class ForeignEntityAdapter extends EntityFactory
     public function populate($limit = 0){
 
 
-        //$json = $this->testJson();
-
         $resultArray = $this->foreignRawArray;
-
-        //die("$this->foreignRawArray do I populate ?$this->mainEntityPath");
 
         $i=0;
 
@@ -124,16 +115,6 @@ class ForeignEntityAdapter extends EntityFactory
                     $refArray[$objectKey] =   $objectValue ;
 
                     //do we have the concept in reference into vocabulary ?
-                    if (isset($this->foreignToLocalVocabulary[$objectKey])){
-
-                        //then return local concept
-                        //$this->refMap[$objectKey] = $objectValue ;
-
-                    }
-                    else {
-
-                        //  $this->refMap[$objectKey] = $objectValue;
-                    }
 
                 }
                 //has children data
@@ -225,9 +206,6 @@ class ForeignEntityAdapter extends EntityFactory
         $this->remoteRefFuse = $foreignRefConcept ;
         $this->localRefToFuse =  $localRefConcept ;
 
-        //foreach ()
-
-
     }
 
 
@@ -260,7 +238,7 @@ class ForeignEntityAdapter extends EntityFactory
     }
 
 
-    public function getReferenceMap(){
+    public function getReferenceMap(): ?array {
 
 
         return $this->refMap ;
@@ -313,7 +291,6 @@ class ForeignEntityAdapter extends EntityFactory
 
 
 
-            //$entity->save($factory);
 
 
         }

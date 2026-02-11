@@ -1,18 +1,12 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: Admin
- * Date: 10.03.2019
- * Time: 11:35
- */
+declare(strict_types=1);
 
 namespace SandraCore;
 
-
 class CommonFunctions
 {
-
-    public static function somethingToConceptId($something,System $system){
+    public static function somethingToConceptId(mixed $something, System $system): mixed
+    {
 
         $concept = self::somethingToConcept($something,$system);
 
@@ -22,7 +16,8 @@ class CommonFunctions
     
     
 
-    public static function somethingToConcept($something,System $system):Concept{
+    public static function somethingToConcept(mixed $something, System $system): Concept
+    {
 
         $concept = null ;
 
@@ -42,7 +37,8 @@ class CommonFunctions
         return $concept ;
     }
 
-    public static function createEntity($subject,$verb,$target,$referenceArray,$factory,$system,$autocommit=false,$updateOnExistingVerb=0){
+    public static function createEntity(mixed $subject, mixed $verb, mixed $target, mixed $referenceArray, EntityFactory $factory, System $system, bool $autocommit = false, int|bool $updateOnExistingVerb = 0): Entity
+    {
 
         $subjectConceptId = self::somethingToConceptId($subject,$system);
         $verbConceptId = self::somethingToConceptId($verb,$system);

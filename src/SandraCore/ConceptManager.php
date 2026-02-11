@@ -1,14 +1,11 @@
 <?php
+declare(strict_types=1);
 
 namespace SandraCore;
 
 use PDO;
-use phpDocumentor\Reflection\Types\Boolean;
-
 class ConceptManager
 {
-
-    // This is the CLASS DEFINITION (everything in the curly brackets). test
 
     public $concepts;
     protected $filter, $filterSQL, $tableLink, $tableRef, $tableConcept;
@@ -61,6 +58,23 @@ class ConceptManager
         $this->bypassFlags = $boolean;
     }
 
+    /**
+     * Sanitize a value that should be an integer or comma-separated list of integers.
+     * Returns a safe string for use in SQL IN() clauses.
+     */
+    private static function sanitizeIntList($value): string
+    {
+        if (is_numeric($value)) {
+            return (string)(int)$value;
+        }
+        if (is_string($value)) {
+            $parts = explode(',', $value);
+            $safe = array_map('intval', $parts);
+            return implode(',', $safe);
+        }
+        return '0';
+    }
+
     public function setFilter($value, $limit = 0)
     {
         if (!is_array($value)) {
@@ -73,17 +87,14 @@ class ConceptManager
 
     public function buildFilterSQL($limit = 0)
     {
-        global $tableLink, $tableReference, $existenseStatusUNID, $deletedUNID;
-
-        $deletedUNID = $this->system->deletedUNID;
+        $deletedUNID = (int)$this->deletedUnid;
 
         //build the filter
         $join = '';
-        $conditionnalClause = '';
+        $conditionalClause = '';
         $tableCounter = 0;
 
         foreach ($this->filter as $link => $targetConcept) {
-            //echoln("$link = key value $targetConcept[lklk]");
 
             $tableCounter++;
 
@@ -93,6 +104,9 @@ class ConceptManager
                 $flag = "AND link$tableCounter.flag != $deletedUNID";
             else $flag = '';
 
+            // Sanitize filter values - ensure they are safe integer lists
+            $targetConcept['lktg'] = self::sanitizeIntList($targetConcept['lktg']);
+            $targetConcept['lklk'] = self::sanitizeIntList($targetConcept['lklk']);
 
             if ($targetConcept['lktg'] == 0 && $targetConcept['lklk'] == 0)
                 continue;
@@ -118,28 +132,28 @@ class ConceptManager
 
 
                     $join .= "JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
-                    $conditionnalClause .= "  $flag AND link$tableCounter.idConceptLink IN($targetConcept[lklk])";
+                    $conditionalClause .= "  $flag AND link$tableCounter.idConceptLink IN($targetConcept[lklk])";
                 } //any filter if the link equal 0 then make the filter on ANY link
                 else if ($targetConcept['lklk'] == 0) {
 
 
                     $join .= " JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
-                    $conditionnalClause .= " $flag AND link$tableCounter.$secondaryConcept IN($targetConcept[lktg])";
+                    $conditionalClause .= " $flag AND link$tableCounter.$secondaryConcept IN($targetConcept[lktg])";
                 } else {
 
 
                     $join .= " JOIN  $this->tableLink link$tableCounter ON link$tableCounter.$mainConcept = l.idConceptStart ";
-                    $conditionnalClause .= " $flag AND 
+                    $conditionalClause .= " $flag AND 
 			link$tableCounter.$secondaryConcept IN($targetConcept[lktg]) AND link$tableCounter.idConceptLink IN($targetConcept[lklk])";
                 }
             } else {
-                //eclusion filter
+                //exclusion filter
                 if ($targetConcept['lktg'] == 0) {
 
                     $join .= " LEFT JOIN  $this->tableLink link$tableCounter ON link$tableCounter.idConceptStart = l.idConceptStart 
 			 						  $flag
 			 						  AND link$tableCounter.idConceptLink IN($targetConcept[lklk])";
-                    $conditionnalClause .= " 
+                    $conditionalClause .= " 
 									  AND link$tableCounter.idConceptLink IS NULL";
                 } //any filter if the link equal 0 then make the filter on ANY link
                 else if ($targetConcept['lklk'] == 0) {
@@ -148,7 +162,7 @@ class ConceptManager
                     $join .= " LEFT JOIN  $this->tableLink link$tableCounter ON link$tableCounter.idConceptStart = l.idConceptStart 
 					  $flag
 					  AND link$tableCounter.idConceptTarget IN($targetConcept[lktg]) ";
-                    $conditionnalClause .= " 
+                    $conditionalClause .= " 
 									 AND link$tableCounter.idConceptTarget IS NULL";
                 } else {
 
@@ -157,14 +171,14 @@ class ConceptManager
 	 $flag 
 			AND link$tableCounter.idConceptTarget IN ($targetConcept[lktg]) 
 			AND link$tableCounter.idConceptLink  IN( $targetConcept[lklk])";
-                    $conditionnalClause .= "
+                    $conditionalClause .= "
 			AND link$tableCounter.idConceptTarget IS NULL";
                 }
             }
         }
 
         $this->filterJoin = $join;
-        $this->filterCondition = $conditionnalClause;
+        $this->filterCondition = $conditionalClause;
     }
 
     public function getConcepts()
@@ -177,17 +191,23 @@ class ConceptManager
 
     public function getResultsFromLink($linkId)
     {
-        global $tableLink, $dbLink;
 
         $sql = "SELECT  l.idConceptStart, l.idConceptLink, l.`idConceptTarget` FROM  $this->tableLink l WHERE l.id = $linkId";
 
         $start = microtime(true);
 
-        $resultat = mysqli_query($dbLink, $sql);
+        try {
+            $pdoResult = $this->pdo->prepare($sql);
+            $pdoResult->execute();
+        } catch (\PDOException $exception) {
+            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
+            System::sandraException($exception);
+            return;
+        }
 
         System::$sandraLogger->query($sql, microtime(true) - $start);
 
-        while ($result = mysqli_fetch_array($resultat)) {
+        foreach ($pdoResult->fetchAll(PDO::FETCH_ASSOC) as $result) {
             $idConceptStart = $result['idConceptStart'];
             $idConceptLink = $result['idConceptLink'];
             $idConceptTarget = $result['idConceptTarget'];
@@ -204,38 +224,26 @@ class ConceptManager
     //Check the followup if something needs to be done
     public function getConceptsFromLinkAndTarget($linkConcept, $targetConcept, $limit = 0, $asc = 'ASC', $offset = 0, $countOnly = false, $orderByRefConcept = null, $numberSort = false)
     {
-        global $tableLink, $tableReference, $deletedUNID, $includeCid, $containsInFileCid, $dbLink;
+        $deletedUNID = (int)$this->deletedUnid;
+        $linkConcept = (int)$linkConcept;
+        $targetConcept = (int)$targetConcept;
+        $limit = (int)$limit;
+        $offset = (int)$offset;
+        $asc = ($asc === 'DESC') ? 'DESC' : 'ASC';
 
         $hideLinks = "";
 
-        if ($limit > 0)
+        if ($limit > 0) {
             $limitSQL = "LIMIT $limit ";
-        else
-            $limitSQL = '';
-
-        if (is_numeric($offset)) {
             $offsetSQL = "OFFSET $offset ";
-
         } else {
-            $offsetSQL = "";
+            $limitSQL = '';
+            $offsetSQL = '';
         }
 
-        //sub optimal to remove soon
-
-        if (!isset($_SESSION['accessToFiles'])) {
-
-            $_SESSION['accessToFiles'] = 0;
-        }
-
-        if ($this->su == 0 && isset($_SESSION['accessToFiles'])) {
-            $comma_separated = implode(",", $_SESSION['accessToFiles']);
-
-            $hideLinks = "AND 
-            (
-            l.idConceptStart IN(SELECT idConceptStart FROM  $this->tableLink WHERE idConceptTarget IN($comma_separated) AND idConceptLink IN ($includeCid, $containsInFileCid ) ) 
-            OR l.idConceptStart NOT IN ( SELECT idConceptStart FROM `$this->tableLink` WHERE idConceptLink IN ($includeCid, $containsInFileCid) )
-            )";
-        }
+        //TODO: re-implement access control without globals and $_SESSION
+        // The previous implementation relied on global $includeCid, $containsInFileCid
+        // which are no longer available. Access filtering is disabled until properly refactored.
 
 
         $lastLinkJoined = $this->lastLinkJoined;
@@ -252,10 +260,10 @@ class ConceptManager
         $sorterWhere = '';
         //we sort by refConcepts
         if ($orderByRefConcept) {
-            $sortableRef = CommonFunctions::somethingToConceptId($orderByRefConcept, $this->system);
+            $sortableRef = (int)CommonFunctions::somethingToConceptId($orderByRefConcept, $this->system);
 
             $joinSorter = "JOIN $this->tableReference refSorter ON l.id = refSorter.linkReferenced ";
-            $sorterWhere = " AND refSorter.idConcept = $sortableRef  ";
+            $sorterWhere = " AND refSorter.idConcept = $sortableRef ";
             if (!$numberSort) {
                 $orderBy = " ORDER BY refSorter.value";
             } else {
@@ -283,8 +291,6 @@ class ConceptManager
 	$flag $sorterWhere
 	" . $this->filterCondition . " $hideLinks $orderBy $asc " . $limitSQL . $offsetSQL;
 
-
-        // echoln( "su = $this->su access to file". $_SESSION['accessToFiles']);
 
         $this->mainQuerySQL = $sql;
 
@@ -319,8 +325,7 @@ class ConceptManager
 
     public function getConceptsFromLink($linkConcept, $limit = 0, $debug = '')
     {
-        global $tableLink, $tableReference, $deletedUNID, $dbLink;
-        //look at the followup object
+        $deletedUNID = $this->deletedUnid;
 
         $hideLinks = "";
 
@@ -328,16 +333,6 @@ class ConceptManager
             $limitSQL = "LIMIT $limit";
         else
             $limitSQL = '';
-
-        //sub optimal to remove soon
-        if ($this->su == 0 && isset($_SESSION['accessToFiles'])) {
-            $comma_separated = implode(",", $_SESSION['accessToFiles']);
-            $hideLinks = "AND 
-            (
-            l.idConceptStart IN(SELECT idConceptStart FROM  $this->tableLink WHERE idConceptTarget IN($comma_separated) AND idConceptLink IN ($includeCid, $containsInFileCid ) ) 
-            OR l.idConceptStart NOT IN ( SELECT idConceptStart FROM ` $this->tableLink` WHERE idConceptLink IN ($includeCid, $containsInFileCid) )
-            )";
-        }
 
 
         $flag = '';
@@ -349,25 +344,26 @@ class ConceptManager
         $sql = "SELECT  l.idConceptStart, l.idConceptLink, l.`idConceptTarget` FROM  $this->tableLink l " .
             $this->filterJoin . "	AND l.idConceptLink = $linkConcept	$flag 	" . $this->filterCondition . " $hideLinks ORDER BY l.idConceptStart DESC " . $limitSQL;
 
-        if ($debug)
-            echoln($sql);
-
-        //echo"$sql";
         $start = microtime(true);
 
-        $resultat = mysqli_query($dbLink, $sql); //action;;
+        try {
+            $pdoResult = $this->pdo->prepare($sql);
+            $pdoResult->execute();
+        } catch (\PDOException $exception) {
+            System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
+            System::sandraException($exception);
+            return;
+        }
 
         System::$sandraLogger->query($sql, microtime(true) - $start);
 
-        while ($result = mysqli_fetch_array($resultat)) {
+        foreach ($pdoResult->fetchAll(PDO::FETCH_ASSOC) as $result) {
             $idConceptStart = $result['idConceptStart'];
             $idConceptTarget = $result['idConceptTarget'];
 
-            //be s
-            // $array[] = $idConceptTarget;
             $array[] = $idConceptStart;
 
-            $this->concepts[] = new Concept($idConceptStart);
+            $this->concepts[] = new Concept($idConceptStart, $this->system);
             $this->conceptArray['conceptStartList'][] = $idConceptStart;
             $this->conceptArray['conceptTargetList'][] = $idConceptTarget;
         }
@@ -379,7 +375,9 @@ class ConceptManager
 
     public function getReferences($idConceptLink = 0, $idConceptTarget = 0, $refIdArray = null, $isTargetList = 0, $byTripletid = 0, $orderByRefConcept = null, $numberSort = false)
     {
-        global $deletedUNID;
+        $deletedUNID = (int)$this->deletedUnid;
+        $idConceptLink = (int)$idConceptLink;
+        $idConceptTarget = (int)$idConceptTarget;
 
         /*Note about $byTripletid. The goal is to patch the system if there are different reference on the same idConcept link the first version overight the changes. By adding the variable $byTripletid whe change the form of the result array
 
@@ -419,13 +417,12 @@ class ConceptManager
             && (sizeof($this->conceptArray[$list]) > 0)
             && (is_null($refIdArray) || is_array($refIdArray))
         ) {
-            $concepts = implode(",", $this->conceptArray[$list]);
+            $concepts = implode(",", array_map('intval', $this->conceptArray[$list]));
 
             $refsFilter = '';
             if (!empty($refIdArray)) {
-                $refs = implode(",", $refIdArray);
+                $refs = implode(",", array_map('intval', $refIdArray));
                 $refsFilter = "WHERE r.idConcept IN ($refs)";
-                //$sql .= " AND `$this->tableReference `.idConcept IN ($refs)";
             }
 
             $joinSorter = '';
@@ -433,7 +430,7 @@ class ConceptManager
             $orderBy = '';
             //we sort by refConcepts
             if ($orderByRefConcept) {
-                $sortableRef = CommonFunctions::somethingToConceptId($orderByRefConcept, $this->system);
+                $sortableRef = (int)CommonFunctions::somethingToConceptId($orderByRefConcept, $this->system);
 
                 $joinSorter = "JOIN $this->tableReference refSorter ON x.id = refSorter.linkReferenced";
                 $sorterWhere = " AND  refSorter.idConcept = $sortableRef ";
@@ -468,7 +465,6 @@ class ConceptManager
   $joinSorter $refsFilter $sorterWhere 
    AND y.$masterCondition IN ($concepts) 
    $filter " . $flag . $orderBy;
-            //AND flag != $deletedUNID";
 
             $start = microtime(true);
 
@@ -515,27 +511,25 @@ class ConceptManager
 
     public function getTriplets($lklkArray = null, $lktgArray = null, $getIds = 0)
     {
-        global $tableReference, $tableLink, $deletedUNID, $dbLink;
+        $deletedUNID = (int)$this->deletedUnid;
 
         if (!key_exists('conceptStartList', $this->conceptArray)) return array();
 
         $array = null;
         if (is_array($this->conceptArray['conceptStartList']) && (sizeof($this->conceptArray['conceptStartList']) > 0)) {
-            $concepts = implode(",", $this->conceptArray['conceptStartList']);
+            $concepts = implode(",", array_map('intval', $this->conceptArray['conceptStartList']));
 
             $sql = "
 			SELECT * FROM  $this->tableLink WHERE idConceptStart IN ($concepts)
 			AND flag != $deletedUNID";
             if ((!empty($lklkArray)) && is_array($lklkArray)) {
-                $lklks = implode(",", $lklkArray);
+                $lklks = implode(",", array_map('intval', $lklkArray));
                 $sql .= " AND idConceptLink IN ($lklks)";
             }
             if ((!empty($lktgArray)) && is_array($lktgArray)) {
-                $lktgs = implode(",", $lktgArray);
+                $lktgs = implode(",", array_map('intval', $lktgArray));
                 $sql .= " AND idConceptTarget IN ($lktgs)";
             }
-            // AND `$this->tableReference`.linkReferenced =  $this->tableLink.id
-            // AND `$this->tableReference`.idConcept IN ($refs)
             $start = microtime(true);
 
             try {

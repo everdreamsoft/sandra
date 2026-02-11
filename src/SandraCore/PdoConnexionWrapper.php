@@ -1,30 +1,39 @@
 <?php
+declare(strict_types=1);
+
 namespace SandraCore;
+
 use PDO;
 
-class PdoConnexionWrapper
+class PdoConnexionWrapper implements DatabaseConnection
 {
-    private $pdo;
-    
-    public $host;
-    public $database;
-    
-    public function __construct($host, $database, $user, $password)
+    private PDO $pdo;
+
+    public string $host;
+    public string $database;
+
+    public function __construct(string $host, string $database, string $user, string $password)
     {
-        if ($this->pdo) $this->pdo = null;
         $pdo = new PDO("mysql:host=$host;dbname=$database", $user, $password);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $this->pdo = $pdo;
-        
+
         $this->database = $database;
         $this->host = $host;
     }
-    
-    /*
-     * @return PDO  The pdo instance held by this wrapper
-     */
-    public function get()
+
+    public function get(): PDO
     {
         return $this->pdo;
+    }
+
+    public function getDatabase(): string
+    {
+        return $this->database;
+    }
+
+    public function getHost(): string
+    {
+        return $this->host;
     }
 }

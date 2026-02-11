@@ -1,25 +1,18 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: Admin
- * Date: 13.01.2019
- * Time: 11:08
- */
+declare(strict_types=1);
 
 namespace SandraCore;
 
 class Reference implements Dumpable
 {
+    public ?Concept $refConcept;
+    public ?Entity $refEntity;
+    public mixed $refValue;
+    private ?System $system;
+    public mixed $refId;
 
-    public $refConcept ;/** @var $refConcept Concept */
-    public $refEntity ;  /** @var $refEntity SandraEntity */
-    public $refValue ;
-    private $system;
-    public $refId;
-
-    public function __construct($id, Concept $refConcept, Entity &$refEntity, $refValue, System $system)
+    public function __construct(mixed $id, Concept $refConcept, Entity &$refEntity, mixed $refValue, System $system)
     {
-
         $this->refConcept = $refConcept;
         $this->refId = $id;
         $this->refEntity = $refEntity;
@@ -29,77 +22,49 @@ class Reference implements Dumpable
 
     public function hasChangedFromDatabase(): bool
     {
-        global  $tableReference, $dbLink;
-
-        /** @var $refEntity SandraEntity */
-
-        $inMemoryValue = $this->refValue ;
+        $inMemoryValue = $this->refValue;
 
         $newValue = $this->reload();
 
-
-        if ($inMemoryValue == $newValue){
-            return false ; //means there is no change on that data
-
+        if ($inMemoryValue == $newValue) {
+            return false;
+        } else {
+            return true;
         }
-        else{
-            //means the data has changed
-            return true ;
-
-        }
-
     }
 
-    public function reload()
+    public function reload(): mixed
     {
-        global  $tableReference, $dbLink;
+        $newValue = getReference($this->refConcept->idConcept, $this->refEntity->entityId);
+        $this->refValue = $newValue;
 
-        /** @var $refEntity SandraEntity */
-
-
-        $newValue = getReference($this->refConcept->idConcept,$this->refEntity->entityId);
-        $this->refValue = $newValue ;
-
-        return $newValue ;
-
+        return $newValue;
     }
 
-    public function save($newValue)
+    public function save(mixed $newValue): mixed
     {
-
-        DatabaseAdapter::rawCreateReference($this->refEntity->entityId,
+        DatabaseAdapter::rawCreateReference(
+            $this->refEntity->entityId,
             $this->refConcept->idConcept,
             $newValue,
-        $this->system);
-        $this->refValue = $newValue ;
+            $this->system
+        );
+        $this->refValue = $newValue;
 
-        return $newValue ;
-
+        return $newValue;
     }
-    
+
     public function dumpMeta()
     {
-        
-        $meta = $this->refValue ;
-        
-        return $meta ;
-        
-        
+        return $this->refValue;
     }
 
-    public function destroy()
+    public function destroy(): void
     {
-
-       $this->system = null ;
-
+        $this->system = null;
         $this->refConcept = null;
         $this->refEntity = null;
         $this->refValue = null;
-        $this->system = null;
         $this->refId = null;
-
-
     }
-
-
 }

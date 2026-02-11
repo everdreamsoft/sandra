@@ -94,9 +94,6 @@ class Displayer
     {
 
 
-        //$this->displayDictionary =  ConceptDictionary::buildForeign($dictionary,$this->mainFactory->system);
-        //I don't know what this method for commenting it for the moment
-
         $this->displayDictionary = ConceptDictionary::stringToStringDict($dictionary);
 
 
@@ -123,7 +120,7 @@ class Displayer
         //by default we display all references
         if (!is_array($this->displayReferenceArray)){
 
-            $this->displayReferenceArray = $this->mainFactory->sandraReferenceMap ;
+            $this->displayReferenceArray = $this->mainFactory->getReferenceMap() ;
 
         }
 

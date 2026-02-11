@@ -338,7 +338,7 @@ class Gossiper
     public function exposeGossip(EntityFactory $entityFactory, $isFinalFactory = true)
     {
 
-        if (!$entityFactory->populated) {
+        if (!$entityFactory->isPopulated()) {
             $entityFactory->populateLocal();
             $entityFactory->getTriplets();
             $entityFactory->joinPopulate();

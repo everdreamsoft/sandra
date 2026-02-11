@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 namespace SandraCore;
 use SandraCore\displayer\Displayer;
 use SandraCore\displayer\DisplayType;
@@ -39,7 +41,7 @@ abstract class FactoryBase
     abstract public function createNew($dataArray, $linkArray = null);
     abstract public function populateLocal($limit = 10000,$offset = 0,$asc='ASC');
 
-    public $populated ;
+    protected $populated ;
 
     protected $generatedEntityClass = '\SandraCore\Entity';
 
@@ -71,6 +73,13 @@ abstract class FactoryBase
 
     }
 
+    /**
+     * Get the first entity matching a reference value.
+     *
+     * @param string $referenceName Reference shortname to search
+     * @param mixed $referenceValue Value to match
+     * @return Entity|null The first matching entity, or null
+     */
     public function first($referenceName, $referenceValue) : ?Entity{
 
        $resultArray = $this->getAllWith($referenceName, $referenceValue) ;
@@ -82,6 +91,13 @@ abstract class FactoryBase
 
     }
 
+    /**
+     * Get the last entity matching a reference value.
+     *
+     * @param string $referenceName Reference shortname to search
+     * @param mixed $referenceValue Value to match
+     * @return Entity|null The last matching entity, or null
+     */
     public function last($referenceName, $referenceValue) : ?Entity{
 
         $resultArray = $this->getAllWith($referenceName, $referenceValue) ;
@@ -114,6 +130,13 @@ abstract class FactoryBase
 
     }
 
+    /**
+     * Get an existing entity by reference, or create one if not found.
+     *
+     * @param string $refname Reference shortname to search/create
+     * @param mixed $refvalue Reference value to search/create with
+     * @return Entity The found or newly created entity
+     */
     public function getOrCreateFromRef($refname,$refvalue):Entity{
 
 
@@ -125,6 +148,14 @@ abstract class FactoryBase
         return $entity ;
     }
 
+    /**
+     * Add a filter to restrict which entities are loaded on populateLocal().
+     *
+     * @param mixed $verb Verb concept(s) to filter by (0 = any)
+     * @param mixed $target Target concept(s) to filter by (0 = any)
+     * @param bool $exclusion If true, exclude matching entities instead of including
+     * @return EntityFactory This factory (fluent interface)
+     */
     public function setFilter($verb=0,$target=0,$exclusion=false):EntityFactory{
 
         $verbArray = array();
@@ -250,7 +281,7 @@ abstract class FactoryBase
                     FROM_UNIXTIME(rf.value) updated FROM $sandra->linkTable l LEFT JOIN    `$sandra->tableReference` rf ON l.id = rf.`linkReferenced` AND rf.idConcept = $creationTimestamp
                      \n $SQLviewFilterJoin $filters
                      WHERE $SQLviewFilterCondition l.idConceptLink = $entityReferenceContainer AND l.idConceptTarget = $containedUnid AND l.flag != $sandra->deletedUNID";
-        DatabaseAdapter::executeSQL($sql);
+        DatabaseAdapter::executeSQL($sql, null, true, $sandra);
         return $this;
 
 

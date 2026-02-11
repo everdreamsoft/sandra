@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Datagraph Visualization</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        
+        #container {
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        #graph {
+            width: 100%;
+            height: 800px;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .node {
+            stroke: #fff;
+            stroke-width: 1.5px;
+        }
+        
+        .link {
+            stroke: #999;
+            stroke-opacity: 0.6;
+        }
+        
+        .node text {
+            font-size: 10px;
+            fill: #333;
+        }
+        
+        .controls {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-right: 20px;
+            margin-bottom: 5px;
+        }
+        
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>My Datagraph Visualization</h1>
+        
+        <div class="controls">
+            <div>
+                <label for="search">Search nodes: </label>
+                <input type="text" id="search" placeholder="Type to search...">
+                <button id="resetSearch">Reset</button>
+            </div>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #1f77b4;"></div>
+                    <span>Entity</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #ff7f0e;"></div>
+                    <span>Concept</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #2ca02c;"></div>
+                    <span>Reference</span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="graph"></div>
+    </div>
+    
+    <script>
+        // Graph data
+        const rawData = {"nodes":[{"id":"e_3","name":"a","type":"entity","group":1},{"id":"v_4","name":"is_a","type":"verb","group":2},{"id":"t_5","name":"algebra","type":"concept","group":3},{"id":"v_6","name":"contained_in_file","type":"verb","group":2},{"id":"t_7","name":"algebraFile","type":"concept","group":3},{"id":"v_16","name":"implies","type":"verb","group":2},{"id":"t_11","name":null,"type":"concept","group":3},{"id":"t_12","name":null,"type":"concept","group":3},{"id":"r_8","name":"creationTimestamp","type":"reference","group":4},{"id":"rv_fcecd84b345496a94a13e2d0cd39cfcd","name":"1741211814","type":"value","group":5},{"id":"r_9","name":"name","type":"reference","group":4},{"id":"rv_6a97da995f5ff627aa217244fd8256f2","name":"a","type":"value","group":5},{"id":"e_11","name":"b","type":"entity","group":1},{"id":"rv_1f78dd8c709f4e4dd43fe11b0384db94","name":"b","type":"value","group":5},{"id":"e_12","name":"c","type":"entity","group":1},{"id":"v_17","name":"something","type":"verb","group":2},{"id":"rv_1f8a616cd8ae3147db88031397a861a4","name":"c","type":"value","group":5},{"id":"e_13","name":"d","type":"entity","group":1},{"id":"rv_9a03d2aa2168e2a4cb7ce0a9f5d063a3","name":"d","type":"value","group":5},{"id":"e_14","name":"e","type":"entity","group":1},{"id":"rv_b5732a81f4d034e206ee9bc3e74e2f27","name":"e","type":"value","group":5},{"id":"e_15","name":"f","type":"entity","group":1},{"id":"t_13","name":null,"type":"concept","group":3},{"id":"rv_ede0f4b1bd1d039b54de420bf40edc61","name":"f","type":"value","group":5}],"links":[{"source":0,"target":1,"value":1},{"source":1,"target":2,"value":1},{"source":0,"target":3,"value":1},{"source":3,"target":4,"value":1},{"source":0,"target":5,"value":1},{"source":5,"target":6,"value":1},{"source":5,"target":7,"value":1},{"source":0,"target":8,"value":1},{"source":8,"target":9,"value":1},{"source":0,"target":10,"value":1},{"source":10,"target":11,"value":1},{"source":12,"target":1,"value":1},{"source":1,"target":2,"value":1},{"source":12,"target":3,"value":1},{"source":3,"target":4,"value":1},{"source":12,"target":8,"value":1},{"source":8,"target":9,"value":1},{"source":12,"target":10,"value":1},{"source":10,"target":13,"value":1},{"source":14,"target":1,"value":1},{"source":1,"target":2,"value":1},{"source":14,"target":3,"value":1},{"source":3,"target":4,"value":1},{"source":14,"target":15,"value":1},{"source":15,"target":6,"value":1},{"source":14,"target":8,"value":1},{"source":8,"target":9,"value":1},{"source":14,"target":10,"value":1},{"source":10,"target":16,"value":1},{"source":17,"target":1,"value":1},{"source":1,"target":2,"value":1},{"source":17,"target":3,"value":1},{"source":3,"target":4,"value":1},{"source":17,"target":5,"value":1},{"source":5,"target":6,"value":1},{"source":17,"target":8,"value":1},{"source":8,"target":9,"value":1},{"source":17,"target":10,"value":1},{"source":10,"target":18,"value":1},{"source":19,"target":1,"value":1},{"source":1,"target":2,"value":1},{"source":19,"target":3,"value":1},{"source":3,"target":4,"value":1},{"source":19,"target":5,"value":1},{"source":5,"target":6,"value":1},{"source":19,"target":8,"value":1},{"source":8,"target":9,"value":1},{"source":19,"target":10,"value":1},{"source":10,"target":20,"value":1},{"source":21,"target":1,"value":1},{"source":1,"target":2,"value":1},{"source":21,"target":3,"value":1},{"source":3,"target":4,"value":1},{"source":21,"target":5,"value":1},{"source":5,"target":22,"value":1},{"source":21,"target":8,"value":1},{"source":8,"target":9,"value":1},{"source":21,"target":10,"value":1},{"source":10,"target":23,"value":1}]};
+        
+        // Fix the links to use node objects instead of indices
+        const graphData = {
+            nodes: rawData.nodes,
+            links: []
+        };
+        
+        // Create a map of node indices
+        const nodeMap = {};
+        rawData.nodes.forEach((node, index) => {
+            nodeMap[index] = node;
+        });
+        
+        // Convert links to use node objects
+        rawData.links.forEach(link => {
+            if (nodeMap[link.source] && nodeMap[link.target]) {
+                graphData.links.push({
+                    source: nodeMap[link.source],
+                    target: nodeMap[link.target],
+                    value: link.value
+                });
+            }
+        });
+        
+        // Color mapping
+        const colorMap = {
+            'entity': '#1f77b4',
+            'concept': '#ff7f0e',
+            'verb': '#9467bd',
+            'reference': '#2ca02c',
+            'value': '#8c564b'
+        };
+        
+        // Create the force simulation
+        const simulation = d3.forceSimulation(graphData.nodes)
+            .force("link", d3.forceLink(graphData.links).id(d => d.id))
+            .force("charge", d3.forceManyBody().strength(-300))
+            .force("center", d3.forceCenter(1000 / 2, 800 / 2));
+        
+        // Create the SVG container
+        const svg = d3.select("#graph")
+            .append("svg")
+            .attr("width", "100%")
+            .attr("height", "100%")
+            .attr("viewBox", [0, 0, 1000, 800])
+            .call(d3.zoom().on("zoom", (event) => {
+                g.attr("transform", event.transform);
+            }));
+        
+        const g = svg.append("g");
+        
+        // Add links
+        const link = g.append("g")
+            .attr("stroke", "#999")
+            .attr("stroke-opacity", 0.6)
+            .selectAll("line")
+            .data(graphData.links)
+            .join("line")
+            .attr("stroke-width", d => Math.sqrt(d.value));
+        
+        // Add nodes
+        const node = g.append("g")
+            .attr("stroke", "#fff")
+            .attr("stroke-width", 1.5)
+            .selectAll("g")
+            .data(graphData.nodes)
+            .join("g")
+            .call(drag(simulation));
+        
+        // Add circles to nodes
+        node.append("circle")
+            .attr("r", 10)
+            .attr("fill", d => colorMap[d.type] || "#1f77b4");
+        
+        // Add text labels to nodes
+        node.append("text")
+            .attr("x", 12)
+            .attr("y", 3)
+            .text(function(d) { return d.name || '(' + d.type + ' #' + d.id + ')'; })
+            .clone(true).lower()
+            .attr("fill", "none")
+            .attr("stroke", "white")
+            .attr("stroke-width", 3);
+        
+        // Add title for hover tooltip
+        node.append("title")
+            .text(function(d) { return (d.name || '(' + d.type + ' #' + d.id + ')') + ' (' + d.type + ')'; });
+        
+        // Update positions on each tick
+        simulation.on("tick", () => {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+            
+            node.attr("transform", d => `translate(${d.x},${d.y})`);
+        });
+        
+        // Drag functionality
+        function drag(simulation) {
+            function dragstarted(event) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                event.subject.fx = event.subject.x;
+                event.subject.fy = event.subject.y;
+            }
+            
+            function dragged(event) {
+                event.subject.fx = event.x;
+                event.subject.fy = event.y;
+            }
+            
+            function dragended(event) {
+                if (!event.active) simulation.alphaTarget(0);
+                event.subject.fx = null;
+                event.subject.fy = null;
+            }
+            
+            return d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended);
+        }
+        
+        // Search functionality
+        document.getElementById('search').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            
+            if (searchTerm === '') {
+                // Reset all nodes and links
+                node.style('opacity', 1);
+                link.style('opacity', 0.6);
+                return;
+            }
+            
+            // Find matching nodes
+            const matchingNodes = new Set();
+            graphData.nodes.forEach((n, i) => {
+                if ((n.name && n.name.toLowerCase().includes(searchTerm)) || 
+                    (n.id && n.id.toLowerCase().includes(searchTerm))) {
+                    matchingNodes.add(i);
+                }
+            });
+            
+            // Find connected links
+            const connectedLinks = new Set();
+            graphData.links.forEach((l, i) => {
+                const sourceIndex = graphData.nodes.indexOf(l.source);
+                const targetIndex = graphData.nodes.indexOf(l.target);
+                
+                if (matchingNodes.has(sourceIndex) || matchingNodes.has(targetIndex)) {
+                    connectedLinks.add(i);
+                    matchingNodes.add(sourceIndex);
+                    matchingNodes.add(targetIndex);
+                }
+            });
+            
+            // Update visibility
+            node.style('opacity', (d, i) => matchingNodes.has(i) ? 1 : 0.1);
+            link.style('opacity', (d, i) => connectedLinks.has(i) ? 0.6 : 0.1);
+        });
+        
+        // Reset search
+        document.getElementById('resetSearch').addEventListener('click', function() {
+            document.getElementById('search').value = '';
+            node.style('opacity', 1);
+            link.style('opacity', 0.6);
+        });
+    </script>
+</body>
+</html>
