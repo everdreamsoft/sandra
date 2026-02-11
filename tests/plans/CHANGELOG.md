@@ -367,6 +367,171 @@ Meme erreurs/failures pre-existantes. +15 tests, +37 assertions vs baseline orig
 
 ---
 
+---
+
+## Plan 02 Phase 1 - Fonctionnalites fondamentales
+
+### [HAUTE] Systeme de Validation
+
+**Fichiers crees :**
+- `src/SandraCore/Validation/Validator.php` - Moteur de regles de validation
+  - Regles integrees : `required`, `string`, `numeric`, `integer`, `min:N`, `max:N`, `email`, `unique`, `maxlength:N`
+  - Support de regles personnalisees via `addRule(string $name, callable $fn)`
+  - `validate(array $data, EntityFactory $factory)` - lance `ValidationException` si echec
+- `src/SandraCore/Validation/ValidationException.php` - Exception avec details des erreurs
+  - `getErrors(): array` - `['fieldName' => ['rule1', 'rule2'], ...]`
+  - `getFirstError(): string` - message lisible de la premiere erreur
+
+**Fichiers modifies :**
+- `src/SandraCore/FactoryBase.php` : propriete `?Validator $validator`, methodes `setValidation()`, `addValidator()`
+- `src/SandraCore/EntityFactory.php` : hook de validation au debut de `createNew()`
+
+**Tests :** 19 tests, 30 assertions (`tests/ValidationTest.php`)
+
+---
+
+### [HAUTE] Systeme de Cache
+
+**Fichiers crees :**
+- `src/SandraCore/Cache/CacheInterface.php` - Interface PSR-16 inspiree (`get`, `set`, `delete`, `has`, `flush`)
+- `src/SandraCore/Cache/MemoryCache.php` - Cache en memoire avec TTL optionnel
+- `src/SandraCore/Cache/NullCache.php` - Cache no-op (desactive)
+
+**Fichiers modifies :**
+- `src/SandraCore/FactoryBase.php` : propriete `?CacheInterface $cache`, methode `enableCache()`
+- `src/SandraCore/EntityFactory.php` :
+  - `populateLocal()` : verification du cache avant requete DB, stockage en cache apres
+  - `createNew()` : invalidation du cache apres creation
+  - Methodes privees `getCacheKey()` et `invalidateCache()`
+
+**Tests :** 15 tests, 27 assertions (`tests/CacheTest.php`)
+
+---
+
+### [HAUTE] Query Builder Fluent
+
+**Fichiers crees :**
+- `src/SandraCore/Query/QueryBuilder.php` - API fluent de requetes
+  - `whereHasBrother(verb, target)` -> filtre SQL via `setFilter()` (efficace)
+  - `whereNotHasBrother(verb, target)` -> filtre SQL exclusion
+  - `whereRef(field, operator, value)` -> filtre post-chargement sur references
+  - `where(field, value)` -> raccourci pour `whereRef(field, '=', value)`
+  - `orderBy(ref, direction)`, `limit(n)`, `offset(n)`
+  - `get()` -> `QueryResult`, `first()` -> `?Entity`, `count()` -> `int`
+  - Operateurs supportes : `=`, `!=`, `>`, `>=`, `<`, `<=`, `like`
+- `src/SandraCore/Query/WhereClause.php` - Condition individuelle (type, field, operator, value, exclusion)
+- `src/SandraCore/Query/QueryResult.php` - Resultat pagine
+  - Implemente `Countable`, `IteratorAggregate`
+  - `count()`, `getTotal()`, `first()`, `last()`, `toArray()`, `isEmpty()`
+
+**Fichiers modifies :**
+- `src/SandraCore/FactoryBase.php` : methode `query(): QueryBuilder`
+
+**Design :**
+- Le QueryBuilder clone la factory pour ne pas muter l'originale
+- Les filtres `whereHasBrother/whereNotHasBrother` sont delegues au SQL (performant)
+- Les filtres `whereRef` sont appliques post-chargement (pragmatique pour <10K entites)
+- `limit/offset` delegues au SQL quand pas de filtre ref, sinon appliques en memoire
+
+**Tests :** 27 tests, 36 assertions (`tests/QueryBuilderTest.php`)
+
+---
+
+### Etat final des tests - Plan 02 Phase 1
+```
+Tests: 131, Assertions: 264, Errors: 1, Failures: 3, Risky: 1
+```
++61 tests, +93 assertions vs baseline Plan 01. Memes erreurs/failures pre-existantes.
+
+---
+
+## Plan 02 Phase 2 - Fonctionnalites avancees
+
+### [HAUTE] Systeme d'Evenements
+
+**Fichiers crees :**
+- `src/SandraCore/Events/EventDispatcher.php` - Registre de listeners simple
+  - `on(string $eventName, callable $listener)` - Enregistre un listener
+  - `off(string $eventName, callable $listener)` - Supprime un listener
+  - `dispatch(string $eventName, EntityEvent $event)` - Dispatch avec stop propagation
+  - `hasListeners(string $eventName)` - Verification d'existence
+- `src/SandraCore/Events/EntityEvent.php` - Objet de donnees pour les listeners
+  - Constantes : `ENTITY_CREATING`, `ENTITY_CREATED`, `ENTITY_UPDATED`, `BROTHER_LINKED`, `ENTITY_DELETING`, `ENTITY_DELETED`
+  - `stopPropagation()` / `isPropagationStopped()` pour annulation pre-events
+
+**Fichiers modifies :**
+- `src/SandraCore/FactoryBase.php` : propriete `?EventDispatcher $eventDispatcher`, methodes `on()` (lazy-init), `dispatchEvent()` (no-op si null)
+- `src/SandraCore/EntityFactory.php` : hooks `ENTITY_CREATING`/`ENTITY_CREATED` dans `createNew()`, `ENTITY_UPDATED` dans `update()`
+- `src/SandraCore/Entity.php` : hooks `BROTHER_LINKED` dans `setBrotherEntity()`, `ENTITY_DELETING`/`ENTITY_DELETED` dans `delete()`
+
+**Design :**
+- Opt-in : aucun overhead si aucun listener n'est enregistre (dispatcher null)
+- Pre-events (`CREATING`, `DELETING`) peuvent annuler l'operation via `stopPropagation()`
+- `CREATING` annule leve `SandraException`; `DELETING` annule retourne silencieusement
+
+**Tests :** 17 tests, 28 assertions (`tests/EventSystemTest.php`)
+
+---
+
+### [HAUTE] Traversee de Graphe
+
+**Fichiers crees :**
+- `src/SandraCore/Graph/GraphTraverser.php` - Algorithmes de traversee
+  - `bfs(Entity, verb, maxDepth)` - Parcours en largeur
+  - `dfs(Entity, verb, maxDepth)` - Parcours en profondeur
+  - `descendants(Entity, verb, maxDepth)` - Alias BFS
+  - `ancestors(Entity, verb, maxDepth)` - BFS sur index inverse
+  - `hasCycle(Entity, verb, maxDepth)` - Detection de cycles (DFS avec stack)
+  - `findPaths(from, to, verbs, maxDepth)` - Tous les chemins (DFS + Path immutable)
+  - `shortestPath(from, to, verbs)` - Plus court chemin (BFS)
+- `src/SandraCore/Graph/Path.php` - Chemin immutable
+  - `append(Entity)` retourne nouvelle instance
+  - `contains(Entity)` par concept ID
+  - `getLength()`, `getStart()`, `getEnd()`
+- `src/SandraCore/Graph/TraversalResult.php` - Resultat avec groupement par profondeur
+  - Implemente `Countable`, `IteratorAggregate`
+  - `getAtDepth(int)`, `getMaxDepth()`, `hasCycle()`
+
+**Design :**
+- Prerequis : `populateLocal()` + `getTriplets()` avant traversee
+- `ancestors()` construit un index inverse en scannant tous les triplets de la factory
+- Les verbs sont resolus via `CommonFunctions::somethingToConceptId()`
+
+**Tests :** 20 tests, 29 assertions (`tests/GraphTraversalTest.php`)
+
+---
+
+### [HAUTE] Export/Import CSV
+
+**Fichiers crees :**
+- `src/SandraCore/Export/ExporterInterface.php` - Interface `export(EntityFactory, columns): string`
+- `src/SandraCore/Export/CsvExporter.php` - Export CSV
+  - `export(EntityFactory, columns)` - Export en string via `php://temp` + `fputcsv()`
+  - `exportToFile(EntityFactory, filePath, columns)` - Export vers fichier
+  - Auto-detection des colonnes via `getReferenceMap()`, filtre `creationTimestamp`
+  - Support delimiteur, enclosure, avec/sans header
+- `src/SandraCore/Import/CsvImporter.php` - Import CSV
+  - `importString(EntityFactory, csv)` / `importFile(EntityFactory, filePath)`
+  - `setColumnMapping(array)` - Mapping header-name ou index vers ref shortnames
+  - Sans mapping explicite, utilise les headers comme shortnames
+  - Appelle `factory->createNew()` par ligne (beneficie validation + events)
+  - Accumule les erreurs par ligne dans ImportResult
+- `src/SandraCore/Import/ImportResult.php` - Resultat d'import
+  - `getCreated()`, `getCreatedCount()`, `getErrors()`, `getErrorCount()`
+  - `getTotalRows()`, `hasErrors()`, `isFullySuccessful()`
+
+**Tests :** 18 tests, 40 assertions (`tests/ExportImportTest.php`)
+
+---
+
+### Etat final des tests - Plan 02 Phase 2
+```
+Tests: 186, Assertions: 361, Errors: 1, Failures: 3, Risky: 1
+```
++55 tests, +97 assertions vs Plan 02 Phase 1. Memes erreurs/failures pre-existantes.
+
+---
+
 ## Plan 01 - TERMINE
 
 Toutes les 14 taches du plan d'amelioration code sont maintenant **FAIT** :

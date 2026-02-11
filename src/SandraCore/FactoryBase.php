@@ -4,6 +4,10 @@ declare(strict_types=1);
 namespace SandraCore;
 use SandraCore\displayer\Displayer;
 use SandraCore\displayer\DisplayType;
+use SandraCore\Validation\Validator;
+use SandraCore\Cache\CacheInterface;
+use SandraCore\Events\EventDispatcher;
+use SandraCore\Events\EntityEvent;
 
 /**
  * Created by EverdreamSoft.
@@ -44,6 +48,10 @@ abstract class FactoryBase
     protected $populated ;
 
     protected $generatedEntityClass = '\SandraCore\Entity';
+
+    protected ?Validator $validator = null;
+    protected ?CacheInterface $cache = null;
+    protected ?EventDispatcher $eventDispatcher = null;
 
     public function __construct(System $system)
     {
@@ -108,7 +116,7 @@ abstract class FactoryBase
         return $result;
 
     }
-    
+
 
     public function getDisplay($format,$refToDisplay = null, $dictionnary=null, ?DisplayType $displayType = null){
 
@@ -119,14 +127,14 @@ abstract class FactoryBase
             $displayType->bindToDisplayer($displayer);
         }
 
-       
+
         $this->displayer = $displayer ;
 
         if (!is_null($dictionnary)) $displayer->setDisplayDictionary($dictionnary);
         if (!is_null($refToDisplay)) $displayer->setDisplayRefs($refToDisplay);
 
         return  $displayer->getAllDisplayable();
-        
+
 
     }
 
@@ -204,7 +212,7 @@ abstract class FactoryBase
         }
 
         return $this->displayer ;
-        
+
 
     }
 
@@ -216,10 +224,6 @@ abstract class FactoryBase
         }
 
         $this->system->systemError('546',self::class,'1',"created class does not exists $class");
-
-
-
-
 
     }
 
@@ -254,7 +258,7 @@ abstract class FactoryBase
 
             $incrementor++ ;
             $concept->idConcept;
-            
+
             /** @var System $sandra */
             $fieldname = $concept->getDisplayName();
 
@@ -354,10 +358,48 @@ abstract class FactoryBase
 
     }
 
-   
+    public function setValidation(array $rules): self
+    {
+        $this->validator = new Validator($rules);
+        return $this;
+    }
 
+    public function addValidator(string $name, callable $fn): self
+    {
+        if ($this->validator === null) {
+            $this->validator = new Validator([]);
+        }
+        $this->validator->addRule($name, $fn);
+        return $this;
+    }
 
-    
+    public function enableCache(CacheInterface $cache): self
+    {
+        $this->cache = $cache;
+        return $this;
+    }
 
+    public function query(): Query\QueryBuilder
+    {
+        return new Query\QueryBuilder($this);
+    }
 
+    public function on(string $event, callable $listener): self
+    {
+        if ($this->eventDispatcher === null) {
+            $this->eventDispatcher = new EventDispatcher();
+        }
+        $this->eventDispatcher->on($event, $listener);
+        return $this;
+    }
+
+    public function dispatchEvent(string $name, ?Entity $entity = null, array $data = []): EntityEvent
+    {
+        /** @var EntityFactory $this */
+        $event = new EntityEvent($name, $this, $entity, $data);
+        if ($this->eventDispatcher === null) {
+            return $event;
+        }
+        return $this->eventDispatcher->dispatch($name, $event);
+    }
 }

@@ -11,6 +11,8 @@ namespace SandraCore;
 
 
 use SandraCore\displayer\Displayer;
+use SandraCore\Events\EntityEvent;
+use SandraCore\Exception\SandraException;
 
 /**
  * Factory for creating, loading, and querying entities of a given type.
@@ -208,6 +210,16 @@ class EntityFactory extends FactoryBase implements Dumpable
      */
     public function populateLocal($limit = 10000, $offset = 0, $asc = 'ASC', $sortByRef = null, $numberSort = false)
     {
+        if ($this->cache !== null) {
+            $cacheKey = $this->getCacheKey((int)($limit ?? 10000), (int)($offset ?? 0), (string)($asc ?? 'ASC'), $sortByRef);
+            $cached = $this->cache->get($cacheKey);
+            if ($cached !== null) {
+                $this->entityArray = $cached['entities'] ?? [];
+                $this->populated = true;
+                $this->populatedFull = true;
+                return $this->entityArray;
+            }
+        }
 
         $entityArray = array();
 
@@ -316,6 +328,10 @@ class EntityFactory extends FactoryBase implements Dumpable
         }
 
         $this->addNewEtities($entityArray, $sandraReferenceMap);
+
+        if ($this->cache !== null && isset($cacheKey)) {
+            $this->cache->set($cacheKey, ['entities' => $this->entityArray]);
+        }
 
         return $this->entityArray;
 
@@ -852,6 +868,8 @@ class EntityFactory extends FactoryBase implements Dumpable
             }
         }
 
+        $this->dispatchEvent(EntityEvent::ENTITY_UPDATED, $entity, ['data' => $dataArray]);
+
     }
 
     public function createOrUpdateOnReference($refShortname, $refValue, $dataArray, $linkArray = null)
@@ -920,6 +938,15 @@ class EntityFactory extends FactoryBase implements Dumpable
      */
     public function createNew($dataArray, $linArray = null, $autocommit = true): Entity
     {
+        if ($this->validator !== null) {
+            $this->validator->validate($dataArray, $this);
+        }
+
+        $creatingEvent = $this->dispatchEvent(EntityEvent::ENTITY_CREATING, null, ['data' => $dataArray]);
+        if ($creatingEvent->isPropagationStopped()) {
+            throw new SandraException('Entity creation cancelled by event listener');
+        }
+
         $conceptId = DatabaseAdapter::rawCreateConcept("A " . $this->entityIsa, $this->system, false);
         $addedRefMap = array();
 
@@ -1052,6 +1079,10 @@ class EntityFactory extends FactoryBase implements Dumpable
         }
 
         $this->addNewEtities(array($createdEntity->subjectConcept->idConcept=>$createdEntity),$addedReferenceMap);
+
+        $this->invalidateCache();
+
+        $this->dispatchEvent(EntityEvent::ENTITY_CREATED, $createdEntity, ['data' => $dataArray]);
 
         return $createdEntity ;
 
@@ -1272,6 +1303,19 @@ class EntityFactory extends FactoryBase implements Dumpable
             }
         }
         $this->tripletRetrieved = true;
+    }
+
+    private function getCacheKey(int $limit, int $offset, string $asc, ?string $sortByRef = null): string
+    {
+        $filterHash = $this->tripletfilter ? md5(serialize($this->tripletfilter)) : 'none';
+        return "factory:{$this->entityIsa}:{$this->entityContainedIn}:{$filterHash}:{$limit}:{$offset}:{$asc}:{$sortByRef}";
+    }
+
+    private function invalidateCache(): void
+    {
+        if ($this->cache !== null) {
+            $this->cache->flush();
+        }
     }
 
     public function destroy()

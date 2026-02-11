@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace SandraCore;
 
 
+use SandraCore\Events\EntityEvent;
 use SandraCore\queryTraits\EntityQueryTrait;
 
 /**
@@ -307,6 +308,12 @@ class Entity implements Dumpable
 
         $factory->brotherEntitiesArray[$this->subjectConcept->idConcept][$verbConceptId][$targetConceptId] = $brotherEntity ;
 
+        $factory->dispatchEvent(EntityEvent::BROTHER_LINKED, $this, [
+            'verb' => $brotherVerb,
+            'target' => $brotherTarget,
+            'brotherEntity' => $brotherEntity,
+        ]);
+
         return $brotherEntity ;
 
     }
@@ -466,9 +473,16 @@ class Entity implements Dumpable
 
         if (!$hard) {
 
+            $deletingEvent = $this->factory->dispatchEvent(EntityEvent::ENTITY_DELETING, $this);
+            if ($deletingEvent->isPropagationStopped()) {
+                return;
+            }
+
             $deletedConcept = CommonFunctions::somethingToConcept($this->system->deletedUNID, $this->system);
 
             $this->flag($deletedConcept,$autocommit);
+
+            $this->factory->dispatchEvent(EntityEvent::ENTITY_DELETED, $this);
 
         }
 

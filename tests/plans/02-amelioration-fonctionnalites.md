@@ -488,15 +488,15 @@ $snapshot = $factory->snapshotAt('2024-01-01');
 
 ## Resume et Roadmap suggeree
 
-### Phase 1 - Fondations (pre-requis : ameliorations code)
-1. Query Builder Fluent
-2. Systeme de Validation
-3. Systeme de Cache
+### Phase 1 - Fondations (pre-requis : ameliorations code) - FAIT
+1. Query Builder Fluent - FAIT
+2. Systeme de Validation - FAIT
+3. Systeme de Cache - FAIT
 
-### Phase 2 - Fonctionnalites avancees
-4. Traversee de Graphe
-5. Systeme d'Evenements
-6. Export/Import multi-format
+### Phase 2 - Fonctionnalites avancees - FAIT
+4. Traversee de Graphe - FAIT
+5. Systeme d'Evenements - FAIT
+6. Export/Import CSV - FAIT
 
 ### Phase 3 - Ecosystem
 7. API REST auto-generee
