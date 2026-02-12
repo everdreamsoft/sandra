@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace SandraCore\Query;
 
+use SandraCore\CommonFunctions;
+use SandraCore\DatabaseAdapter;
 use SandraCore\Entity;
 use SandraCore\EntityFactory;
 use SandraCore\FactoryBase;
@@ -86,24 +88,62 @@ class QueryBuilder
     public function get(): QueryResult
     {
         $factory = $this->buildFactory();
-        $entities = $this->executeQuery($factory);
 
-        // Apply post-load ref filters
-        $filtered = $this->applyRefFilters($entities);
+        // Ref-only: SQL search -> conceptArray -> populateLocal
+        if ($this->hasRefClauses() && !$this->hasBrotherClauses()) {
+            $conceptIds = $this->searchRefConceptIds();
+            if (empty($conceptIds)) {
+                return new QueryResult([], 0, $this->limitValue, $this->offsetValue);
+            }
+            $factory->conceptArray = $conceptIds;
+            $factory->populateLocal();
+            $entities = $factory->getEntities() ?: [];
+            $total = count($entities);
+            $entities = array_values($entities);
 
-        $total = count($filtered);
-
-        // Apply offset and limit on post-filtered results
-        if ($this->hasRefClauses()) {
             if ($this->offsetValue !== null) {
-                $filtered = array_slice($filtered, $this->offsetValue);
+                $entities = array_slice($entities, $this->offsetValue);
             }
             if ($this->limitValue !== null) {
-                $filtered = array_slice($filtered, 0, $this->limitValue);
+                $entities = array_slice($entities, 0, $this->limitValue);
             }
+
+            return new QueryResult($entities, $total, $this->limitValue, $this->offsetValue);
         }
 
-        return new QueryResult($filtered, $total, $this->limitValue, $this->offsetValue);
+        // Combined brother + ref: brother at SQL level, then intersect with ref SQL results
+        if ($this->hasRefClauses() && $this->hasBrotherClauses()) {
+            $refConceptIds = $this->searchRefConceptIds();
+            if (empty($refConceptIds)) {
+                return new QueryResult([], 0, $this->limitValue, $this->offsetValue);
+            }
+            $refIdSet = array_flip($refConceptIds);
+
+            // Brother filter is already applied via setFilter in buildFactory
+            $factory->populateLocal(10000, 0, $this->orderDirection, $this->orderByRef);
+            $allEntities = $factory->getEntities() ?: [];
+
+            // Keep only entities matching ref SQL results
+            $entities = array_values(array_filter($allEntities, function (Entity $e) use ($refIdSet) {
+                return isset($refIdSet[$e->subjectConcept->idConcept]);
+            }));
+
+            $total = count($entities);
+            if ($this->offsetValue !== null) {
+                $entities = array_slice($entities, $this->offsetValue);
+            }
+            if ($this->limitValue !== null) {
+                $entities = array_slice($entities, 0, $this->limitValue);
+            }
+
+            return new QueryResult($entities, $total, $this->limitValue, $this->offsetValue);
+        }
+
+        // Brother-only or no filters: standard path
+        $entities = $this->executeQuery($factory);
+        $total = count($entities);
+
+        return new QueryResult($entities, $total, $this->limitValue, $this->offsetValue);
     }
 
     public function first(): ?Entity
@@ -126,15 +166,89 @@ class QueryBuilder
             return $factory->countEntitiesOnRequest();
         }
 
+        // Ref clauses present: use SQL search for concept IDs
+        $conceptIds = $this->searchRefConceptIds();
+        if (empty($conceptIds)) {
+            return 0;
+        }
+
+        if (!$this->hasBrotherClauses()) {
+            return count($conceptIds);
+        }
+
+        // Combined: need to intersect with brother-filtered set
         $factory = $this->buildFactory();
-        $entities = $this->executeQuery($factory);
-        $filtered = $this->applyRefFilters($entities);
-        return count($filtered);
+        $factory->populateLocal(10000, 0, $this->orderDirection, $this->orderByRef);
+        $allEntities = $factory->getEntities() ?: [];
+        $refIdSet = array_flip($conceptIds);
+
+        $count = 0;
+        foreach ($allEntities as $entity) {
+            if (isset($refIdSet[$entity->subjectConcept->idConcept])) {
+                $count++;
+            }
+        }
+        return $count;
     }
 
     private function hasRefClauses(): bool
     {
         return !empty($this->refClauses);
+    }
+
+    private function hasBrotherClauses(): bool
+    {
+        return !empty($this->brotherClauses);
+    }
+
+    /**
+     * Use SQL-level ref search to find matching concept IDs.
+     * Same pattern as populateFromSearchResults: filter at SQL, get IDs only.
+     *
+     * @return array Concept IDs matching ALL ref clauses (AND logic)
+     */
+    private function searchRefConceptIds(): array
+    {
+        $system = $this->originalFactory->system;
+
+        $entityRefContainer = (string)CommonFunctions::somethingToConceptId(
+            $this->originalFactory->entityReferenceContainer,
+            $system
+        );
+        $entityContainedIn = (string)CommonFunctions::somethingToConceptId(
+            $this->originalFactory->entityContainedIn,
+            $system
+        );
+
+        $candidateIds = null;
+
+        foreach ($this->refClauses as $clause) {
+            $ids = DatabaseAdapter::searchConceptByRef(
+                $system,
+                $clause->field,
+                $clause->operator,
+                (string)$clause->value,
+                $entityRefContainer,
+                $entityContainedIn
+            );
+
+            if ($ids === null || empty($ids)) {
+                return [];
+            }
+
+            // Intersect: all clauses must match (AND logic)
+            if ($candidateIds === null) {
+                $candidateIds = $ids;
+            } else {
+                $candidateIds = array_values(array_intersect($candidateIds, $ids));
+            }
+
+            if (empty($candidateIds)) {
+                return [];
+            }
+        }
+
+        return $candidateIds ?? [];
     }
 
     private function buildFactory(): EntityFactory
@@ -159,19 +273,14 @@ class QueryBuilder
      */
     private function executeQuery(EntityFactory $factory): array
     {
-        // When ref filters exist, load all entities so in-memory filtering
-        // sees the complete dataset (no artificial cap)
-        $limit = $this->hasRefClauses() ? PHP_INT_MAX : 10000;
+        $limit = 10000;
         $offset = 0;
 
-        // Only pass user limit/offset to SQL if there are no ref filters
-        if (!$this->hasRefClauses()) {
-            if ($this->limitValue !== null) {
-                $limit = $this->limitValue;
-            }
-            if ($this->offsetValue !== null) {
-                $offset = $this->offsetValue;
-            }
+        if ($this->limitValue !== null) {
+            $limit = $this->limitValue;
+        }
+        if ($this->offsetValue !== null) {
+            $offset = $this->offsetValue;
         }
 
         $factory->populateLocal(
@@ -182,50 +291,5 @@ class QueryBuilder
         );
 
         return $factory->getEntities() ?: [];
-    }
-
-    /**
-     * @param Entity[] $entities
-     * @return Entity[]
-     */
-    private function applyRefFilters(array $entities): array
-    {
-        if (empty($this->refClauses)) {
-            return $entities;
-        }
-
-        return array_values(array_filter($entities, function (Entity $entity) {
-            foreach ($this->refClauses as $clause) {
-                $entityValue = $entity->get($clause->field);
-
-                if (!$this->matchesCondition($entityValue, $clause->operator, $clause->value)) {
-                    return false;
-                }
-            }
-            return true;
-        }));
-    }
-
-    private function matchesCondition(mixed $entityValue, string $operator, mixed $conditionValue): bool
-    {
-        return match ($operator) {
-            '=' => $entityValue == $conditionValue,
-            '!=' => $entityValue != $conditionValue,
-            '>' => is_numeric($entityValue) && is_numeric($conditionValue) && (float)$entityValue > (float)$conditionValue,
-            '>=' => is_numeric($entityValue) && is_numeric($conditionValue) && (float)$entityValue >= (float)$conditionValue,
-            '<' => is_numeric($entityValue) && is_numeric($conditionValue) && (float)$entityValue < (float)$conditionValue,
-            '<=' => is_numeric($entityValue) && is_numeric($conditionValue) && (float)$entityValue <= (float)$conditionValue,
-            'like' => $entityValue !== null && $this->matchesLike((string)$entityValue, (string)$conditionValue),
-            default => false,
-        };
-    }
-
-    private function matchesLike(string $value, string $pattern): bool
-    {
-        $regex = '/^' . str_replace(['%', '_'], ['.*', '.'], preg_quote($pattern, '/')) . '$/i';
-        // Re-apply wildcard conversions after preg_quote escaped them
-        $regex = str_replace(['\\%', '\\_'], ['%', '_'], $regex);
-        $regex = str_replace(['%', '_'], ['.*', '.'], $regex);
-        return (bool)preg_match($regex, $value);
     }
 }

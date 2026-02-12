@@ -493,6 +493,89 @@ class DatabaseAdapter
     }
 
     /**
+     * Search for entity concept IDs by reference value with comparison operator.
+     * Returns an array of idConceptStart values matching the criteria.
+     *
+     * @param System $system
+     * @param string $refShortname Reference shortname (e.g. 'name', 'price')
+     * @param string $operator SQL operator: =, !=, >, >=, <, <=, LIKE
+     * @param mixed $value Value to compare against
+     * @param string $conceptLinkConcept Factory's entityReferenceContainer concept ID
+     * @param string $conceptTargetConcept Factory's entityContainedIn concept ID
+     * @param int|null $limit Optional result limit
+     * @return array|null Array of concept IDs or null
+     */
+    public static function searchConceptByRef(
+        System $system,
+        string $refShortname,
+        string $operator,
+        mixed $value,
+        $conceptLinkConcept = '',
+        $conceptTargetConcept = '',
+        ?int $limit = null
+    ): ?array {
+        $allowedOperators = ['=', '!=', '>', '>=', '<', '<=', 'LIKE'];
+        $operator = strtoupper($operator);
+        if (!in_array($operator, $allowedOperators, true)) {
+            return null;
+        }
+
+        $pdo = $system->getConnection();
+        $tableReference = $system->tableReference;
+        $tableLink = $system->linkTable;
+        $deletedUNID = (int)$system->deletedUNID;
+
+        $refConceptId = CommonFunctions::somethingToConceptId($refShortname, $system);
+        if (!$refConceptId) {
+            return null;
+        }
+
+        $bindParamArray = [];
+        $bindParamArray[':refConcept'] = [(int)$refConceptId, \PDO::PARAM_INT];
+        $bindParamArray[':deletedFlag'] = [$deletedUNID, \PDO::PARAM_INT];
+        $bindParamArray[':searchValue'] = $value;
+
+        $valueCondition = "value $operator :searchValue";
+
+        $linkConceptSQL = '';
+        if ($conceptLinkConcept !== '') {
+            $linkConceptSQL = "AND $tableLink.idConceptLink = :linkConcept";
+            $bindParamArray[':linkConcept'] = [(int)$conceptLinkConcept, \PDO::PARAM_INT];
+        }
+
+        $targetConceptSQL = '';
+        if ($conceptTargetConcept !== '') {
+            $targetConceptSQL = "AND $tableLink.idConceptTarget = :targetConcept";
+            $bindParamArray[':targetConcept'] = [(int)$conceptTargetConcept, \PDO::PARAM_INT];
+        }
+
+        $limitSQL = '';
+        if ($limit !== null) {
+            $limitSQL = "LIMIT " . (int)$limit;
+        }
+
+        $sql = "SELECT DISTINCT $tableLink.idConceptStart FROM `$tableReference`
+            INNER JOIN $tableLink ON `$tableReference`.linkReferenced = $tableLink.id
+            WHERE $valueCondition
+            AND `$tableReference`.idConcept = :refConcept
+            AND $tableLink.flag != :deletedFlag
+            $linkConceptSQL $targetConceptSQL $limitSQL";
+
+        $results = QueryExecutor::fetchAll($pdo, $sql, $bindParamArray);
+
+        if ($results === null) {
+            return null;
+        }
+
+        $array = [];
+        foreach ($results as $result) {
+            $array[] = $result['idConceptStart'];
+        }
+
+        return $array;
+    }
+
+    /**
      * Execute an arbitrary SQL statement.
      *
      * @param string $sql The SQL query
