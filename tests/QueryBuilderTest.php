@@ -331,7 +331,7 @@ final class QueryBuilderTest extends SandraTestCase
 
     public function testWhereRefFindsOutOfBoundEntity(): void
     {
-        // Create 15 entities — more than a small populateLocal limit
+        // Insert 15 entities
         $factory = $this->createFactory('item_oob', 'itemOobFile');
         for ($i = 1; $i <= 15; $i++) {
             $factory->createNew([
@@ -340,24 +340,37 @@ final class QueryBuilderTest extends SandraTestCase
             ]);
         }
 
-        // Verify with populateLocal(10) we only see 10 entities
+        // Set default limit to 10 — populateLocal will only see 10 entities
+        $queryFactory = $this->createFactory('item_oob', 'itemOobFile');
+        $queryFactory->setDefaultLimit(10);
+
+        // Prove the limit works: normal populateLocal only loads 10
         $limitedFactory = $this->createFactory('item_oob', 'itemOobFile');
         $limitedFactory->populateLocal(10);
         $this->assertCount(10, $limitedFactory->getEntities());
 
-        // But whereRef via SQL should find entity #13 beyond the limit
-        $result = $this->createFactory('item_oob', 'itemOobFile')->query()
-            ->where('name', 'item_13')
+        // Search for FIRST item (within limit) — must be found
+        $resultFirst = $queryFactory->query()
+            ->where('name', 'item_1')
             ->get();
 
-        $this->assertCount(1, $result);
-        $this->assertEquals('item_13', $result->first()->get('name'));
-        $this->assertEquals('CODE_13', $result->first()->get('code'));
+        $this->assertCount(1, $resultFirst);
+        $this->assertEquals('item_1', $resultFirst->first()->get('name'));
+        $this->assertEquals('CODE_1', $resultFirst->first()->get('code'));
+
+        // Search for LAST item (beyond limit of 10) — must also be found
+        $resultLast = $queryFactory->query()
+            ->where('name', 'item_15')
+            ->get();
+
+        $this->assertCount(1, $resultLast);
+        $this->assertEquals('item_15', $resultLast->first()->get('name'));
+        $this->assertEquals('CODE_15', $resultLast->first()->get('code'));
     }
 
     public function testWhereRefFindsOutOfBoundWithOperator(): void
     {
-        // Create 15 entities
+        // Insert 15 entities with numeric scores 10..150
         $factory = $this->createFactory('item_oob2', 'itemOob2File');
         for ($i = 1; $i <= 15; $i++) {
             $factory->createNew([
@@ -366,17 +379,15 @@ final class QueryBuilderTest extends SandraTestCase
             ]);
         }
 
-        // Verify limited populate only loads 10
-        $limitedFactory = $this->createFactory('item_oob2', 'itemOob2File');
-        $limitedFactory->populateLocal(10);
-        $this->assertCount(10, $limitedFactory->getEntities());
+        // Set default limit to 10
+        $queryFactory = $this->createFactory('item_oob2', 'itemOob2File');
+        $queryFactory->setDefaultLimit(10);
 
-        // where() with 3 args: field, operator, value
-        $result = $this->createFactory('item_oob2', 'itemOob2File')->query()
+        // score > 100 means items 11-15 (scores 110-150) — all beyond limit
+        $result = $queryFactory->query()
             ->where('score', '>', '100')
             ->get();
 
-        // score > 100 means items 11-15 (scores 110-150) = 5 entities
         $this->assertCount(5, $result);
     }
 
@@ -394,7 +405,7 @@ final class QueryBuilderTest extends SandraTestCase
 
     public function testPopulateFromSearchResultsMatchesWhereRef(): void
     {
-        // Verify that whereRef gives same results as populateFromSearchResults
+        // Insert 15 entities
         $factory = $this->createFactory('item_cmp', 'itemCmpFile');
         for ($i = 1; $i <= 15; $i++) {
             $factory->createNew([
@@ -403,13 +414,15 @@ final class QueryBuilderTest extends SandraTestCase
             ]);
         }
 
-        // populateFromSearchResults
+        // populateFromSearchResults — finds item 12
         $searchFactory = $this->createFactory('item_cmp', 'itemCmpFile');
         $searchFactory->populateFromSearchResults('unique_value_12');
         $searchEntities = $searchFactory->getEntities();
 
-        // QueryBuilder where
-        $queryResult = $this->createFactory('item_cmp', 'itemCmpFile')->query()
+        // QueryBuilder where with limit 10 — item 12 is beyond limit
+        $queryFactory = $this->createFactory('item_cmp', 'itemCmpFile');
+        $queryFactory->setDefaultLimit(10);
+        $queryResult = $queryFactory->query()
             ->where('name', 'unique_value_12')
             ->get();
 
@@ -422,5 +435,26 @@ final class QueryBuilderTest extends SandraTestCase
             $searchEntity->subjectConcept->idConcept,
             $queryEntity->subjectConcept->idConcept
         );
+    }
+
+    public function testSetDefaultLimitAffectsQuery(): void
+    {
+        // Insert 15 entities
+        $factory = $this->createFactory('item_lim', 'itemLimFile');
+        for ($i = 1; $i <= 15; $i++) {
+            $factory->createNew(['name' => "lim_$i"]);
+        }
+
+        // Default limit 10: query without where should only return 10
+        $queryFactory = $this->createFactory('item_lim', 'itemLimFile');
+        $queryFactory->setDefaultLimit(10);
+        $result = $queryFactory->query()->get();
+        $this->assertCount(10, $result);
+
+        // Default limit 15: should return all 15
+        $queryFactory2 = $this->createFactory('item_lim', 'itemLimFile');
+        $queryFactory2->setDefaultLimit(15);
+        $result2 = $queryFactory2->query()->get();
+        $this->assertCount(15, $result2);
     }
 }

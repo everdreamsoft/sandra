@@ -42,9 +42,22 @@ abstract class FactoryBase
 
     public $factoryIdentifier = '' ;
 
+    protected int $defaultLimit = 10000;
+
     abstract public function getAllWith($referenceName, $referenceValue);
     abstract public function createNew($dataArray, $linkArray = null);
-    abstract public function populateLocal($limit = 10000,$offset = 0,$asc='ASC');
+    abstract public function populateLocal($limit = null,$offset = 0,$asc='ASC');
+
+    public function setDefaultLimit(int $limit): self
+    {
+        $this->defaultLimit = $limit;
+        return $this;
+    }
+
+    public function getDefaultLimit(): int
+    {
+        return $this->defaultLimit;
+    }
 
     protected $populated ;
 

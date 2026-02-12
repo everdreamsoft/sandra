@@ -123,7 +123,7 @@ class QueryBuilder
             $refIdSet = array_flip($refConceptIds);
 
             // Brother filter is already applied via setFilter in buildFactory
-            $factory->populateLocal(10000, 0, $this->orderDirection, $this->orderByRef);
+            $factory->populateLocal(null, 0, $this->orderDirection, $this->orderByRef);
             $allEntities = $factory->getEntities() ?: [];
 
             // Keep only entities matching ref SQL results
@@ -181,7 +181,7 @@ class QueryBuilder
 
         // Combined: need to intersect with brother-filtered set
         $factory = $this->buildFactory();
-        $factory->populateLocal(10000, 0, $this->orderDirection, $this->orderByRef);
+        $factory->populateLocal(null, 0, $this->orderDirection, $this->orderByRef);
         $allEntities = $factory->getEntities() ?: [];
         $refIdSet = array_flip($conceptIds);
 
@@ -263,6 +263,9 @@ class QueryBuilder
             $system
         );
 
+        // Propagate default limit
+        $factory->setDefaultLimit($this->originalFactory->getDefaultLimit());
+
         // Apply brother filters (SQL-level)
         foreach ($this->brotherClauses as $clause) {
             $factory->setFilter($clause->field, $clause->value, $clause->exclusion);
@@ -276,7 +279,7 @@ class QueryBuilder
      */
     private function executeQuery(EntityFactory $factory): array
     {
-        $limit = 10000;
+        $limit = null; // uses factory's defaultLimit
         $offset = 0;
 
         if ($this->limitValue !== null) {

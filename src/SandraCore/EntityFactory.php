@@ -208,10 +208,14 @@ class EntityFactory extends FactoryBase implements Dumpable
      * @param bool $numberSort If true, sort numerically instead of alphabetically
      * @return Entity[]|null The loaded entities
      */
-    public function populateLocal($limit = 10000, $offset = 0, $asc = 'ASC', $sortByRef = null, $numberSort = false)
+    public function populateLocal($limit = null, $offset = 0, $asc = 'ASC', $sortByRef = null, $numberSort = false)
     {
+        if ($limit === null) {
+            $limit = $this->defaultLimit;
+        }
+
         if ($this->cache !== null) {
-            $cacheKey = $this->getCacheKey((int)($limit ?? 10000), (int)($offset ?? 0), (string)($asc ?? 'ASC'), $sortByRef);
+            $cacheKey = $this->getCacheKey((int)$limit, (int)($offset ?? 0), (string)($asc ?? 'ASC'), $sortByRef);
             $cached = $this->cache->get($cacheKey);
             if ($cached !== null) {
                 $this->entityArray = $cached['entities'] ?? [];
