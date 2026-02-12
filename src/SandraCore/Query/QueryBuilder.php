@@ -61,9 +61,12 @@ class QueryBuilder
         return $this;
     }
 
-    public function where(string $field, mixed $value): self
+    public function where(string $field, mixed $operatorOrValue, mixed $value = null): self
     {
-        return $this->whereRef($field, '=', $value);
+        if ($value === null) {
+            return $this->whereRef($field, '=', $operatorOrValue);
+        }
+        return $this->whereRef($field, (string)$operatorOrValue, $value);
     }
 
     public function orderBy(string $ref, string $direction = 'ASC'): self

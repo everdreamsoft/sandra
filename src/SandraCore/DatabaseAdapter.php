@@ -535,7 +535,16 @@ class DatabaseAdapter
         $bindParamArray[':deletedFlag'] = [$deletedUNID, \PDO::PARAM_INT];
         $bindParamArray[':searchValue'] = $value;
 
-        $valueCondition = "value $operator :searchValue";
+        // For numeric comparison operators, CAST the varchar value column
+        $numericOperators = ['>', '>=', '<', '<='];
+        if (in_array($operator, $numericOperators, true)) {
+            $castCol = self::$driver !== null
+                ? self::$driver->getCastNumericSQL('value')
+                : 'CAST(value AS DECIMAL)';
+            $valueCondition = "$castCol $operator :searchValue";
+        } else {
+            $valueCondition = "value $operator :searchValue";
+        }
 
         $linkConceptSQL = '';
         if ($conceptLinkConcept !== '') {
