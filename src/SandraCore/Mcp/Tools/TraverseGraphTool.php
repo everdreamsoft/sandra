@@ -29,7 +29,7 @@ class TraverseGraphTool implements McpToolInterface
 
     public function description(): string
     {
-        return 'Traverse the graph from a starting entity following a verb link. Supports BFS, DFS, and ancestor (backward) traversal.';
+        return 'Traverse the graph from a starting entity following a verb link. Supports BFS, DFS, and ancestor (backward) traversal. Does NOT load the entire factory into memory.';
     }
 
     public function inputSchema(): array
@@ -82,15 +82,27 @@ class TraverseGraphTool implements McpToolInterface
         $direction = $args['direction'] ?? 'forward';
         $algorithm = $args['algorithm'] ?? 'bfs';
 
-        if (!$factory->isPopulated()) {
-            $factory->populateLocal();
+        // Use a fresh factory with a safety limit to avoid OOM on large factories.
+        // Traversal needs all connected entities in memory, but we cap the load.
+        $maxEntities = 5000;
+        $traverseFactory = new EntityFactory(
+            $factory->entityIsa,
+            $factory->entityContainedIn,
+            $this->system
+        );
+        $traverseFactory->populateLocal($maxEntities);
+        $traverseFactory->getTriplets();
+
+        $startEntity = null;
+        foreach ($traverseFactory->getEntities() as $e) {
+            if ((int)$e->subjectConcept->idConcept === $startId) {
+                $startEntity = $e;
+                break;
+            }
         }
 
-        $factory->getTriplets();
-
-        $startEntity = $this->findEntityById($factory, $startId);
         if ($startEntity === null) {
-            throw new \InvalidArgumentException("Entity with id $startId not found in factory '$name'");
+            throw new \InvalidArgumentException("Entity with id $startId not found in factory '$name' (loaded up to $maxEntities entities)");
         }
 
         $traverser = new GraphTraverser($this->system);
@@ -105,8 +117,7 @@ class TraverseGraphTool implements McpToolInterface
 
         $entities = [];
         foreach ($traversalResult->getEntities() as $entity) {
-            $serialized = EntitySerializer::serialize($entity);
-            $entities[] = $serialized;
+            $entities[] = EntitySerializer::serialize($entity);
         }
 
         return [
@@ -114,15 +125,5 @@ class TraverseGraphTool implements McpToolInterface
             'hasCycle' => $traversalResult->hasCycle(),
             'totalFound' => count($entities),
         ];
-    }
-
-    private function findEntityById(EntityFactory $factory, int $conceptId): ?Entity
-    {
-        foreach ($factory->getEntities() as $entity) {
-            if ((int)$entity->subjectConcept->idConcept === $conceptId) {
-                return $entity;
-            }
-        }
-        return null;
     }
 }

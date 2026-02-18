@@ -6,15 +6,18 @@ namespace SandraCore\Mcp\Tools;
 use SandraCore\Entity;
 use SandraCore\EntityFactory;
 use SandraCore\Mcp\McpToolInterface;
+use SandraCore\System;
 
 class LinkEntitiesTool implements McpToolInterface
 {
     /** @var array<string, array{factory: EntityFactory, options: array}> */
     private array $factories;
+    private System $system;
 
-    public function __construct(array &$factories)
+    public function __construct(array &$factories, System $system)
     {
         $this->factories = &$factories;
+        $this->system = $system;
     }
 
     public function name(): string
@@ -24,7 +27,7 @@ class LinkEntitiesTool implements McpToolInterface
 
     public function description(): string
     {
-        return 'Link a source entity to a target via a brother verb relationship.';
+        return 'Link a source entity to a target via a brother verb relationship. Does NOT load the entire factory into memory.';
     }
 
     public function inputSchema(): array
@@ -69,11 +72,23 @@ class LinkEntitiesTool implements McpToolInterface
         $target = $args['target'] ?? '';
         $refs = $args['refs'] ?? [];
 
-        if (!$factory->isPopulated()) {
-            $factory->populateLocal();
+        // Load only the source entity via a fresh factory with pre-set conceptArray
+        $singleFactory = new EntityFactory(
+            $factory->entityIsa,
+            $factory->entityContainedIn,
+            $this->system
+        );
+        $singleFactory->conceptArray = [$sourceId];
+        $singleFactory->populateLocal();
+
+        $entity = null;
+        foreach ($singleFactory->getEntities() as $e) {
+            if ((int)$e->subjectConcept->idConcept === $sourceId) {
+                $entity = $e;
+                break;
+            }
         }
 
-        $entity = $this->findEntityById($factory, $sourceId);
         if ($entity === null) {
             throw new \InvalidArgumentException("Entity with id $sourceId not found in factory '$name'");
         }
@@ -86,15 +101,5 @@ class LinkEntitiesTool implements McpToolInterface
             'verb' => $verb,
             'target' => $target,
         ];
-    }
-
-    private function findEntityById(EntityFactory $factory, int $conceptId): ?Entity
-    {
-        foreach ($factory->getEntities() as $entity) {
-            if ((int)$entity->subjectConcept->idConcept === $conceptId) {
-                return $entity;
-            }
-        }
-        return null;
     }
 }

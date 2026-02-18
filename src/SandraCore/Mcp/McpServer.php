@@ -74,12 +74,12 @@ class McpServer
         $this->tools = new ToolRegistry();
         $this->tools->register(new ListFactoriesTool($this->factories));
         $this->tools->register(new DescribeFactoryTool($this->factories));
-        $this->tools->register(new SearchEntitiesTool($this->factories));
-        $this->tools->register(new GetEntityTool($this->factories));
+        $this->tools->register(new SearchEntitiesTool($this->factories, $this->system));
+        $this->tools->register(new GetEntityTool($this->factories, $this->system));
         $this->tools->register(new TraverseGraphTool($this->factories, $this->system));
         $this->tools->register(new CreateEntityTool($this->factories));
-        $this->tools->register(new LinkEntitiesTool($this->factories));
-        $this->tools->register(new UpdateEntityTool($this->factories));
+        $this->tools->register(new LinkEntitiesTool($this->factories, $this->system));
+        $this->tools->register(new UpdateEntityTool($this->factories, $this->system));
     }
 
     /** Main STDIO loop — blocks until stdin closes */
@@ -98,7 +98,15 @@ class McpServer
                 $this->sendError(null, -32700, 'Parse error');
                 continue;
             }
-            $this->dispatch($msg);
+            try {
+                $this->dispatch($msg);
+            } catch (\Throwable $e) {
+                $id = $msg['id'] ?? null;
+                $this->log('FATAL: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+                if ($id !== null) {
+                    $this->sendError($id, -32603, 'Internal error: ' . $e->getMessage());
+                }
+            }
         }
     }
 

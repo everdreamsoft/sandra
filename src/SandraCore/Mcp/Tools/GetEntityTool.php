@@ -7,15 +7,18 @@ use SandraCore\Entity;
 use SandraCore\EntityFactory;
 use SandraCore\Mcp\EntitySerializer;
 use SandraCore\Mcp\McpToolInterface;
+use SandraCore\System;
 
 class GetEntityTool implements McpToolInterface
 {
     /** @var array<string, array{factory: EntityFactory, options: array}> */
     private array $factories;
+    private System $system;
 
-    public function __construct(array &$factories)
+    public function __construct(array &$factories, System $system)
     {
         $this->factories = &$factories;
+        $this->system = $system;
     }
 
     public function name(): string
@@ -25,7 +28,7 @@ class GetEntityTool implements McpToolInterface
 
     public function description(): string
     {
-        return 'Get a single entity by its concept ID from a factory, including refs, brothers, and joined entities.';
+        return 'Get a single entity by its concept ID from a factory, including refs, brothers, and joined entities. Does NOT load the entire factory into memory.';
     }
 
     public function inputSchema(): array
@@ -58,25 +61,27 @@ class GetEntityTool implements McpToolInterface
         $options = $entry['options'];
         $id = (int)($args['id'] ?? 0);
 
-        if (!$factory->isPopulated()) {
-            $factory->populateLocal();
+        // Load only this single entity via a fresh factory with pre-set conceptArray
+        $singleFactory = new EntityFactory(
+            $factory->entityIsa,
+            $factory->entityContainedIn,
+            $this->system
+        );
+        $singleFactory->conceptArray = [$id];
+        $singleFactory->populateLocal();
+
+        $entity = null;
+        foreach ($singleFactory->getEntities() as $e) {
+            if ((int)$e->subjectConcept->idConcept === $id) {
+                $entity = $e;
+                break;
+            }
         }
 
-        $entity = $this->findEntityById($factory, $id);
         if ($entity === null) {
             throw new \InvalidArgumentException("Entity with id $id not found in factory '$name'");
         }
 
         return EntitySerializer::serialize($entity, $options);
-    }
-
-    private function findEntityById(EntityFactory $factory, int $conceptId): ?Entity
-    {
-        foreach ($factory->getEntities() as $entity) {
-            if ((int)$entity->subjectConcept->idConcept === $conceptId) {
-                return $entity;
-            }
-        }
-        return null;
     }
 }
