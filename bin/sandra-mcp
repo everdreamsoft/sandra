@@ -1,0 +1,18 @@
+#!/usr/bin/env php
+<?php
+declare(strict_types=1);
+
+require __DIR__ . '/../vendor/autoload.php';
+
+$system = new \SandraCore\System(
+    getenv('SANDRA_ENV') ?: 'default',
+    (bool)(getenv('SANDRA_INSTALL') ?: false),
+    getenv('SANDRA_DB_HOST') ?: 'localhost',
+    getenv('SANDRA_DB_NAME') ?: 'sandra',
+    getenv('SANDRA_DB_USER') ?: 'root',
+    getenv('SANDRA_DB_PASS') ?: ''
+);
+
+$mcp = new \SandraCore\Mcp\McpServer($system);
+$mcp->discover();
+$mcp->run();

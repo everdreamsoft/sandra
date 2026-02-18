@@ -83,27 +83,27 @@ class ApiHandler
             return new ApiResponse(405, [], 'Read not allowed on this resource');
         }
 
-        // Ensure factory is populated
-        if (!$factory->isPopulated()) {
-            $factory->populateLocal();
-        }
+        $query = $request->getQuery();
 
-        if (!empty($options['joined'])) {
-            $factory->joinPopulate();
-        }
-
-        // Single entity by ID
+        // Single entity by ID — load only that concept
         if ($id !== null) {
+            $factory->conceptArray = [(int)$id];
+            $factory->populateLocal();
             $entity = $this->findEntityById($factory, (int)$id);
             if ($entity === null) {
                 return new ApiResponse(404, [], "Entity with id $id not found");
+            }
+            if (!empty($options['joined'])) {
+                $factory->joinPopulate();
             }
             return new ApiResponse(200, $this->serializeEntity($entity, $options));
         }
 
         // Search
-        $query = $request->getQuery();
         if (isset($query['search']) && !empty($options['searchable'])) {
+            if (!$factory->isPopulated()) {
+                $factory->populateLocal();
+            }
             return $this->handleSearch($factory, $options, $query['search'], $query);
         }
 
@@ -111,9 +111,21 @@ class ApiHandler
         $limit = isset($query['limit']) ? (int)$query['limit'] : 50;
         $offset = isset($query['offset']) ? (int)$query['offset'] : 0;
 
-        $entities = $factory->getEntities();
-        $total = count($entities);
-        $slice = array_slice(array_values($entities), $offset, $limit);
+        if ($factory->isPopulated()) {
+            // Factory already populated (e.g. by caller) — slice in memory
+            $entities = $factory->getEntities();
+            $total = count($entities);
+            $slice = array_slice(array_values($entities), $offset, $limit);
+        } else {
+            // Fresh factory — only load the requested page from DB
+            $total = $factory->countEntitiesOnRequest();
+            $factory->populateLocal($limit, $offset);
+            $slice = array_values($factory->getEntities());
+        }
+
+        if (!empty($options['joined'])) {
+            $factory->joinPopulate();
+        }
 
         $items = array_map(fn(Entity $e) => $this->serializeEntity($e, $options), $slice);
 

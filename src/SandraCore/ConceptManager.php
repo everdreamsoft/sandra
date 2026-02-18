@@ -451,10 +451,10 @@ class ConceptManager
 
             $filter = '';
             if ($idConceptLink > 0) {
-                $filter .= " AND y.idConceptLink = $idConceptLink ";
+                $filter .= " AND x.idConceptLink = $idConceptLink ";
             }
             if ($idConceptTarget > 0) {
-                $filter .= " AND y.idConceptTarget = $idConceptTarget ";
+                $filter .= " AND x.idConceptTarget = $idConceptTarget ";
             }
 
             $flag = '';
@@ -466,10 +466,8 @@ class ConceptManager
   FROM `$this->tableReference` r
   JOIN  $this->tableLink x
     ON x.id = r.linkreferenced
-  JOIN  $this->tableLink y
-    ON y.id = r.linkReferenced 
-  $joinSorter $refsFilter $sorterWhere 
-   AND y.$masterCondition IN ($concepts) 
+  $joinSorter $refsFilter $sorterWhere
+   AND x.$masterCondition IN ($concepts)
    $filter " . $flag . $orderBy;
 
             $start = microtime(true);

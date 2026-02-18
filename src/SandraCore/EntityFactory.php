@@ -951,28 +951,32 @@ class EntityFactory extends FactoryBase implements Dumpable
             throw new SandraException('Entity creation cancelled by event listener');
         }
 
-        $conceptId = DatabaseAdapter::rawCreateConcept("A " . $this->entityIsa, $this->system, false);
+        // Begin a single transaction for all sub-operations
+        $pdo = $this->system->getConnection();
+        TransactionManager::begin($pdo);
+
+        $conceptId = DatabaseAdapter::rawCreateConcept("A " . $this->entityIsa, $this->system);
         $addedRefMap = array();
 
         $addedReferenceMap = array();
 
         if ($this->entityIsa) {
 
-            DatabaseAdapter::rawCreateTriplet($conceptId, $this->sc->get('is_a'), $this->sc->get($this->entityIsa), $this->system, false);
+            DatabaseAdapter::rawCreateTriplet($conceptId, $this->sc->get('is_a'), $this->sc->get($this->entityIsa), $this->system);
         }
 
         $entityReferenceContainer = $this->sc->get($this->entityReferenceContainer);
-        $link = DatabaseAdapter::rawCreateTriplet($conceptId, $entityReferenceContainer, $this->sc->get($this->entityContainedIn), $this->system,0,false);
+        $link = DatabaseAdapter::rawCreateTriplet($conceptId, $entityReferenceContainer, $this->sc->get($this->entityContainedIn), $this->system);
 
         if (isset($_GET['trigger'])) {
-            DatabaseAdapter::rawCreateReference($this->sc->get('calledByTrigger'), $link, $_GET['trigger'], $this->system,false);
+            DatabaseAdapter::rawCreateReference($this->sc->get('calledByTrigger'), $link, $_GET['trigger'], $this->system);
         }
 
         if (isset($userUNID)) {
-            DatabaseAdapter::rawCreateReference($link, $this->sc->get('creator'), $userUNID, $this->system,false);
+            DatabaseAdapter::rawCreateReference($link, $this->sc->get('creator'), $userUNID, $this->system);
         }
 
-        DatabaseAdapter::rawCreateReference($link, $this->sc->get('creationTimestamp'), time(), $this->system, false);
+        DatabaseAdapter::rawCreateReference($link, $this->sc->get('creationTimestamp'), time(), $this->system);
 
         //each reference
         foreach ($dataArray as $key => $value) {
@@ -986,7 +990,7 @@ class EntityFactory extends FactoryBase implements Dumpable
                 $value = $value->refValue ;
             }
 
-            DatabaseAdapter::rawCreateReference($link, $key, $value, $this->system,false);
+            DatabaseAdapter::rawCreateReference($link, $key, $value, $this->system);
             $addedRefMap[$key] = $value ;
             $addedReferenceMap[$key] = $this->system->conceptFactory->getConceptFromId($key) ;
         }
@@ -1026,13 +1030,13 @@ class EntityFactory extends FactoryBase implements Dumpable
                         $targetName = $targetNameOrArray->subjectConcept->idConcept ;
                     }
 
-                    $linkId = DatabaseAdapter::rawCreateTriplet($conceptId, $this->sc->get($verb), $this->sc->get($targetName), $this->system,false);
+                    $linkId = DatabaseAdapter::rawCreateTriplet($conceptId, $this->sc->get($verb), $this->sc->get($targetName), $this->system);
 
 
                     //Now we will add reference on additional links if any
                     if (!empty($extraRef)) {
                         foreach ($extraRef as $refname => $refValue) {
-                            DatabaseAdapter::rawCreateReference($linkId, $this->sc->get($refname), $refValue, $this->system, false);
+                            DatabaseAdapter::rawCreateReference($linkId, $this->sc->get($refname), $refValue, $this->system);
 
                         }
                     }
@@ -1043,9 +1047,11 @@ class EntityFactory extends FactoryBase implements Dumpable
         $conceptContainedIn = $this->system->conceptFactory->getConceptFromId($this->sc->get($this->entityContainedIn));
         $conceptContainerConcept = $this->system->conceptFactory->getConceptFromId($this->sc->get($this->entityReferenceContainer));
 
-        if ($autocommit) {
-            DatabaseAdapter::commit();
-        }
+        // Always commit to balance the begin() at the top of createNew().
+        // TransactionManager handles nesting: if a caller wraps multiple createNew()
+        // calls in their own begin/commit, this commit just decrements depth.
+        // Only the outermost commit actually fires PDO::commit().
+        TransactionManager::commit();
 
 
         $classname = $this->generatedEntityClass;
