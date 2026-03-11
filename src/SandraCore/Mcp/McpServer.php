@@ -20,6 +20,7 @@ use SandraCore\Mcp\Tools\CreateConceptTool;
 use SandraCore\Mcp\Tools\CreateTripletTool;
 use SandraCore\Mcp\Tools\CreateFactoryTool;
 use SandraCore\Mcp\Tools\DeleteTripletTool;
+use SandraCore\Mcp\Tools\BatchTool;
 use SandraCore\Mcp\Tools\FindConceptTool;
 use SandraCore\Mcp\Tools\ListConceptsTool;
 use SandraCore\System;
@@ -33,6 +34,10 @@ class McpServer
     private bool $discovered = false;
     private bool $pendingDiscover = false;
     private ?string $logFile = null;
+
+    /** Track calls since last system refresh to avoid unnecessary bootFreshSystem */
+    private int $callsSinceBoot = 0;
+    private const CALLS_BEFORE_REFRESH = 5;
 
     /** @var array<string, array{factory: EntityFactory, options: array}> */
     private array $factories = [];
@@ -113,6 +118,11 @@ Example — tagging system:
 - Cities (Berlin, Geneva, Tokyo) → entity factory "city" with refs (name, country, ...), then triplet: Entity → tag → city_entity.
 - Priorities (urgent, important) → system concepts, then triplet: Entity → tag → urgent.
 
+## Batch operations
+When creating multiple items, always prefer `sandra_batch` over repeated single calls.
+It accepts concepts, entities and triplets arrays in one call. Use "$concept.N" or "$entity.N"
+to reference items created earlier in the same batch (N = zero-based index in the array).
+
 Always search before creating. Concepts and entities may already exist.
 INSTRUCTIONS;
     }
@@ -176,6 +186,7 @@ INSTRUCTIONS;
             $this->register($name, $factory);
         }
         $this->boot();
+        $this->callsSinceBoot = 0;
     }
 
     /** Boot all tools with the current system. */
@@ -208,6 +219,7 @@ INSTRUCTIONS;
         $this->tools->register(new DeleteTripletTool($system));
         $this->tools->register(new FindConceptTool($system));
         $this->tools->register(new ListConceptsTool($system));
+        $this->tools->register(new BatchTool($this->factories, $this->factoryMeta, $system));
     }
 
     /** Rebuild factories and tools with a fresh System instance */
@@ -228,6 +240,7 @@ INSTRUCTIONS;
         }
 
         $this->boot();
+        $this->callsSinceBoot = 0;
         $memAfter = memory_get_usage(true);
         $this->log('   bootFreshSystem: done (' . count($this->factoryMeta) . ' factories, memory: ' . round($memBefore / 1024 / 1024, 1) . 'MB -> ' . round($memAfter / 1024 / 1024, 1) . 'MB)');
     }
@@ -300,12 +313,11 @@ INSTRUCTIONS;
 
         // Notifications (no id) that we handle silently
         if ($id === null && in_array($method, ['notifications/initialized'], true)) {
+            // Eager discover: run immediately after handshake so tools/list responds instantly
+            if ($this->pendingDiscover && !$this->discovered) {
+                $this->doDiscover();
+            }
             return null;
-        }
-
-        // Lazy discover: run after handshake, before any tool operation
-        if ($this->pendingDiscover && !$this->discovered && $method !== 'initialize' && $method !== 'notifications/initialized') {
-            $this->doDiscover();
         }
 
         return match ($method) {
@@ -366,16 +378,26 @@ INSTRUCTIONS;
         $arguments = $params['arguments'] ?? [];
         $this->log("   tool=$name args=" . json_encode($arguments, JSON_UNESCAPED_UNICODE));
 
-        // Create a fresh System for this call to avoid memory accumulation
-        if ($this->systemFactory !== null) {
-            $this->bootFreshSystem();
+        // Ensure system is booted (lazy discover if needed for one-shot patterns
+        // where tools/call arrives before tools/list)
+        if ($this->pendingDiscover && !$this->discovered) {
+            $this->doDiscover();
         }
+
+        // Refresh system periodically to prevent memory accumulation,
+        // but skip when system is still fresh (saves ~30ms per call in one-shot mode)
+        if ($this->systemFactory !== null && $this->callsSinceBoot >= self::CALLS_BEFORE_REFRESH) {
+            $this->bootFreshSystem();
+            $this->callsSinceBoot = 0;
+        }
+
+        $this->callsSinceBoot++;
 
         $t0 = microtime(true);
         try {
             $result = $this->tools->call($name, $arguments);
             $elapsed = round((microtime(true) - $t0) * 1000);
-            $this->log("   tool=$name completed in {$elapsed}ms");
+            $this->log("   tool=$name completed in {$elapsed}ms (call #{$this->callsSinceBoot})");
             return $this->buildResult($id, [
                 'content' => [['type' => 'text', 'text' => json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)]],
             ]);
