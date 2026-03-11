@@ -45,6 +45,8 @@ class McpServer
         'joined' => [],
     ];
 
+    private ?string $instructions = null;
+
     /**
      * @param System $system Initial system for discovery/registration
      * @param \Closure|null $systemFactory Optional closure that returns a fresh System for each tool call
@@ -56,6 +58,63 @@ class McpServer
         $this->systemFactory = $systemFactory;
         $this->logFile = $logFile;
         $this->tools = new ToolRegistry();
+    }
+
+    /**
+     * Set custom instructions sent to the agent on connection (like a system prompt).
+     * If not set, default Sandra instructions are used.
+     */
+    public function setInstructions(string $instructions): self
+    {
+        $this->instructions = $instructions;
+        return $this;
+    }
+
+    /** Get the instructions string (default or custom) */
+    private function getInstructions(): string
+    {
+        if ($this->instructions !== null) {
+            return $this->instructions;
+        }
+
+        return <<<'INSTRUCTIONS'
+Sandra is a semantic graph database. Data is organized in two layers:
+
+## System Concepts
+Abstract vocabulary shared across the system (e.g. "healthy", "is_a", "friend").
+Each concept has a unique ID and shortname. They serve as verbs and targets in the graph.
+
+## Entities
+Tabular data (e.g. clients, products, animals) managed by factories.
+Each entity has two kinds of data:
+- **References**: short key-value fields (name, email, price...) — structured, searchable.
+- **Data storage**: a single long text field per entity (MEDIUMTEXT) for rich content like descriptions, notes, HTML, JSON, markdown, logs, etc. Not searchable but ideal for storing large text.
+
+Use `include_storage: true` on get/search/list to retrieve it. Use the `storage` field on create/update to write it.
+
+## How they connect
+Triplets link everything: Entity(Alice) → verb(healthy) → target(concept).
+Both entities and concepts live in the same graph and share concept IDs.
+
+## Search workflow
+1. Use `sandra_search` to find anything — results are tagged `type: "entity"` or `type: "system_concept"`
+2. Use `sandra_get_triplets` with a concept ID to see all its relationships
+3. Use `sandra_list_concepts` to browse/paginate the full concept vocabulary
+4. Use `sandra_list_factories` to discover what entity types exist
+
+## When to create a System Concept vs an Entity Factory
+- **System concept**: for abstract, universal labels that the system uses as vocabulary — things any system could agree on. Examples: "urgent", "important", "personal", "social", "healthy", "archived". These are lightweight (just a shortname + ID in memory). Use them as verbs or tags in triplets.
+- **Entity factory**: for tabular, data-rich collections that will hold many entries with structured fields. Examples: a "city" factory with refs like name, country, population; a "product" factory with refs like name, price, sku.
+
+Rule of thumb: if it has its own data fields (name, description, etc.) and you expect many instances → entity factory. If it is a universal qualifier/label with no data of its own → system concept.
+
+Example — tagging system:
+- Create concept "tag" as the verb.
+- Cities (Berlin, Geneva, Tokyo) → entity factory "city" with refs (name, country, ...), then triplet: Entity → tag → city_entity.
+- Priorities (urgent, important) → system concepts, then triplet: Entity → tag → urgent.
+
+Always search before creating. Concepts and entities may already exist.
+INSTRUCTIONS;
     }
 
     /** Get or create the System instance (lazy initialization) */
@@ -292,6 +351,7 @@ class McpServer
                 'name' => 'sandra-mcp',
                 'version' => '1.0.0',
             ],
+            'instructions' => $this->getInstructions(),
         ]);
     }
 
