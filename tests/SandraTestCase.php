@@ -22,10 +22,18 @@ abstract class SandraTestCase extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $dbHost = getenv('SANDRA_DB_HOST') ?: '127.0.0.1';
+        $db = getenv('SANDRA_DB') ?: 'sandra';
+        $dbUser = getenv('SANDRA_DB_USER') ?: 'root';
+        $dbPass = ($v = getenv('SANDRA_DB_PASS')) !== false ? $v : '';
 
-        $flusher = new System('phpUnit_', true);
+        $flusher = new System('phpUnit_', true, $dbHost, $db, $dbUser, $dbPass);
         Setup::flushDatagraph($flusher);
-        $this->system = new System('phpUnit_', true);
+        // Reset static PDO so fresh System gets a new connection
+        $ref = new \ReflectionProperty(System::class, 'pdo');
+        $ref->setAccessible(true);
+        $ref->setValue(null, null);
+        $this->system = new System('phpUnit_', true, $dbHost, $db, $dbUser, $dbPass);
     }
 
     /**

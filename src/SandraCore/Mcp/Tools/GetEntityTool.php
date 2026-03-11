@@ -44,6 +44,15 @@ class GetEntityTool implements McpToolInterface
                     'type' => 'integer',
                     'description' => 'The concept ID of the entity',
                 ],
+                'fields' => [
+                    'type' => 'array',
+                    'items' => ['type' => 'string'],
+                    'description' => 'Optional: list of ref field names to include. If omitted, all fields are returned.',
+                ],
+                'include_storage' => [
+                    'type' => 'boolean',
+                    'description' => 'If true, include the entity data storage (long text content). Default false.',
+                ],
             ],
             'required' => ['factory', 'id'],
         ];
@@ -60,6 +69,14 @@ class GetEntityTool implements McpToolInterface
         $factory = $entry['factory'];
         $options = $entry['options'];
         $id = (int)($args['id'] ?? 0);
+
+        $fields = $args['fields'] ?? null;
+        if ($fields !== null) {
+            $options['fields'] = $fields;
+        }
+        if (!empty($args['include_storage'])) {
+            $options['include_storage'] = true;
+        }
 
         // Load only this single entity via a fresh factory with pre-set conceptArray
         $singleFactory = new EntityFactory(

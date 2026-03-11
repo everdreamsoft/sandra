@@ -15,10 +15,12 @@ use SandraCore\System;
 class FactoryDiscovery
 {
     private System $system;
+    private ?string $logFile;
 
-    public function __construct(System $system)
+    public function __construct(System $system, ?string $logFile = null)
     {
         $this->system = $system;
+        $this->logFile = $logFile;
     }
 
     /**
@@ -97,6 +99,11 @@ class FactoryDiscovery
 
     private function log(string $message): void
     {
-        fwrite(STDERR, "[sandra-mcp] $message\n");
+        $line = "[sandra-mcp] $message\n";
+        if ($this->logFile !== null) {
+            file_put_contents($this->logFile, date('Y-m-d H:i:s') . ' ' . $line, FILE_APPEND);
+        } else {
+            fwrite(STDERR, $line);
+        }
     }
 }

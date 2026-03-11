@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "sandra": {
+      "command": "/opt/homebrew/bin/php",
+      "args": [
+        "-d", "xdebug.mode=off",
+        "-d", "display_errors=Off",
+        "-d", "log_errors=Off",
+        "/Users/shabanshaame/htdocs/sandra/bin/mcp-server.php"
+      ],
+      "env": {
+        "SANDRA_ENV": "mcp_",
+        "SANDRA_DB_HOST": "127.0.0.1",
+        "SANDRA_DB": "sandra",
+        "SANDRA_DB_USER": "root",
+        "SANDRA_DB_PASS": "",
+        "SANDRA_INSTALL": "1",
+        "SANDRA_MCP_LOG": "/tmp/sandra-mcp.log"
+      }
+    }
+  }
+}

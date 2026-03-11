@@ -44,20 +44,23 @@ class CommonFunctions
         $verbConceptId = self::somethingToConceptId($verb,$system);
         $targetConceptId = self::somethingToConceptId($target,$system);
 
-       $entityId = DatabaseAdapter::rawCreateTriplet($subjectConceptId,$verbConceptId,$targetConceptId,$system,$updateOnExistingVerb,false);
+       // Start a single transaction for the whole entity creation
+       $pdo = $system->getConnection();
+       TransactionManager::begin($pdo);
+
+       $entityId = DatabaseAdapter::rawCreateTriplet($subjectConceptId,$verbConceptId,$targetConceptId,$system,$updateOnExistingVerb,true);
 
        if (is_array($referenceArray)) {
            foreach ($referenceArray as $key => $value) {
 
                $conceptId = self::somethingToConceptId($key, $system);
-               DatabaseAdapter::rawCreateReference($entityId, $conceptId, $value, $system, false);
+               DatabaseAdapter::rawCreateReference($entityId, $conceptId, $value, $system, true);
            }
        }
-        DatabaseAdapter::rawCreateReference($entityId, $system->systemConcept->get('creationTimestamp'), time(), $system, false);
+        DatabaseAdapter::rawCreateReference($entityId, $system->systemConcept->get('creationTimestamp'), time(), $system, true);
 
        if($autocommit){
-           DatabaseAdapter::commit();
-
+           TransactionManager::commit();
        }
 
         return new Entity($subject,$referenceArray,$factory,$entityId,$verb,$target,$system);

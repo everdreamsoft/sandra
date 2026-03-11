@@ -48,8 +48,12 @@ class UpdateEntityTool implements McpToolInterface
                     'type' => 'object',
                     'description' => 'Key-value pairs of reference data to update',
                 ],
+                'storage' => [
+                    'type' => 'string',
+                    'description' => 'Optional: update the long text content (data storage) for this entity.',
+                ],
             ],
-            'required' => ['factory', 'id', 'refs'],
+            'required' => ['factory', 'id'],
         ];
     }
 
@@ -85,8 +89,16 @@ class UpdateEntityTool implements McpToolInterface
             throw new \InvalidArgumentException("Entity with id $id not found in factory '$name'");
         }
 
-        $singleFactory->update($entity, $refs);
+        if (!empty($refs)) {
+            $singleFactory->update($entity, $refs);
+        }
 
-        return EntitySerializer::serialize($entity);
+        $storage = $args['storage'] ?? null;
+        if ($storage !== null) {
+            $entity->setStorage($storage);
+        }
+
+        $serializeOptions = $storage !== null ? ['include_storage' => true] : [];
+        return EntitySerializer::serialize($entity, $serializeOptions);
     }
 }

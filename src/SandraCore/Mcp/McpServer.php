@@ -12,26 +12,59 @@ use SandraCore\Mcp\Tools\TraverseGraphTool;
 use SandraCore\Mcp\Tools\CreateEntityTool;
 use SandraCore\Mcp\Tools\LinkEntitiesTool;
 use SandraCore\Mcp\Tools\UpdateEntityTool;
+use SandraCore\Mcp\Tools\GetTripletsTool;
+use SandraCore\Mcp\Tools\GetReferencesTool;
+use SandraCore\Mcp\Tools\ListEntitiesTool;
+use SandraCore\Mcp\Tools\GetSchemaTool;
+use SandraCore\Mcp\Tools\CreateConceptTool;
+use SandraCore\Mcp\Tools\CreateTripletTool;
+use SandraCore\Mcp\Tools\CreateFactoryTool;
+use SandraCore\Mcp\Tools\DeleteTripletTool;
+use SandraCore\Mcp\Tools\FindConceptTool;
+use SandraCore\Mcp\Tools\ListConceptsTool;
 use SandraCore\System;
 
 class McpServer
 {
-    private System $system;
+    private ?System $system;
+    private ?\Closure $systemFactory;
     private ToolRegistry $tools;
     private bool $initialized = false;
+    private bool $discovered = false;
+    private bool $pendingDiscover = false;
+    private ?string $logFile = null;
 
     /** @var array<string, array{factory: EntityFactory, options: array}> */
     private array $factories = [];
+
+    /** @var array<string, array{isa: string, cif: string, options: array}> Factory metadata (lightweight, no System ref) */
+    private array $factoryMeta = [];
 
     private static array $defaultOptions = [
         'brothers' => [],
         'joined' => [],
     ];
 
-    public function __construct(System $system)
+    /**
+     * @param System $system Initial system for discovery/registration
+     * @param \Closure|null $systemFactory Optional closure that returns a fresh System for each tool call
+     * @param string|null $logFile Optional file path for persistent logging
+     */
+    public function __construct(?System $system = null, ?\Closure $systemFactory = null, ?string $logFile = null)
     {
         $this->system = $system;
+        $this->systemFactory = $systemFactory;
+        $this->logFile = $logFile;
         $this->tools = new ToolRegistry();
+    }
+
+    /** Get or create the System instance (lazy initialization) */
+    private function getSystem(): System
+    {
+        if ($this->system === null && $this->systemFactory !== null) {
+            $this->system = ($this->systemFactory)();
+        }
+        return $this->system;
     }
 
     /** Register a factory by name (like ApiHandler::register) */
@@ -40,6 +73,12 @@ class McpServer
         $mergedOptions = array_merge(self::$defaultOptions, $options);
         $this->factories[$name] = [
             'factory' => $factory,
+            'options' => $mergedOptions,
+        ];
+        // Store lightweight metadata for rebuilding factories with a fresh System
+        $this->factoryMeta[$name] = [
+            'isa' => $factory->entityIsa,
+            'cif' => $factory->entityContainedIn,
             'options' => $mergedOptions,
         ];
         return $this;
@@ -61,32 +100,105 @@ class McpServer
      */
     public function discover(): self
     {
-        $discovery = new FactoryDiscovery($this->system);
-        foreach ($discovery->discover() as $name => $factory) {
-            $this->register($name, $factory);
-        }
+        $this->pendingDiscover = true;
         return $this;
     }
 
-    /** Boot all tools. Call after all factories are registered. */
+    /** Actually run discovery (called lazily after initialize handshake) */
+    private function doDiscover(): void
+    {
+        if ($this->discovered) {
+            return;
+        }
+        $this->discovered = true;
+        $system = $this->getSystem();
+        $discovery = new FactoryDiscovery($system, $this->logFile);
+        foreach ($discovery->discover() as $name => $factory) {
+            $this->register($name, $factory);
+        }
+        $this->boot();
+    }
+
+    /** Boot all tools with the current system. */
     public function boot(): void
     {
+        // If discover() was called but hasn't run yet, run it now
+        // (doDiscover calls boot() internally, so we return after)
+        if ($this->pendingDiscover && !$this->discovered) {
+            $this->doDiscover();
+            return;
+        }
+
+        $system = $this->getSystem();
         $this->tools = new ToolRegistry();
+        $this->tools->register(new GetSchemaTool($this->factories, $system));
         $this->tools->register(new ListFactoriesTool($this->factories));
-        $this->tools->register(new DescribeFactoryTool($this->factories));
-        $this->tools->register(new SearchEntitiesTool($this->factories, $this->system));
-        $this->tools->register(new GetEntityTool($this->factories, $this->system));
-        $this->tools->register(new TraverseGraphTool($this->factories, $this->system));
-        $this->tools->register(new CreateEntityTool($this->factories));
-        $this->tools->register(new LinkEntitiesTool($this->factories, $this->system));
-        $this->tools->register(new UpdateEntityTool($this->factories, $this->system));
+        $this->tools->register(new DescribeFactoryTool($this->factories, $system));
+        $this->tools->register(new ListEntitiesTool($this->factories, $system));
+        $this->tools->register(new SearchEntitiesTool($this->factories, $system));
+        $this->tools->register(new GetEntityTool($this->factories, $system));
+        $this->tools->register(new TraverseGraphTool($this->factories, $system));
+        $this->tools->register(new CreateEntityTool($this->factories, $this->factoryMeta, $system));
+        $this->tools->register(new LinkEntitiesTool($this->factories, $system));
+        $this->tools->register(new UpdateEntityTool($this->factories, $system));
+        $this->tools->register(new GetTripletsTool($system));
+        $this->tools->register(new GetReferencesTool($system));
+        $this->tools->register(new CreateConceptTool($system));
+        $this->tools->register(new CreateTripletTool($system));
+        $this->tools->register(new CreateFactoryTool($this->factories, $this->factoryMeta, $system));
+        $this->tools->register(new DeleteTripletTool($system));
+        $this->tools->register(new FindConceptTool($system));
+        $this->tools->register(new ListConceptsTool($system));
+    }
+
+    /** Rebuild factories and tools with a fresh System instance */
+    private function bootFreshSystem(): void
+    {
+        $memBefore = memory_get_usage(true);
+        $this->log('   bootFreshSystem: creating new System...');
+        $this->system = ($this->systemFactory)();
+
+        // Rebuild factory instances with the fresh System
+        $this->factories = [];
+        foreach ($this->factoryMeta as $name => $meta) {
+            $factory = new EntityFactory($meta['isa'], $meta['cif'], $this->system);
+            $this->factories[$name] = [
+                'factory' => $factory,
+                'options' => $meta['options'],
+            ];
+        }
+
+        $this->boot();
+        $memAfter = memory_get_usage(true);
+        $this->log('   bootFreshSystem: done (' . count($this->factoryMeta) . ' factories, memory: ' . round($memBefore / 1024 / 1024, 1) . 'MB -> ' . round($memAfter / 1024 / 1024, 1) . 'MB)');
     }
 
     /** Main STDIO loop — blocks until stdin closes */
     public function run(): void
     {
-        $this->boot();
-        $this->log('Server started, waiting for input...');
+        // Reserve memory for OOM error handling
+        $reservedMemory = str_repeat('x', 1024 * 1024);
+        $logFile = $this->logFile;
+        register_shutdown_function(function () use (&$reservedMemory, $logFile) {
+            $reservedMemory = null; // free reserve so we can log
+            $error = error_get_last();
+            if ($error !== null && ($error['type'] & (E_ERROR | E_CORE_ERROR | E_COMPILE_ERROR))) {
+                $msg = "[sandra-mcp] FATAL SHUTDOWN: {$error['message']} in {$error['file']}:{$error['line']}\n";
+                fwrite(STDERR, $msg);
+                if ($logFile) {
+                    file_put_contents($logFile, date('Y-m-d H:i:s') . ' ' . $msg, FILE_APPEND);
+                }
+            }
+        });
+
+        if (!$this->pendingDiscover) {
+            $this->boot();
+        }
+
+        // Ensure STDIN blocks indefinitely waiting for input
+        stream_set_blocking(STDIN, true);
+
+        $this->log('Server started, waiting for input... (memory: ' . round(memory_get_usage(true) / 1024 / 1024, 1) . 'MB)');
 
         while (($line = fgets(STDIN)) !== false) {
             $line = trim($line);
@@ -95,19 +207,30 @@ class McpServer
             }
             $msg = json_decode($line, true);
             if (!is_array($msg)) {
+                $this->log('PARSE ERROR: ' . substr($line, 0, 200));
                 $this->sendError(null, -32700, 'Parse error');
                 continue;
             }
+
+            $method = $msg['method'] ?? '?';
+            $id = $msg['id'] ?? null;
+            $toolName = ($method === 'tools/call') ? ($msg['params']['name'] ?? '?') : '';
+            $this->log(">> RECV raw: " . substr($line, 0, 300));
+            $this->log(">> RECV id=$id method=$method" . ($toolName ? " tool=$toolName" : ''));
+
             try {
                 $this->dispatch($msg);
+                $this->log("<< SENT id=$id method=$method OK (memory: " . round(memory_get_usage(true) / 1024 / 1024, 1) . 'MB)');
             } catch (\Throwable $e) {
-                $id = $msg['id'] ?? null;
-                $this->log('FATAL: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+                $this->log("!! ERROR id=$id: " . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+                $this->log("   Trace: " . $e->getTraceAsString());
                 if ($id !== null) {
                     $this->sendError($id, -32603, 'Internal error: ' . $e->getMessage());
                 }
             }
         }
+
+        $this->log('STDIN closed, server exiting.');
     }
 
     /** Dispatch a single JSON-RPC message (for testing without STDIO) */
@@ -119,6 +242,11 @@ class McpServer
         // Notifications (no id) that we handle silently
         if ($id === null && in_array($method, ['notifications/initialized'], true)) {
             return null;
+        }
+
+        // Lazy discover: run after handshake, before any tool operation
+        if ($this->pendingDiscover && !$this->discovered && $method !== 'initialize' && $method !== 'notifications/initialized') {
+            $this->doDiscover();
         }
 
         return match ($method) {
@@ -144,8 +272,21 @@ class McpServer
     private function buildInitializeResult($id, array $params): array
     {
         $this->initialized = true;
+        $clientVersion = $params['protocolVersion'] ?? '2024-11-05';
+        $this->log("   Client requested protocolVersion=$clientVersion");
+
+        // Negotiate protocol version: respond with the latest we actually support
+        $supportedVersions = ['2024-11-05', '2024-12-03', '2025-03-26', '2025-06-18', '2025-11-25'];
+        $negotiatedVersion = '2024-11-05';
+        foreach ($supportedVersions as $v) {
+            if ($v <= $clientVersion) {
+                $negotiatedVersion = $v;
+            }
+        }
+        $this->log("   Negotiated protocolVersion=$negotiatedVersion");
+
         return $this->buildResult($id, [
-            'protocolVersion' => '2025-11-25',
+            'protocolVersion' => $negotiatedVersion,
             'capabilities' => ['tools' => new \stdClass()],
             'serverInfo' => [
                 'name' => 'sandra-mcp',
@@ -163,16 +304,30 @@ class McpServer
     {
         $name = $params['name'] ?? '';
         $arguments = $params['arguments'] ?? [];
+        $this->log("   tool=$name args=" . json_encode($arguments, JSON_UNESCAPED_UNICODE));
+
+        // Create a fresh System for this call to avoid memory accumulation
+        if ($this->systemFactory !== null) {
+            $this->bootFreshSystem();
+        }
+
+        $t0 = microtime(true);
         try {
             $result = $this->tools->call($name, $arguments);
+            $elapsed = round((microtime(true) - $t0) * 1000);
+            $this->log("   tool=$name completed in {$elapsed}ms");
             return $this->buildResult($id, [
                 'content' => [['type' => 'text', 'text' => json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)]],
             ]);
         } catch (\Throwable $e) {
+            $elapsed = round((microtime(true) - $t0) * 1000);
+            $this->log("   tool=$name FAILED in {$elapsed}ms: " . $e->getMessage());
             return $this->buildResult($id, [
                 'content' => [['type' => 'text', 'text' => 'Error: ' . $e->getMessage()]],
                 'isError' => true,
             ]);
+        } finally {
+            gc_collect_cycles();
         }
     }
 
@@ -193,13 +348,20 @@ class McpServer
 
     private function send(array $msg): void
     {
-        fwrite(STDOUT, json_encode($msg, JSON_UNESCAPED_UNICODE) . "\n");
+        $json = json_encode($msg, JSON_UNESCAPED_UNICODE);
+        $this->log("   >> SEND: $json");
+        fwrite(STDOUT, $json . "\n");
         fflush(STDOUT);
     }
 
     private function log(string $message): void
     {
-        fwrite(STDERR, "[sandra-mcp] $message\n");
+        $line = "[sandra-mcp] $message\n";
+        if ($this->logFile !== null) {
+            file_put_contents($this->logFile, date('Y-m-d H:i:s') . ' ' . $line, FILE_APPEND);
+        } else {
+            fwrite(STDERR, $line);
+        }
     }
 
     /** Expose the tool registry for testing */

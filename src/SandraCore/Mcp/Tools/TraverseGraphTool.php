@@ -63,6 +63,11 @@ class TraverseGraphTool implements McpToolInterface
                     'enum' => ['bfs', 'dfs'],
                     'description' => 'Traversal algorithm (default bfs)',
                 ],
+                'fields' => [
+                    'type' => 'array',
+                    'items' => ['type' => 'string'],
+                    'description' => 'Optional: list of ref field names to include. If omitted, all fields are returned.',
+                ],
             ],
             'required' => ['factory', 'startId', 'verb'],
         ];
@@ -115,9 +120,12 @@ class TraverseGraphTool implements McpToolInterface
             $traversalResult = $traverser->bfs($startEntity, $verb, $depth);
         }
 
+        $fields = $args['fields'] ?? null;
+        $serializeOptions = $fields !== null ? ['fields' => $fields] : [];
+
         $entities = [];
         foreach ($traversalResult->getEntities() as $entity) {
-            $entities[] = EntitySerializer::serialize($entity);
+            $entities[] = EntitySerializer::serialize($entity, $serializeOptions);
         }
 
         return [

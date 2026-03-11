@@ -6,15 +6,21 @@ namespace SandraCore\Mcp\Tools;
 use SandraCore\EntityFactory;
 use SandraCore\Mcp\EntitySerializer;
 use SandraCore\Mcp\McpToolInterface;
+use SandraCore\System;
 
 class CreateEntityTool implements McpToolInterface
 {
     /** @var array<string, array{factory: EntityFactory, options: array}> */
     private array $factories;
+    /** @var array<string, array{isa: string, cif: string, options: array}> */
+    private array $factoryMeta;
+    private System $system;
 
-    public function __construct(array &$factories)
+    public function __construct(array &$factories, array &$factoryMeta, System $system)
     {
         $this->factories = &$factories;
+        $this->factoryMeta = &$factoryMeta;
+        $this->system = $system;
     }
 
     public function name(): string
@@ -34,11 +40,19 @@ class CreateEntityTool implements McpToolInterface
             'properties' => [
                 'factory' => [
                     'type' => 'string',
-                    'description' => 'The registered factory name',
+                    'description' => 'The factory name (is_a). If it does not exist yet, it will be created automatically.',
+                ],
+                'contained_in_file' => [
+                    'type' => 'string',
+                    'description' => 'Optional contained_in_file name. Defaults to "<factory>_file" if omitted.',
                 ],
                 'refs' => [
                     'type' => 'object',
                     'description' => 'Key-value pairs of reference data (e.g. {"name": "Fido", "breed": "Lab"})',
+                ],
+                'storage' => [
+                    'type' => 'string',
+                    'description' => 'Optional: long text content to store (e.g. article body, description, HTML). Stored separately from refs.',
                 ],
             ],
             'required' => ['factory', 'refs'],
@@ -48,15 +62,32 @@ class CreateEntityTool implements McpToolInterface
     public function execute(array $args): mixed
     {
         $name = $args['factory'] ?? '';
+        $refs = $args['refs'] ?? [];
+
         if (!isset($this->factories[$name])) {
-            throw new \InvalidArgumentException("Unknown factory: $name");
+            $cif = $args['contained_in_file'] ?? $name . '_file';
+            $options = ['brothers' => [], 'joined' => []];
+            $factory = new EntityFactory($name, $cif, $this->system);
+            $this->factories[$name] = [
+                'factory' => $factory,
+                'options' => $options,
+            ];
+            $this->factoryMeta[$name] = [
+                'isa' => $name,
+                'cif' => $cif,
+                'options' => $options,
+            ];
         }
 
         $factory = $this->factories[$name]['factory'];
-        $refs = $args['refs'] ?? [];
-
         $entity = $factory->createNew($refs);
 
-        return EntitySerializer::serialize($entity);
+        $storage = $args['storage'] ?? null;
+        if ($storage !== null) {
+            $entity->setStorage($storage);
+        }
+
+        $serializeOptions = $storage !== null ? ['include_storage' => true] : [];
+        return EntitySerializer::serialize($entity, $serializeOptions);
     }
 }
