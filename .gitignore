@@ -4,4 +4,6 @@ localTest
 vendor/
 vendor
 .idea
+.env
+
 
