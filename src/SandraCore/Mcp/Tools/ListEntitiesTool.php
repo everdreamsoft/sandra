@@ -65,6 +65,30 @@ class ListEntitiesTool implements McpToolInterface
                     'type' => 'boolean',
                     'description' => 'If true, include data storage (long text) for each entity. Default false.',
                 ],
+                'brother_filters' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'verb' => [
+                                'type' => 'string',
+                                'description' => 'Verb shortname for the brother relationship (e.g. "on_card", "implies"). Use 0 or omit for any verb.',
+                            ],
+                            'target' => [
+                                'type' => ['string', 'integer'],
+                                'description' => 'Target concept ID or shortname. Use 0 or omit for any target.',
+                            ],
+                            'exclude' => [
+                                'type' => 'boolean',
+                                'description' => 'If true, return entities WITHOUT this brother relationship. Default false (return entities WITH it).',
+                            ],
+                        ],
+                        'required' => ['verb'],
+                    ],
+                    'description' => 'Optional: filter entities by brother entity relationships. '
+                        . 'Each filter checks if a triplet exists (or not) for a given verb/target. '
+                        . 'Example: {"verb": "on_card", "target": 195, "exclude": true} returns entities NOT linked to concept 195 via "on_card".',
+                ],
             ],
             'required' => ['factory'],
         ];
@@ -90,6 +114,15 @@ class ListEntitiesTool implements McpToolInterface
             $factory->entityContainedIn,
             $this->system
         );
+
+        // Apply brother entity filters (SQL-level via setFilter)
+        $brotherFilters = $args['brother_filters'] ?? [];
+        foreach ($brotherFilters as $bf) {
+            $verb = $bf['verb'] ?? 0;
+            $target = $bf['target'] ?? 0;
+            $exclude = !empty($bf['exclude']);
+            $listFactory->setFilter($verb, $target, $exclude);
+        }
 
         $listFactory->populateLocal($limit, $offset, $sortOrder, $sortBy);
         $entities = $listFactory->getEntities();

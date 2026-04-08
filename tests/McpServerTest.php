@@ -1243,6 +1243,174 @@ class McpServerTest extends SandraTestCase
         $this->assertEmpty($factories);
     }
 
+    // --- Batch: $entity.N subject resolution ---
+
+    public function testBatchEntityRefResolvesAsSubject(): void
+    {
+        // Bug fix: $entity.0 as subject in triplet must resolve to the created entity's concept ID,
+        // not 1 (which was the result of casting a Concept object to int).
+        $result = $this->mcp->getToolRegistry()->call('sandra_batch', [
+            'concepts' => ['tagged_as', 'fiction'],
+            'entities' => [
+                ['factory' => 'livres', 'refs' => ['titre' => 'Batch Subject Test', 'auteur' => 'Test']],
+            ],
+            'triplets' => [
+                ['subject' => '$entity.0', 'verb' => 'tagged_as', 'target' => 'fiction'],
+            ],
+        ]);
+
+        $this->assertCount(1, $result['entities']);
+        $this->assertCount(1, $result['triplets']);
+
+        $entityId = $result['entities'][0]['id'];
+        $triplet = $result['triplets'][0];
+
+        // The subject must be the actual entity ID, NOT 1
+        $this->assertEquals($entityId, $triplet['subjectId']);
+        $this->assertGreaterThan(1, $triplet['subjectId']);
+    }
+
+    public function testBatchEntityRefResolvesAsTarget(): void
+    {
+        // Verify target resolution still works (was already working before the fix)
+        $result = $this->mcp->getToolRegistry()->call('sandra_batch', [
+            'concepts' => ['review_of', 'points_to'],
+            'entities' => [
+                ['factory' => 'livres', 'refs' => ['titre' => 'Target Book', 'auteur' => 'Test']],
+            ],
+            'triplets' => [
+                ['subject' => 'review_of', 'verb' => 'points_to', 'target' => '$entity.0'],
+            ],
+        ]);
+
+        $entityId = $result['entities'][0]['id'];
+        $triplet = $result['triplets'][0];
+        $this->assertEquals($entityId, $triplet['targetId']);
+    }
+
+    public function testBatchMultipleEntitiesRefResolution(): void
+    {
+        // Multiple entities: ensure each $entity.N resolves to the correct ID
+        $result = $this->mcp->getToolRegistry()->call('sandra_batch', [
+            'concepts' => ['related_to'],
+            'entities' => [
+                ['factory' => 'livres', 'refs' => ['titre' => 'Book A', 'auteur' => 'A']],
+                ['factory' => 'livres', 'refs' => ['titre' => 'Book B', 'auteur' => 'B']],
+            ],
+            'triplets' => [
+                ['subject' => '$entity.0', 'verb' => 'related_to', 'target' => '$entity.1'],
+                ['subject' => '$entity.1', 'verb' => 'related_to', 'target' => '$entity.0'],
+            ],
+        ]);
+
+        $idA = $result['entities'][0]['id'];
+        $idB = $result['entities'][1]['id'];
+
+        // First triplet: A -> B
+        $this->assertEquals($idA, $result['triplets'][0]['subjectId']);
+        $this->assertEquals($idB, $result['triplets'][0]['targetId']);
+
+        // Second triplet: B -> A
+        $this->assertEquals($idB, $result['triplets'][1]['subjectId']);
+        $this->assertEquals($idA, $result['triplets'][1]['targetId']);
+
+        // IDs must be distinct and not 1
+        $this->assertNotEquals($idA, $idB);
+        $this->assertGreaterThan(1, $idA);
+        $this->assertGreaterThan(1, $idB);
+    }
+
+    public function testBatchConceptRefAsSubject(): void
+    {
+        // $concept.N as subject should also work
+        $result = $this->mcp->getToolRegistry()->call('sandra_batch', [
+            'concepts' => ['my_tag', 'applied_to'],
+            'entities' => [
+                ['factory' => 'livres', 'refs' => ['titre' => 'Tagged Book', 'auteur' => 'Test']],
+            ],
+            'triplets' => [
+                ['subject' => '$concept.0', 'verb' => 'applied_to', 'target' => '$entity.0'],
+            ],
+        ]);
+
+        $conceptId = $result['concepts'][0]['id'];
+        $entityId = $result['entities'][0]['id'];
+        $triplet = $result['triplets'][0];
+
+        $this->assertEquals($conceptId, $triplet['subjectId']);
+        $this->assertEquals($entityId, $triplet['targetId']);
+    }
+
+    // --- ListEntities: brother_filters ---
+
+    public function testListEntitiesWithBrotherFilter(): void
+    {
+        // Create entities and link some with brother relationships
+        $entity1 = $this->livres->getEntities()[array_key_first($this->livres->getEntities())];
+        $entity2 = $this->livres->getEntities()[array_keys($this->livres->getEntities())[1]];
+
+        // Link entity1 to a concept via a verb
+        $entity1->setBrotherEntity('tagged', 'roman_tag', null);
+
+        // List with inclusion filter: only entities WITH 'tagged' -> 'roman_tag'
+        $result = $this->mcp->getToolRegistry()->call('sandra_list_entities', [
+            'factory' => 'livres',
+            'brother_filters' => [
+                ['verb' => 'tagged', 'target' => 'roman_tag'],
+            ],
+        ]);
+
+        $this->assertEquals(1, $result['count']);
+    }
+
+    public function testListEntitiesWithBrotherExcludeFilter(): void
+    {
+        // Link one book
+        $entities = $this->livres->getEntities();
+        $first = $entities[array_key_first($entities)];
+        $first->setBrotherEntity('reviewed', 'positive', null);
+
+        // Exclude filter: entities WITHOUT 'reviewed' verb
+        $result = $this->mcp->getToolRegistry()->call('sandra_list_entities', [
+            'factory' => 'livres',
+            'brother_filters' => [
+                ['verb' => 'reviewed', 'target' => 0, 'exclude' => true],
+            ],
+        ]);
+
+        // 3 books total, 1 has 'reviewed' -> 2 without
+        $this->assertEquals(2, $result['count']);
+    }
+
+    public function testListEntitiesWithBrotherExcludeSpecificTarget(): void
+    {
+        // Link two books to different targets
+        $entities = array_values($this->livres->getEntities());
+        $entities[0]->setBrotherEntity('in_category', 'scifi', null);
+        $entities[1]->setBrotherEntity('in_category', 'romance', null);
+
+        // Exclude filter: entities NOT in_category -> scifi
+        $result = $this->mcp->getToolRegistry()->call('sandra_list_entities', [
+            'factory' => 'livres',
+            'brother_filters' => [
+                ['verb' => 'in_category', 'target' => 'scifi', 'exclude' => true],
+            ],
+        ]);
+
+        // entity[0] has in_category->scifi, so excluded. entity[1] has in_category->romance, kept. entity[2] has none, kept.
+        $this->assertEquals(2, $result['count']);
+    }
+
+    public function testListEntitiesWithoutBrotherFiltersUnchanged(): void
+    {
+        // No filters = same behavior as before
+        $result = $this->mcp->getToolRegistry()->call('sandra_list_entities', [
+            'factory' => 'livres',
+        ]);
+        $this->assertEquals(3, $result['count']);
+        $this->assertEquals(3, $result['total']);
+    }
+
     public function testMcpServerDiscoverRegistersFactories(): void
     {
         // Create a fresh MCP server and use discover()

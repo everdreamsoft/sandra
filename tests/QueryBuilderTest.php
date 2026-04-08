@@ -85,6 +85,18 @@ final class QueryBuilderTest extends SandraTestCase
         $this->assertCount(2, $result);
     }
 
+    public function testWhereNotHasBrotherWithSpecificTarget(): void
+    {
+        $factory = $this->createFactory('algebra', 'algebraFile');
+        $result = $factory->query()
+            ->whereNotHasBrother('implies', $this->b)
+            ->get();
+
+        // a implies b, e implies b, d implies b -> these 3 have it
+        // b, c, f do NOT imply b -> 3 entities without
+        $this->assertCount(3, $result);
+    }
+
     public function testWhereRef(): void
     {
         $factory = $this->createFactory('algebra', 'algebraFile');

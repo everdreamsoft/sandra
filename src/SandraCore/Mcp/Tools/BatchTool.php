@@ -157,7 +157,7 @@ class BatchTool implements McpToolInterface
                 $entity->setStorage($storage);
             }
 
-            $entityConceptIds[] = (int)$entity->subjectConcept;
+            $entityConceptIds[] = (int)$entity->subjectConcept->idConcept;
             $serializeOptions = $storage !== null ? ['include_storage' => true] : [];
             $serialized = EntitySerializer::serialize($entity, $serializeOptions);
             $serialized['factory'] = $factoryName;
