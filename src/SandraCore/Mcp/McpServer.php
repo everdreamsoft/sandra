@@ -23,6 +23,7 @@ use SandraCore\Mcp\Tools\DeleteTripletTool;
 use SandraCore\Mcp\Tools\BatchTool;
 use SandraCore\Mcp\Tools\FindConceptTool;
 use SandraCore\Mcp\Tools\ListConceptsTool;
+use SandraCore\Mcp\Tools\SemanticSearchTool;
 use SandraCore\System;
 
 class McpServer
@@ -124,6 +125,12 @@ It accepts concepts, entities and triplets arrays in one call. Use "$concept.N" 
 to reference items created earlier in the same batch (N = zero-based index in the array).
 
 Always search before creating. Concepts and entities may already exist.
+
+## Semantic search
+If `sandra_semantic_search` is available, use it for natural language queries where exact keyword
+matching might miss results. It embeds the query and finds entities by meaning similarity.
+Use `sandra_search` for exact/pattern matching, `sandra_semantic_search` for conceptual matching.
+Entities are automatically embedded when created or updated.
 INSTRUCTIONS;
     }
 
@@ -201,6 +208,11 @@ INSTRUCTIONS;
 
         $system = $this->getSystem();
         $this->tools = new ToolRegistry();
+
+        // Initialize embedding service if API key is available
+        $apiKey = getenv('OPENAI_API_KEY') ?: '';
+        $embeddingService = $apiKey !== '' ? new EmbeddingService($system, $apiKey) : null;
+
         $this->tools->register(new GetSchemaTool($this->factories, $system));
         $this->tools->register(new ListFactoriesTool($this->factories));
         $this->tools->register(new DescribeFactoryTool($this->factories, $system));
@@ -208,9 +220,9 @@ INSTRUCTIONS;
         $this->tools->register(new SearchEntitiesTool($this->factories, $system));
         $this->tools->register(new GetEntityTool($this->factories, $system));
         $this->tools->register(new TraverseGraphTool($this->factories, $system));
-        $this->tools->register(new CreateEntityTool($this->factories, $this->factoryMeta, $system));
+        $this->tools->register(new CreateEntityTool($this->factories, $this->factoryMeta, $system, $embeddingService));
         $this->tools->register(new LinkEntitiesTool($this->factories, $system));
-        $this->tools->register(new UpdateEntityTool($this->factories, $system));
+        $this->tools->register(new UpdateEntityTool($this->factories, $system, $embeddingService));
         $this->tools->register(new GetTripletsTool($system));
         $this->tools->register(new GetReferencesTool($system));
         $this->tools->register(new CreateConceptTool($system));
@@ -219,7 +231,11 @@ INSTRUCTIONS;
         $this->tools->register(new DeleteTripletTool($system));
         $this->tools->register(new FindConceptTool($system));
         $this->tools->register(new ListConceptsTool($system));
-        $this->tools->register(new BatchTool($this->factories, $this->factoryMeta, $system));
+        $this->tools->register(new BatchTool($this->factories, $this->factoryMeta, $system, $embeddingService));
+
+        if ($embeddingService !== null) {
+            $this->tools->register(new SemanticSearchTool($this->factories, $system, $embeddingService));
+        }
     }
 
     /** Rebuild factories and tools with a fresh System instance */

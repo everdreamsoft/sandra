@@ -13,7 +13,7 @@ use SandraCore\Driver\DatabaseDriverInterface;
 class SandraDatabaseDefinition
 {
 
-    public static function createEnvTables($tableConcept, $tableTriplet, $tableReference, $tablestorage, $tableConf, ?DatabaseDriverInterface $driver = null)
+    public static function createEnvTables($tableConcept, $tableTriplet, $tableReference, $tablestorage, $tableConf, ?DatabaseDriverInterface $driver = null, ?string $tableEmbedding = null)
     {
 
         if ($driver !== null) {
@@ -99,6 +99,22 @@ class SandraDatabaseDefinition
                 DEFAULT CHARSET=utf8;";
 
         System::$pdo->get()->query($sql);
+
+        if ($tableEmbedding !== null) {
+            $sql = "CREATE TABLE IF NOT EXISTS `$tableEmbedding`
+                    (
+                        `conceptId` int(11) NOT NULL,
+                        `embedding` JSON NOT NULL,
+                        `textHash` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+                        `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`conceptId`)
+                    )
+                    ENGINE=InnoDB
+                    DEFAULT CHARSET=utf8mb4
+                    COLLATE=utf8mb4_unicode_ci;";
+
+            System::$pdo->get()->query($sql);
+        }
 
     }
 

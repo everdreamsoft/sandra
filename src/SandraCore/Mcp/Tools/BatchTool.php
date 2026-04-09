@@ -5,6 +5,7 @@ namespace SandraCore\Mcp\Tools;
 
 use SandraCore\DatabaseAdapter;
 use SandraCore\EntityFactory;
+use SandraCore\Mcp\EmbeddingService;
 use SandraCore\Mcp\EntitySerializer;
 use SandraCore\Mcp\McpToolInterface;
 use SandraCore\System;
@@ -24,12 +25,14 @@ class BatchTool implements McpToolInterface
     /** @var array<string, array{isa: string, cif: string, options: array}> */
     private array $factoryMeta;
     private System $system;
+    private ?EmbeddingService $embeddingService;
 
-    public function __construct(array &$factories, array &$factoryMeta, System $system)
+    public function __construct(array &$factories, array &$factoryMeta, System $system, ?EmbeddingService $embeddingService = null)
     {
         $this->factories = &$factories;
         $this->factoryMeta = &$factoryMeta;
         $this->system = $system;
+        $this->embeddingService = $embeddingService;
     }
 
     public function name(): string
@@ -155,6 +158,14 @@ class BatchTool implements McpToolInterface
             $storage = $def['storage'] ?? null;
             if ($storage !== null) {
                 $entity->setStorage($storage);
+            }
+
+            if ($this->embeddingService !== null && $this->embeddingService->isAvailable()) {
+                try {
+                    $this->embeddingService->embedEntity($entity);
+                } catch (\Throwable $e) {
+                    // Non-fatal: embedding failure should not block batch entity creation
+                }
             }
 
             $entityConceptIds[] = (int)$entity->subjectConcept->idConcept;

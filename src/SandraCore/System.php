@@ -32,6 +32,7 @@ class System
     public string $tableReference = '';
     public string $tableStorage = '';
     private string $tableConf = '';
+    public string $tableEmbedding = '';
     public mixed $foreignConceptFactory = null;
 
     public int $errorLevelToKill = 3;
@@ -81,6 +82,7 @@ class System
         $this->tableReference = $prefix . '_SandraReferences' . $suffix;
         $this->tableStorage = $prefix . '_SandraDatastorage' . $suffix;
         $this->tableConf = $prefix . '_SandraConfig' . $suffix;
+        $this->tableEmbedding = $prefix . '_SandraEmbeddings' . $suffix;
 
         if ($install) $this->install();
 
@@ -120,7 +122,7 @@ class System
 
     public function install(): void
     {
-        SandraDatabaseDefinition::createEnvTables($this->conceptTable, $this->linkTable, $this->tableReference, $this->tableStorage, $this->tableConf, $this->driver);
+        SandraDatabaseDefinition::createEnvTables($this->conceptTable, $this->linkTable, $this->tableReference, $this->tableStorage, $this->tableConf, $this->driver, $this->tableEmbedding);
     }
 
 

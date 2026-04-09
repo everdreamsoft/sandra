@@ -5,6 +5,7 @@ namespace SandraCore\Mcp\Tools;
 
 use SandraCore\Entity;
 use SandraCore\EntityFactory;
+use SandraCore\Mcp\EmbeddingService;
 use SandraCore\Mcp\EntitySerializer;
 use SandraCore\Mcp\McpToolInterface;
 use SandraCore\System;
@@ -14,11 +15,13 @@ class UpdateEntityTool implements McpToolInterface
     /** @var array<string, array{factory: EntityFactory, options: array}> */
     private array $factories;
     private System $system;
+    private ?EmbeddingService $embeddingService;
 
-    public function __construct(array &$factories, System $system)
+    public function __construct(array &$factories, System $system, ?EmbeddingService $embeddingService = null)
     {
         $this->factories = &$factories;
         $this->system = $system;
+        $this->embeddingService = $embeddingService;
     }
 
     public function name(): string
@@ -96,6 +99,14 @@ class UpdateEntityTool implements McpToolInterface
         $storage = $args['storage'] ?? null;
         if ($storage !== null) {
             $entity->setStorage($storage);
+        }
+
+        if ($this->embeddingService !== null && $this->embeddingService->isAvailable()) {
+            try {
+                $this->embeddingService->embedEntity($entity);
+            } catch (\Throwable $e) {
+                // Non-fatal: embedding failure should not block entity update
+            }
         }
 
         $serializeOptions = $storage !== null ? ['include_storage' => true] : [];
