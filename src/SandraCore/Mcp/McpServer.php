@@ -24,6 +24,7 @@ use SandraCore\Mcp\Tools\BatchTool;
 use SandraCore\Mcp\Tools\FindConceptTool;
 use SandraCore\Mcp\Tools\ListConceptsTool;
 use SandraCore\Mcp\Tools\SemanticSearchTool;
+use SandraCore\Mcp\Tools\EmbedAllTool;
 use SandraCore\System;
 
 class McpServer
@@ -235,6 +236,7 @@ INSTRUCTIONS;
 
         if ($embeddingService !== null) {
             $this->tools->register(new SemanticSearchTool($this->factories, $system, $embeddingService));
+            $this->tools->register(new EmbedAllTool($this->factories, $system, $embeddingService));
         }
     }
 
