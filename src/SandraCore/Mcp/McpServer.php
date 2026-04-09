@@ -91,6 +91,10 @@ Sandra is a semantic graph database. Data is organized in two layers:
 Abstract vocabulary shared across the system (e.g. "healthy", "is_a", "friend").
 Each concept has a unique ID and shortname. They serve as verbs and targets in the graph.
 
+Concepts are the VOCABULARY of the graph — like words in a dictionary. They should be
+general, reusable, and named in plain natural language. A concept named "likes" can be
+reused across thousands of triplets. Avoid creating narrow, one-off concepts.
+
 ## Entities
 Tabular data (e.g. clients, products, animals) managed by factories.
 Each entity has two kinds of data:
@@ -106,8 +110,36 @@ Both entities and concepts live in the same graph and share concept IDs.
 ## Search workflow
 1. Use `sandra_search` to find anything — results are tagged `type: "entity"` or `type: "system_concept"`
 2. Use `sandra_get_triplets` with a concept ID to see all its relationships
-3. Use `sandra_list_concepts` to browse/paginate the full concept vocabulary
+3. Use `sandra_list_concepts` with a targeted pattern (e.g. "%like%") to find specific concepts. NEVER list all concepts without a filter — use a keyword pattern to keep results small and context-efficient.
 4. Use `sandra_list_factories` to discover what entity types exist
+
+## CRITICAL: Concept Reuse Protocol
+
+System concepts are loaded in memory. Creating unnecessary concepts wastes resources.
+ALWAYS follow this protocol before creating any concept:
+
+### Without semantic search:
+1. Think about what existing concept could express this meaning
+2. `sandra_list_concepts("%keyword%")` with a TARGETED pattern (1-2 keywords)
+3. Review the results (max 20). If a concept covers the same meaning, USE IT
+4. Only create if nothing suitable exists
+
+### With semantic search (if `sandra_semantic_search` is available):
+1. `sandra_semantic_search` with the concept you want to express (limit=5, threshold=0.5)
+2. If a similar concept is found, USE IT instead of creating a new one
+3. This catches synonyms and cross-language matches that pattern search misses
+
+### Naming rules for new concepts:
+- Use plain English, lowercase: "likes", "works_at", "funded_by"
+- Use general verbs, not specific: "likes" (not "likes_chocolate"), "member_of" (not "member_of_team_alpha")
+- Specificity goes in the TRIPLET, not the concept: Entity →likes→ chocolate (not Entity →likes_chocolate→ true)
+- One concept should cover many relationships. "likes" handles all preferences.
+
+### Anti-patterns (NEVER do this):
+- Creating "likes_chocolate", "likes_pizza", "likes_music" → use "likes" + different targets
+- Creating "works_at_google", "works_at_meta" → use "works_at" + different targets
+- Creating "urgent_task", "important_task" → use "urgent"/"important" as concepts, link to task entity
+- Listing all concepts without a filter pattern → wastes context window
 
 ## When to create a System Concept vs an Entity Factory
 - **System concept**: for abstract, universal labels that the system uses as vocabulary — things any system could agree on. Examples: "urgent", "important", "personal", "social", "healthy", "archived". These are lightweight (just a shortname + ID in memory). Use them as verbs or tags in triplets.
@@ -125,12 +157,12 @@ When creating multiple items, always prefer `sandra_batch` over repeated single 
 It accepts concepts, entities and triplets arrays in one call. Use "$concept.N" or "$entity.N"
 to reference items created earlier in the same batch (N = zero-based index in the array).
 
-Always search before creating. Concepts and entities may already exist.
-
 ## Semantic search
-If `sandra_semantic_search` is available, use it for natural language queries where exact keyword
-matching might miss results. It embeds the query and finds entities by meaning similarity.
-Use `sandra_search` for exact/pattern matching, `sandra_semantic_search` for conceptual matching.
+If `sandra_semantic_search` is available, prefer it over `sandra_search` for natural language
+queries where exact keyword matching might miss results. It finds entities by meaning similarity.
+- Use `sandra_search` for exact/pattern matching
+- Use `sandra_semantic_search` for conceptual/fuzzy matching and dedup checks
+- Use `sandra_embed_all` once to backfill embeddings on existing entities
 Entities are automatically embedded when created or updated.
 INSTRUCTIONS;
     }
