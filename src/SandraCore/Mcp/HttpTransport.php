@@ -151,8 +151,9 @@ class HttpTransport
 
         $this->log(">> $method $path from $peer" . ($this->sessionId ? " session=" . substr($this->sessionId, 0, 8) . "..." : ''));
 
-        // Only accept /mcp endpoint
-        if ($path !== '/mcp' && $path !== '/mcp/') {
+        // Only accept /mcp endpoint (strip query string for path check)
+        $pathWithoutQuery = parse_url($path, PHP_URL_PATH) ?? $path;
+        if ($pathWithoutQuery !== '/mcp' && $pathWithoutQuery !== '/mcp/') {
             $this->sendResponse($conn, 404, [], '{"error": "Not found. Use /mcp endpoint."}');
             @fclose($conn);
             return;
@@ -165,16 +166,26 @@ class HttpTransport
             return;
         }
 
-        // Authentication check
+        // Authentication check (Bearer header OR ?token= query parameter)
         if ($this->authToken !== null) {
-            $authHeader = $headers['authorization'] ?? '';
             $providedToken = '';
+
+            // Check Authorization: Bearer header first
+            $authHeader = $headers['authorization'] ?? '';
             if (str_starts_with($authHeader, 'Bearer ')) {
                 $providedToken = substr($authHeader, 7);
             }
+
+            // Fallback: check ?token= query parameter (for claude.ai custom connectors)
+            if ($providedToken === '') {
+                $queryString = parse_url($path, PHP_URL_QUERY) ?? '';
+                parse_str($queryString, $queryParams);
+                $providedToken = $queryParams['token'] ?? '';
+            }
+
             if (!hash_equals($this->authToken, $providedToken)) {
                 $this->log("   AUTH REJECTED from $peer");
-                $this->sendResponse($conn, 401, $this->corsHeaders(), '{"error": "Unauthorized. Provide a valid Bearer token."}');
+                $this->sendResponse($conn, 401, $this->corsHeaders(), '{"error": "Unauthorized. Provide a valid Bearer token or ?token= parameter."}');
                 @fclose($conn);
                 return;
             }
