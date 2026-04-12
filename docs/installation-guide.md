@@ -63,6 +63,24 @@ This enables:
 
 Cost: ~$0.02 per 1M tokens. Effectively free for personal use. Everything works without it — you just won't have semantic search.
 
+### 4b. (Optional) Enable authentication
+
+Add a secret token to `bin/.env`:
+
+```bash
+SANDRA_AUTH_TOKEN=your-secret-token-here
+```
+
+When set, all requests must include a `Authorization: Bearer <token>` header. Without the correct token, the server returns 401 Unauthorized.
+
+Generate a random token:
+
+```bash
+openssl rand -hex 32
+```
+
+When no `SANDRA_AUTH_TOKEN` is set, the server runs open (no auth). This is fine for local-only usage but **required for any remote/internet-facing deployment**.
+
 ### 5. Start the server
 
 ```bash
@@ -81,6 +99,8 @@ The server runs in the foreground. Use `tmux`, `screen`, or a systemd service to
 
 Add Sandra to your project's `.mcp.json`:
 
+**Without auth (local only):**
+
 ```json
 {
   "mcpServers": {
@@ -92,10 +112,30 @@ Add Sandra to your project's `.mcp.json`:
 }
 ```
 
+**With auth (required for remote servers):**
+
+```json
+{
+  "mcpServers": {
+    "sandra": {
+      "type": "http",
+      "url": "http://127.0.0.1:8090/mcp",
+      "headers": {
+        "Authorization": "Bearer your-secret-token-here"
+      }
+    }
+  }
+}
+```
+
 Or add it globally for all projects. In Claude Code:
 
 ```bash
+# Without auth
 claude mcp add sandra --transport http --url http://127.0.0.1:8090/mcp
+
+# With auth
+claude mcp add sandra --transport http --url http://127.0.0.1:8090/mcp --header "Authorization: Bearer your-secret-token-here"
 ```
 
 ### 7. Verify
