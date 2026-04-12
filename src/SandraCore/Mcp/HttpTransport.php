@@ -23,6 +23,7 @@ class HttpTransport
     private ?string $logFile;
     private int $eventCounter = 0;
     private ?string $authToken = null;
+    private ?OAuthProvider $oauth = null;
 
     /** @var resource[] Active SSE connections keyed by peer address */
     private array $sseClients = [];
@@ -38,6 +39,9 @@ class HttpTransport
         $this->server = $server;
         $this->logFile = $logFile;
         $this->authToken = $authToken;
+        if ($authToken !== null) {
+            $this->oauth = new OAuthProvider($authToken);
+        }
     }
 
     /** Start listening for HTTP connections (blocks forever) */
@@ -149,44 +153,63 @@ class HttpTransport
         $headers = $request['headers'];
         $body = $request['body'];
 
-        $this->log(">> $method $path from $peer" . ($this->sessionId ? " session=" . substr($this->sessionId, 0, 8) . "..." : ''));
-        $this->log("   DEBUG headers: " . json_encode($headers));
-
-        // Only accept /mcp endpoint (strip query string for path check)
         $pathWithoutQuery = parse_url($path, PHP_URL_PATH) ?? $path;
-        if ($pathWithoutQuery !== '/mcp' && $pathWithoutQuery !== '/mcp/') {
-            $this->sendResponse($conn, 404, [], '{"error": "Not found. Use /mcp endpoint."}');
-            @fclose($conn);
-            return;
-        }
+        $this->log(">> $method $pathWithoutQuery from $peer" . ($this->sessionId ? " session=" . substr($this->sessionId, 0, 8) . "..." : ''));
 
-        // CORS preflight
+        // CORS preflight (for any endpoint)
         if ($method === 'OPTIONS') {
             $this->sendResponse($conn, 204, $this->corsHeaders());
             @fclose($conn);
             return;
         }
 
-        // Authentication check (Bearer header OR ?token= query parameter)
+        // OAuth endpoints (when auth is enabled)
+        if ($this->oauth !== null) {
+            $sendResponse = [$this, 'sendResponse'];
+            $handled = match (true) {
+                str_starts_with($pathWithoutQuery, '/.well-known/oauth-protected-resource')
+                    => $this->oauth->handleProtectedResourceMetadata($conn, $headers, $sendResponse) ?? true,
+                $pathWithoutQuery === '/.well-known/oauth-authorization-server'
+                    => $this->oauth->handleAuthServerMetadata($conn, $headers, $sendResponse) ?? true,
+                $pathWithoutQuery === '/register' && $method === 'POST'
+                    => $this->oauth->handleRegister($conn, $body, $sendResponse) ?? true,
+                $pathWithoutQuery === '/authorize' && $method === 'GET'
+                    => $this->oauth->handleAuthorize($conn, $path, $headers, $sendResponse) ?? true,
+                $pathWithoutQuery === '/authorize' && $method === 'POST'
+                    => $this->oauth->handleAuthorizeSubmit($conn, $body, $headers, $sendResponse) ?? true,
+                $pathWithoutQuery === '/token' && $method === 'POST'
+                    => $this->oauth->handleToken($conn, $body, $sendResponse) ?? true,
+                default => false,
+            };
+            if ($handled !== false) {
+                return;
+            }
+        }
+
+        // Only accept /mcp endpoint
+        if ($pathWithoutQuery !== '/mcp' && $pathWithoutQuery !== '/mcp/') {
+            $this->sendResponse($conn, 404, [], '{"error": "Not found. Use /mcp endpoint."}');
+            @fclose($conn);
+            return;
+        }
+
+        // Authentication check
         if ($this->authToken !== null) {
             $providedToken = '';
 
-            // Check Authorization: Bearer header first
+            // Check Authorization: Bearer header
             $authHeader = $headers['authorization'] ?? '';
             if (str_starts_with($authHeader, 'Bearer ')) {
                 $providedToken = substr($authHeader, 7);
             }
 
-            // Fallback: check ?token= query parameter (for claude.ai custom connectors)
-            if ($providedToken === '') {
-                $queryString = parse_url($path, PHP_URL_QUERY) ?? '';
-                parse_str($queryString, $queryParams);
-                $providedToken = $queryParams['token'] ?? '';
-            }
-
-            if (!hash_equals($this->authToken, $providedToken)) {
+            // Validate via OAuthProvider (checks static token + OAuth-issued tokens)
+            if ($providedToken === '' || !$this->oauth->validateToken($providedToken)) {
                 $this->log("   AUTH REJECTED from $peer");
-                $this->sendResponse($conn, 401, $this->corsHeaders(), '{"error": "Unauthorized. Provide a valid Bearer token or ?token= parameter."}');
+                $wwwAuth = $this->oauth->getWwwAuthenticateHeader($headers);
+                $this->sendResponse($conn, 401, array_merge($this->corsHeaders(), [
+                    'WWW-Authenticate' => $wwwAuth,
+                ]), '{"error": "Unauthorized"}');
                 @fclose($conn);
                 return;
             }
@@ -409,7 +432,7 @@ class HttpTransport
         ];
     }
 
-    private function sendResponse($conn, int $status, array $headers = [], string $body = ''): void
+    public function sendResponse($conn, int $status, array $headers = [], string $body = ''): void
     {
         $this->sendResponseHeaders($conn, $status, $headers, strlen($body));
         if ($body !== '') {
@@ -421,8 +444,9 @@ class HttpTransport
     private function sendResponseHeaders($conn, int $status, array $headers = [], ?int $contentLength = null): void
     {
         $statusTexts = [
-            200 => 'OK', 202 => 'Accepted', 204 => 'No Content',
-            400 => 'Bad Request', 404 => 'Not Found', 405 => 'Method Not Allowed',
+            200 => 'OK', 201 => 'Created', 202 => 'Accepted', 204 => 'No Content',
+            301 => 'Moved Permanently', 302 => 'Found',
+            400 => 'Bad Request', 401 => 'Unauthorized', 403 => 'Forbidden', 404 => 'Not Found', 405 => 'Method Not Allowed',
             500 => 'Internal Server Error',
         ];
         $statusText = $statusTexts[$status] ?? 'Unknown';
