@@ -80,7 +80,7 @@ class SemanticSearchTool implements McpToolInterface
 
         $factoryFilter = $args['factory'] ?? null;
         $limit = (int)($args['limit'] ?? 10);
-        $threshold = (float)($args['threshold'] ?? 0.3);
+        $threshold = (float)($args['threshold'] ?? 0.2);
         $fields = $args['fields'] ?? null;
         $includeStorage = !empty($args['include_storage']);
 

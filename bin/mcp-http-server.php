@@ -23,6 +23,18 @@ use SandraCore\System;
 use SandraCore\Mcp\McpServer;
 use SandraCore\Mcp\HttpTransport;
 
+// ── Load .env if present ────────────────────────────────────────────
+$envFile = __DIR__ . '/.env';
+if (file_exists($envFile)) {
+    foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        $line = trim($line);
+        if ($line === '' || $line[0] === '#') continue;
+        if (str_contains($line, '=')) {
+            putenv($line);
+        }
+    }
+}
+
 // ── CLI args ────────────────────────────────────────────────────────
 $opts = getopt('', ['port:', 'host:']);
 $port = (int)($opts['port'] ?? getenv('SANDRA_MCP_PORT') ?: 8090);

@@ -30,7 +30,7 @@ class EmbeddingService
 
     /**
      * Build a text representation of an entity for embedding.
-     * Combines all reference key-value pairs + optional storage.
+     * Combines reference key-value pairs, outgoing triplets, and optional storage.
      */
     public function buildEntityText(Entity $entity): string
     {
@@ -40,6 +40,15 @@ class EmbeddingService
         foreach ($refs as $key => $value) {
             if ($value !== null && $value !== '') {
                 $parts[] = "$key: $value";
+            }
+        }
+
+        // Include outgoing triplets (relations) for richer semantic context
+        $tripletLines = $this->getEntityTripletText((int)$entity->subjectConcept->idConcept);
+        if (!empty($tripletLines)) {
+            $parts[] = "--- relations ---";
+            foreach ($tripletLines as $line) {
+                $parts[] = $line;
             }
         }
 
@@ -55,6 +64,99 @@ class EmbeddingService
         }
 
         return $text;
+    }
+
+    /**
+     * Get human-readable outgoing triplet lines for an entity.
+     * Excludes internal structural triplets (is_a, contained_in_file).
+     * Resolves entity targets to their "name" ref when shortname is NULL.
+     *
+     * @return string[]
+     */
+    private function getEntityTripletText(int $conceptId): array
+    {
+        $pdo = $this->system->getConnection();
+        $linkTable = $this->system->linkTable;
+        $conceptTable = $this->system->conceptTable;
+        $deletedId = (int)$this->system->deletedUNID;
+
+        $sql = "SELECT cl.shortname AS verb,
+                       ct.shortname AS target,
+                       l.idConceptTarget AS targetId
+                FROM `{$linkTable}` l
+                LEFT JOIN `{$conceptTable}` cl ON l.idConceptLink = cl.id
+                LEFT JOIN `{$conceptTable}` ct ON l.idConceptTarget = ct.id
+                WHERE l.idConceptStart = :conceptId
+                  AND l.flag != :deleted
+                LIMIT 50";
+
+        $rows = QueryExecutor::fetchAll($pdo, $sql, [
+            ':conceptId' => [$conceptId, PDO::PARAM_INT],
+            ':deleted' => [$deletedId, PDO::PARAM_INT],
+        ]);
+
+        // Skip structural verbs that don't add semantic value
+        $skipVerbs = ['is_a', 'contained_in_file', 'containedIn', 'is_a_file'];
+        $lines = [];
+
+        foreach ($rows as $row) {
+            $verb = $row['verb'] ?? '';
+            if ($verb === '' || in_array($verb, $skipVerbs, true)) {
+                continue;
+            }
+
+            $target = $row['target'] ?? '';
+
+            // If shortname is null/empty, resolve entity target name via its refs
+            if ($target === '') {
+                $target = $this->resolveEntityName((int)$row['targetId']);
+            }
+            if ($target === '') {
+                continue;
+            }
+
+            $lines[] = "$verb: $target";
+        }
+
+        return $lines;
+    }
+
+    /**
+     * Look up the "name" reference value for an entity concept.
+     * Uses the Sandra triplet+reference structure: entity -> is_a link has refs.
+     */
+    private function resolveEntityName(int $conceptId): string
+    {
+        $pdo = $this->system->getConnection();
+        $linkTable = $this->system->linkTable;
+        $refTable = $this->system->tableReference;
+        $conceptTable = $this->system->conceptTable;
+
+        // Get the concept ID for the "name" ref key
+        $nameConceptId = $this->system->systemConcept->get('name', null, false);
+        if ($nameConceptId === null) {
+            return '';
+        }
+
+        // Entity refs are stored on the is_a triplet link (linkId).
+        // Find the is_a link for this entity, then get the "name" ref on it.
+        $isaId = $this->system->systemConcept->get('is_a');
+
+        $sql = "SELECT r.value
+                FROM `{$linkTable}` l
+                JOIN `{$refTable}` r ON r.idConcept = l.id
+                JOIN `{$conceptTable}` c ON c.id = r.linkReferenced
+                WHERE l.idConceptStart = :conceptId
+                  AND l.idConceptLink = :isaId
+                  AND c.shortname = 'name'
+                LIMIT 1";
+
+        $rows = QueryExecutor::fetchAll($pdo, $sql, [
+            ':conceptId' => [$conceptId, PDO::PARAM_INT],
+            ':isaId' => [$isaId, PDO::PARAM_INT],
+        ]);
+
+        return $rows ? $rows[0]['value'] : '';
     }
 
     /**
@@ -232,13 +334,16 @@ class EmbeddingService
         }
 
         if (empty($rows)) {
+            error_log("[sandra-embed] searchSimilar: 0 rows in embeddings table for query: " . substr($queryText, 0, 60));
             return [];
         }
 
         $scored = [];
+        $skipped = 0;
         foreach ($rows as $row) {
             $storedEmbedding = json_decode($row['embedding'], true);
             if (!is_array($storedEmbedding)) {
+                $skipped++;
                 continue;
             }
 
@@ -250,6 +355,9 @@ class EmbeddingService
         }
 
         usort($scored, fn($a, $b) => $b['similarity'] <=> $a['similarity']);
+
+        $topScore = !empty($scored) ? $scored[0]['similarity'] : 0;
+        error_log("[sandra-embed] searchSimilar: " . count($rows) . " rows, $skipped skipped, top score=$topScore, query=" . substr($queryText, 0, 60));
 
         return array_slice($scored, 0, $limit);
     }

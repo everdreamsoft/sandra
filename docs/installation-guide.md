@@ -20,7 +20,7 @@ git checkout sandraxclaude
 composer install
 ```
 
-> **Note**: Embeddings and semantic search are currently on the `sandraxclaude` branch. This will be merged to main once fully tested.
+> **Note**: These features are currently on the `sandraxclaude` branch. This will be merged to main once fully tested.
 
 ### 2. Create a MySQL database
 
