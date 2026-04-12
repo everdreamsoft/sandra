@@ -150,6 +150,7 @@ class HttpTransport
         $body = $request['body'];
 
         $this->log(">> $method $path from $peer" . ($this->sessionId ? " session=" . substr($this->sessionId, 0, 8) . "..." : ''));
+        $this->log("   DEBUG headers: " . json_encode($headers));
 
         // Only accept /mcp endpoint (strip query string for path check)
         $pathWithoutQuery = parse_url($path, PHP_URL_PATH) ?? $path;
