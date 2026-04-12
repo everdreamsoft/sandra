@@ -48,6 +48,7 @@ $dbUser = getenv('SANDRA_DB_USER') ?: 'root';
 $dbPass = getenv('SANDRA_DB_PASS') !== false ? getenv('SANDRA_DB_PASS') : '';
 $logFile = getenv('SANDRA_MCP_LOG') ?: '/tmp/sandra-mcp-http.log';
 $install = (bool)(getenv('SANDRA_INSTALL') ?: false);
+$authToken = getenv('SANDRA_AUTH_TOKEN') ?: null;
 
 // ── Build MCP server ────────────────────────────────────────────────
 $systemFactory = function () use ($env, $install, $dbHost, $db, $dbUser, $dbPass) {
@@ -64,10 +65,11 @@ $server->discover();
 $server->dispatchMessage(['method' => 'notifications/initialized', 'jsonrpc' => '2.0']);
 
 // ── Start HTTP transport ────────────────────────────────────────────
-$transport = new HttpTransport($server, $logFile);
+$transport = new HttpTransport($server, $logFile, $authToken);
 
 echo "Sandra MCP HTTP server starting on http://$host:$port/mcp\n";
 echo "Log: $logFile\n";
+echo "Auth: " . ($authToken ? "enabled (Bearer token required)" : "disabled (open access)") . "\n";
 echo "Press Ctrl+C to stop.\n\n";
 
 $transport->listen($host, $port);

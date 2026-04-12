@@ -22,6 +22,7 @@ class HttpTransport
     private ?string $sessionId = null;
     private ?string $logFile;
     private int $eventCounter = 0;
+    private ?string $authToken = null;
 
     /** @var resource[] Active SSE connections keyed by peer address */
     private array $sseClients = [];
@@ -32,10 +33,11 @@ class HttpTransport
     private const SSE_MAX_LIFETIME = 600; // 10 minutes
     private const SELECT_TIMEOUT_SEC = 5; // wake up every 5s to send keepalives
 
-    public function __construct(McpServer $server, ?string $logFile = null)
+    public function __construct(McpServer $server, ?string $logFile = null, ?string $authToken = null)
     {
         $this->server = $server;
         $this->logFile = $logFile;
+        $this->authToken = $authToken;
     }
 
     /** Start listening for HTTP connections (blocks forever) */
@@ -161,6 +163,21 @@ class HttpTransport
             $this->sendResponse($conn, 204, $this->corsHeaders());
             @fclose($conn);
             return;
+        }
+
+        // Authentication check
+        if ($this->authToken !== null) {
+            $authHeader = $headers['authorization'] ?? '';
+            $providedToken = '';
+            if (str_starts_with($authHeader, 'Bearer ')) {
+                $providedToken = substr($authHeader, 7);
+            }
+            if (!hash_equals($this->authToken, $providedToken)) {
+                $this->log("   AUTH REJECTED from $peer");
+                $this->sendResponse($conn, 401, $this->corsHeaders(), '{"error": "Unauthorized. Provide a valid Bearer token."}');
+                @fclose($conn);
+                return;
+            }
         }
 
         match ($method) {
