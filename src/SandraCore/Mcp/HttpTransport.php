@@ -47,6 +47,10 @@ class HttpTransport
     /** Start listening for HTTP connections (blocks forever) */
     public function listen(string $host = '127.0.0.1', int $port = 8090): void
     {
+        // Wrap IPv6 addresses in brackets for stream_socket_server
+        if (str_contains($host, ':') && !str_starts_with($host, '[')) {
+            $host = "[$host]";
+        }
         $address = "tcp://$host:$port";
         $socket = @stream_socket_server($address, $errno, $errstr);
         if (!$socket) {
