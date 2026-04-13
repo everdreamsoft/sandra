@@ -399,7 +399,8 @@ class HttpTransport
 
         $method = strtoupper($requestParts[0]);
         $rawPath = $requestParts[1];
-        $path = parse_url($rawPath, PHP_URL_PATH) ?: '/';
+        // Keep the full path WITH query string — OAuth endpoints need it
+        $path = $rawPath;
 
         // Parse headers (lowercase keys)
         $headers = [];
