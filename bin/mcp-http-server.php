@@ -74,9 +74,9 @@ $host = $opts['host'] ?? getenv('SANDRA_MCP_HOST') ?: '127.0.0.1';
 // ── Database config ─────────────────────────────────────────────────
 $env = getenv('SANDRA_ENV') ?: 'mcp_';
 $dbHost = getenv('SANDRA_DB_HOST') ?: '127.0.0.1';
-$db = getenv('SANDRA_DB') ?: 'sandra';
-$dbUser = getenv('SANDRA_DB_USER') ?: 'root';
-$dbPass = getenv('SANDRA_DB_PASS') !== false ? getenv('SANDRA_DB_PASS') : '';
+$db = getenv('SANDRA_DB') ?: getenv('SANDRA_DB_DATABASE') ?: 'sandra';
+$dbUser = getenv('SANDRA_DB_USER') ?: getenv('SANDRA_DB_USERNAME') ?: 'root';
+$dbPass = getenv('SANDRA_DB_PASS') !== false ? getenv('SANDRA_DB_PASS') : (getenv('SANDRA_DB_PASSWORD') !== false ? getenv('SANDRA_DB_PASSWORD') : '');
 $logFile = getenv('SANDRA_MCP_LOG') ?: '/tmp/sandra-mcp-http.log';
 $install = (bool)(getenv('SANDRA_INSTALL') ?: false);
 $authToken = getenv('SANDRA_AUTH_TOKEN') ?: null;
