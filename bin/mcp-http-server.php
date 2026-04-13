@@ -7,7 +7,10 @@
  * Claude Code connects/reconnects as needed via HTTP.
  *
  * Usage:
- *   php bin/mcp-http-server.php [--port=8090] [--host=127.0.0.1]
+ *   php bin/mcp-http-server.php [--port=8090] [--host=127.0.0.1] [--env=/path/to/.env]
+ *
+ * As a composer dependency:
+ *   php vendor/everdreamsoft/sandra/bin/mcp-http-server.php --env=.env
  *
  * Then configure .mcp.json:
  *   {"type": "streamable-http", "url": "http://127.0.0.1:8090/mcp"}
@@ -17,26 +20,54 @@ declare(strict_types=1);
 set_time_limit(0);
 ini_set('default_socket_timeout', '-1');
 
-require_once __DIR__ . '/../vendor/autoload.php';
+// ── Autoloader: try project root first, then Sandra standalone ──────
+$autoloadPaths = [
+    __DIR__ . '/../../../autoload.php',   // vendor/everdreamsoft/sandra/bin/ → vendor/autoload.php
+    __DIR__ . '/../vendor/autoload.php',  // sandra/bin/ → sandra/vendor/autoload.php
+];
+$autoloaded = false;
+foreach ($autoloadPaths as $autoload) {
+    if (file_exists($autoload)) {
+        require_once $autoload;
+        $autoloaded = true;
+        break;
+    }
+}
+if (!$autoloaded) {
+    fwrite(STDERR, "Error: Could not find autoload.php. Run composer install.\n");
+    exit(1);
+}
 
 use SandraCore\System;
 use SandraCore\Mcp\McpServer;
 use SandraCore\Mcp\HttpTransport;
 
-// ── Load .env if present ────────────────────────────────────────────
-$envFile = __DIR__ . '/.env';
-if (file_exists($envFile)) {
-    foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-        $line = trim($line);
-        if ($line === '' || $line[0] === '#') continue;
-        if (str_contains($line, '=')) {
-            putenv($line);
+// ── CLI args ────────────────────────────────────────────────────────
+$opts = getopt('', ['port:', 'host:', 'env:']);
+
+// ── Load .env file ─────────────────────────────────────────────────
+// Priority: --env flag → bin/.env → project root .env
+$envPaths = array_filter([
+    $opts['env'] ?? null,                           // --env=/path/to/.env
+    __DIR__ . '/.env',                              // sandra/bin/.env (standalone)
+    getcwd() . '/.env',                             // current working directory
+]);
+foreach ($envPaths as $envFile) {
+    if ($envFile !== null && file_exists($envFile)) {
+        foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+            $line = trim($line);
+            if ($line === '' || $line[0] === '#') continue;
+            if (str_contains($line, '=')) {
+                // Only set if not already defined (env vars take precedence)
+                [$key] = explode('=', $line, 2);
+                if (getenv($key) === false) {
+                    putenv($line);
+                }
+            }
         }
+        break; // Use first .env found
     }
 }
-
-// ── CLI args ────────────────────────────────────────────────────────
-$opts = getopt('', ['port:', 'host:']);
 $port = (int)($opts['port'] ?? getenv('SANDRA_MCP_PORT') ?: 8090);
 $host = $opts['host'] ?? getenv('SANDRA_MCP_HOST') ?: '127.0.0.1';
 
