@@ -235,13 +235,10 @@ class OAuthProvider
         // Consume the code (single use)
         unset($this->authCodes[$code]);
 
-        // Generate access token
-        $accessToken = bin2hex(random_bytes(32));
-        $this->accessTokens[$accessToken] = [
-            'client_id' => $clientId,
-            'scope' => $codeData['scope'],
-            'expires' => time() + self::TOKEN_LIFETIME,
-        ];
+        // Use the static auth token as the access token.
+        // This way the token survives process restarts (no RAM dependency)
+        // and is validated by the same hash_equals check as Bearer tokens.
+        $accessToken = $this->authToken;
 
         $response = [
             'access_token' => $accessToken,
