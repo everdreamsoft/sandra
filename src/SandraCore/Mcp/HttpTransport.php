@@ -40,7 +40,7 @@ class HttpTransport
         $this->logFile = $logFile;
         $this->authToken = $authToken;
         if ($authToken !== null) {
-            $this->oauth = new OAuthProvider($authToken);
+            $this->oauth = new OAuthProvider($authToken, $logFile);
         }
     }
 
@@ -200,16 +200,18 @@ class HttpTransport
         // Authentication check
         if ($this->authToken !== null) {
             $providedToken = '';
+            $authSource = 'none';
 
             // Check Authorization: Bearer header
             $authHeader = $headers['authorization'] ?? '';
             if (str_starts_with($authHeader, 'Bearer ')) {
                 $providedToken = substr($authHeader, 7);
+                $authSource = 'bearer';
             }
 
             // Validate via OAuthProvider (checks static token + OAuth-issued tokens)
-            if ($providedToken === '' || !$this->oauth->validateToken($providedToken)) {
-                $this->log("   AUTH REJECTED from $peer");
+            if ($providedToken === '') {
+                $this->log("   AUTH REJECTED from $peer — no token provided (source=$authSource)");
                 $wwwAuth = $this->oauth->getWwwAuthenticateHeader($headers);
                 $this->sendResponse($conn, 401, array_merge($this->corsHeaders(), [
                     'WWW-Authenticate' => $wwwAuth,
@@ -217,6 +219,20 @@ class HttpTransport
                 @fclose($conn);
                 return;
             }
+
+            if (!$this->oauth->validateToken($providedToken)) {
+                $tokenPreview = substr($providedToken, 0, 8) . '...' . substr($providedToken, -4);
+                $this->log("   AUTH REJECTED from $peer — invalid token ($tokenPreview, source=$authSource)");
+                $wwwAuth = $this->oauth->getWwwAuthenticateHeader($headers);
+                $this->sendResponse($conn, 401, array_merge($this->corsHeaders(), [
+                    'WWW-Authenticate' => $wwwAuth,
+                ]), '{"error": "Unauthorized"}');
+                @fclose($conn);
+                return;
+            }
+
+            $tokenPreview = substr($providedToken, 0, 8) . '...';
+            $this->log("   AUTH OK from $peer (token=$tokenPreview, source=$authSource)");
         }
 
         match ($method) {

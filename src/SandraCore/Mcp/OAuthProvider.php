@@ -15,6 +15,7 @@ namespace SandraCore\Mcp;
 class OAuthProvider
 {
     private string $authToken;
+    private ?string $logFile;
 
     /** @var array<string, array> client_id → metadata */
     private array $clients = [];
@@ -28,9 +29,18 @@ class OAuthProvider
     private const CODE_LIFETIME = 300;      // 5 minutes
     private const TOKEN_LIFETIME = 86400;   // 24 hours
 
-    public function __construct(string $authToken)
+    public function __construct(string $authToken, ?string $logFile = null)
     {
         $this->authToken = $authToken;
+        $this->logFile = $logFile;
+    }
+
+    private function log(string $message): void
+    {
+        $line = "[sandra-oauth] $message\n";
+        if ($this->logFile !== null) {
+            @file_put_contents($this->logFile, date('Y-m-d H:i:s') . ' ' . $line, FILE_APPEND);
+        }
     }
 
     /**
@@ -51,6 +61,7 @@ class OAuthProvider
     public function handleProtectedResourceMetadata($conn, array $headers, callable $sendResponse): void
     {
         $baseUrl = $this->getBaseUrl($headers);
+        $this->log("protected-resource metadata requested, baseUrl=$baseUrl");
         $body = json_encode([
             'resource' => "$baseUrl/mcp",
             'authorization_servers' => [$baseUrl],
@@ -66,6 +77,7 @@ class OAuthProvider
     public function handleAuthServerMetadata($conn, array $headers, callable $sendResponse): void
     {
         $baseUrl = $this->getBaseUrl($headers);
+        $this->log("auth-server metadata requested, baseUrl=$baseUrl");
         $body = json_encode([
             'issuer' => $baseUrl,
             'authorization_endpoint' => "$baseUrl/authorize",
@@ -89,6 +101,8 @@ class OAuthProvider
     {
         $data = json_decode($body, true) ?: [];
         $clientId = bin2hex(random_bytes(16));
+        $clientName = $data['client_name'] ?? 'unknown';
+        $this->log("register client: name=$clientName id=$clientId");
 
         $this->clients[$clientId] = [
             'client_id' => $clientId,
@@ -120,7 +134,10 @@ class OAuthProvider
         $scope = $params['scope'] ?? 'mcp:read mcp:write';
         $responseType = $params['response_type'] ?? 'code';
 
+        $this->log("authorize GET: client_id=$clientId redirect=$redirectUri response_type=$responseType");
+
         if ($responseType !== 'code' || $codeChallenge === '') {
+            $this->log("authorize GET rejected: invalid params");
             $sendResponse($conn, 400, ['Content-Type' => 'application/json'],
                 '{"error": "invalid_request", "error_description": "code_challenge required"}');
             @fclose($conn);
@@ -149,6 +166,7 @@ class OAuthProvider
 
         // Validate password against auth token
         if (!hash_equals($this->authToken, $password)) {
+            $this->log("authorize POST rejected: invalid password");
             $html = $this->renderAuthorizePage($clientId, $redirectUri, $codeChallenge, $codeChallengeMethod, $state, $scope, 'Invalid password. Please try again.');
             $sendResponse($conn, 200, ['Content-Type' => 'text/html; charset=utf-8'], $html);
             @fclose($conn);
@@ -157,6 +175,7 @@ class OAuthProvider
 
         // Generate authorization code
         $code = bin2hex(random_bytes(32));
+        $this->log("authorize POST success: issued code=" . substr($code, 0, 8) . "... for client_id=$clientId");
         $this->authCodes[$code] = [
             'challenge' => $codeChallenge,
             'challenge_method' => $codeChallengeMethod,
@@ -195,7 +214,10 @@ class OAuthProvider
         $clientId = $params['client_id'] ?? '';
         $redirectUri = $params['redirect_uri'] ?? '';
 
+        $this->log("token request: grant_type=$grantType client_id=$clientId code=" . substr($code, 0, 8) . "...");
+
         if ($grantType !== 'authorization_code') {
+            $this->log("token rejected: unsupported_grant_type=$grantType");
             $sendResponse($conn, 400, ['Content-Type' => 'application/json'],
                 json_encode(['error' => 'unsupported_grant_type']));
             @fclose($conn);
@@ -204,6 +226,7 @@ class OAuthProvider
 
         // Validate authorization code
         if (!isset($this->authCodes[$code])) {
+            $this->log("token rejected: code not found (likely lost on restart or already consumed)");
             $sendResponse($conn, 400, ['Content-Type' => 'application/json'],
                 json_encode(['error' => 'invalid_grant', 'error_description' => 'Invalid or expired authorization code']));
             @fclose($conn);
@@ -239,6 +262,7 @@ class OAuthProvider
         // This way the token survives process restarts (no RAM dependency)
         // and is validated by the same hash_equals check as Bearer tokens.
         $accessToken = $this->authToken;
+        $this->log("token issued: access_token=" . substr($accessToken, 0, 8) . "... (static auth token)");
 
         $response = [
             'access_token' => $accessToken,
@@ -257,20 +281,22 @@ class OAuthProvider
      */
     public function validateToken(string $token): bool
     {
-        // Accept the static auth token (for Claude Code / Claude Desktop)
+        // Accept the static auth token (for Claude Code / Claude Desktop / OAuth-issued)
         if (hash_equals($this->authToken, $token)) {
             return true;
         }
 
-        // Accept OAuth-issued tokens
+        // Accept legacy OAuth-issued random tokens (from old deployments)
         if (isset($this->accessTokens[$token])) {
             if (time() > $this->accessTokens[$token]['expires']) {
+                $this->log("validateToken: legacy OAuth token expired, removing");
                 unset($this->accessTokens[$token]);
                 return false;
             }
             return true;
         }
 
+        $this->log("validateToken: unknown token (not static, not in RAM cache of " . count($this->accessTokens) . " tokens)");
         return false;
     }
 
