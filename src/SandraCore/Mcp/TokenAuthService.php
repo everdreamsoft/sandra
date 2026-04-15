@@ -64,7 +64,7 @@ class TokenAuthService
     /**
      * Validate a Bearer token and return routing info.
      *
-     * @return array{env: string, scopes: string[], db_host: ?string, db_name: ?string, is_static: bool, token_hash: ?string}|null
+     * @return array{env: string, scopes: string[], db_host: ?string, db_name: ?string, datagraph_version: int, is_static: bool, token_hash: ?string}|null
      *         null if token is invalid, expired, or disabled
      */
     public function validateAndRoute(string $token): ?array
@@ -88,6 +88,7 @@ class TokenAuthService
                 'scopes' => $scopes,
                 'db_host' => $row['db_host'] !== null ? (string)$row['db_host'] : null,
                 'db_name' => $row['db_name'] !== null ? (string)$row['db_name'] : null,
+                'datagraph_version' => isset($row['datagraph_version']) ? (int)$row['datagraph_version'] : 8,
                 'is_static' => false,
                 'token_hash' => $hash,
             ];
@@ -102,6 +103,7 @@ class TokenAuthService
                 'scopes' => self::ALL_SCOPES,  // static token has full access
                 'db_host' => null,
                 'db_name' => null,
+                'datagraph_version' => 8,
                 'is_static' => true,
                 'token_hash' => null,
             ];
@@ -154,7 +156,7 @@ class TokenAuthService
     private function lookupToken(string $hash): ?array
     {
         try {
-            $sql = "SELECT `env`, `scopes`, `db_host`, `db_name`, `expires_at`, `disabled_at`
+            $sql = "SELECT `env`, `scopes`, `db_host`, `db_name`, `datagraph_version`, `expires_at`, `disabled_at`
                     FROM `{$this->tokenTable}`
                     WHERE `token_hash` = :hash
                       AND `disabled_at` IS NULL

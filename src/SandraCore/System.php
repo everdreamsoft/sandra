@@ -31,7 +31,7 @@ class System
     public string $linkTable = '';
     public string $tableReference = '';
     public string $tableStorage = '';
-    private string $tableConf = '';
+    protected string $tableConf = '';
     public string $tableEmbedding = '';
     public string $sharedTokenTable = 'sandra_api_tokens';
     public mixed $foreignConceptFactory = null;
@@ -73,17 +73,9 @@ class System
 
         $pdoWrapper = static::$pdo;
 
-        $prefix = $env;
-        $this->tablePrefix = $prefix;
-        $suffix = '';
         $this->env = $env;
-
-        $this->conceptTable = $prefix . '_SandraConcept' . $suffix;
-        $this->linkTable = $prefix . '_SandraTriplets' . $suffix;
-        $this->tableReference = $prefix . '_SandraReferences' . $suffix;
-        $this->tableStorage = $prefix . '_SandraDatastorage' . $suffix;
-        $this->tableConf = $prefix . '_SandraConfig' . $suffix;
-        $this->tableEmbedding = $prefix . '_SandraEmbeddings' . $suffix;
+        $this->tablePrefix = $env;
+        $this->resolveTableNames($env);
 
         if ($install) $this->install();
 
@@ -96,6 +88,22 @@ class System
         if ($logger)
             self::$sandraLogger = $logger;
 
+    }
+
+    /**
+     * Compute the table names for this Sandra instance based on the env.
+     *
+     * Override in subclasses to support different table-naming conventions
+     * (e.g. legacy Sandra 7 uses `Concept{_env}` instead of `{env}_SandraConcept`).
+     */
+    protected function resolveTableNames(string $env): void
+    {
+        $this->conceptTable = $env . '_SandraConcept';
+        $this->linkTable = $env . '_SandraTriplets';
+        $this->tableReference = $env . '_SandraReferences';
+        $this->tableStorage = $env . '_SandraDatastorage';
+        $this->tableConf = $env . '_SandraConfig';
+        $this->tableEmbedding = $env . '_SandraEmbeddings';
     }
 
     public function getDriver(): ?DatabaseDriverInterface

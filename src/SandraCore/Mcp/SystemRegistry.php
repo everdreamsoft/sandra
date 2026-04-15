@@ -3,20 +3,28 @@ declare(strict_types=1);
 
 namespace SandraCore\Mcp;
 
+use SandraCore\Sandra7LegacySystem;
 use SandraCore\System;
 
 /**
- * Caches System instances per (db_host, db_name, env) combination.
+ * Caches System instances per (db_host, db_name, env, version) combination.
  *
  * Enables multi-env routing in a single MCP process: each token can map to
  * a different env (or even a different DB), and the System for that env is
  * loaded once and reused across requests.
+ *
+ * A token can also declare a `datagraph_version` (7 = legacy Sandra 7,
+ * 8 = current). Version 7 instantiates Sandra7LegacySystem instead of System
+ * so the legacy table-naming scheme is used transparently.
  *
  * The default env is what the server was bootstrapped with. Other envs are
  * loaded lazily on first access via a token that routes to them.
  */
 class SystemRegistry
 {
+    public const DEFAULT_VERSION = 8;
+    public const LEGACY_VERSION = 7;
+
     private string $defaultDbHost;
     private string $defaultDbName;
     private string $dbUser;
@@ -46,15 +54,23 @@ class SystemRegistry
      * @param string $env The SANDRA_ENV (table prefix) to use
      * @param string|null $dbHost Override DB host (null = default)
      * @param string|null $dbName Override DB name (null = default)
+     * @param int|null $version Datagraph version (7 = legacy, 8 = current). null defaults to 8.
      */
-    public function get(string $env, ?string $dbHost = null, ?string $dbName = null): System
-    {
+    public function get(
+        string $env,
+        ?string $dbHost = null,
+        ?string $dbName = null,
+        ?int $version = null
+    ): System {
         $host = $dbHost ?? $this->defaultDbHost;
         $name = $dbName ?? $this->defaultDbName;
-        $key = "$host:$name:$env";
+        $v = $version ?? self::DEFAULT_VERSION;
+        $key = "$host:$name:$env:v$v";
 
         if (!isset($this->cache[$key])) {
-            $this->cache[$key] = new System($env, false, $host, $name, $this->dbUser, $this->dbPass);
+            $this->cache[$key] = $v === self::LEGACY_VERSION
+                ? new Sandra7LegacySystem($env, false, $host, $name, $this->dbUser, $this->dbPass)
+                : new System($env, false, $host, $name, $this->dbUser, $this->dbPass);
         }
 
         return $this->cache[$key];

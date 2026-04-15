@@ -126,6 +126,7 @@ class SandraDatabaseDefinition
                         `scopes` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
                         `db_host` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
                         `db_name` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                        `datagraph_version` tinyint(3) unsigned NOT NULL DEFAULT 8,
                         `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         `expires_at` timestamp NULL DEFAULT NULL,
                         `disabled_at` timestamp NULL DEFAULT NULL,
@@ -139,6 +140,26 @@ class SandraDatabaseDefinition
                     COLLATE=utf8mb4_unicode_ci;";
 
             System::$pdo->get()->query($sql);
+
+            // Migration: add datagraph_version to existing deployments that pre-date the column.
+            // Idempotent on MySQL 8+/MariaDB 10.0.2+.
+            try {
+                System::$pdo->get()->exec(
+                    "ALTER TABLE `$sharedTokenTable`
+                     ADD COLUMN IF NOT EXISTS `datagraph_version` tinyint(3) unsigned NOT NULL DEFAULT 8"
+                );
+            } catch (\Throwable $e) {
+                // Older MySQL (<8) doesn't support IF NOT EXISTS in ALTER; check first.
+                $check = System::$pdo->get()->query(
+                    "SHOW COLUMNS FROM `$sharedTokenTable` LIKE 'datagraph_version'"
+                );
+                if ($check !== false && $check->fetch() === false) {
+                    System::$pdo->get()->exec(
+                        "ALTER TABLE `$sharedTokenTable`
+                         ADD COLUMN `datagraph_version` tinyint(3) unsigned NOT NULL DEFAULT 8"
+                    );
+                }
+            }
         }
 
     }

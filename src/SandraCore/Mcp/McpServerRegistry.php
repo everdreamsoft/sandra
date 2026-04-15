@@ -28,14 +28,22 @@ class McpServerRegistry
     /**
      * Get a McpServer for the given env. Lazy-instantiated and cached.
      * Each server runs its own discovery against the env's tables.
+     *
+     * @param int|null $version Datagraph version (7 = legacy Sandra 7, 8 = current).
+     *                          Threaded through to the System built for this env.
      */
-    public function get(string $env, ?string $dbHost = null, ?string $dbName = null): McpServer
-    {
-        $key = ($dbHost ?? '*') . ':' . ($dbName ?? '*') . ':' . $env;
+    public function get(
+        string $env,
+        ?string $dbHost = null,
+        ?string $dbName = null,
+        ?int $version = null
+    ): McpServer {
+        $v = $version ?? SystemRegistry::DEFAULT_VERSION;
+        $key = ($dbHost ?? '*') . ':' . ($dbName ?? '*') . ':' . $env . ':v' . $v;
 
         if (!isset($this->cache[$key])) {
             $systemRegistry = $this->systemRegistry;
-            $systemFactory = fn() => $systemRegistry->get($env, $dbHost, $dbName);
+            $systemFactory = fn() => $systemRegistry->get($env, $dbHost, $dbName, $v);
 
             $server = new McpServer(null, $systemFactory, $this->logFile);
             $server->discover();

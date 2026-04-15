@@ -310,7 +310,12 @@ class HttpTransport
             return $this->server;
         }
 
-        return $this->mcpRegistry->get($env, $routeInfo['db_host'] ?? null, $routeInfo['db_name'] ?? null);
+        return $this->mcpRegistry->get(
+            $env,
+            $routeInfo['db_host'] ?? null,
+            $routeInfo['db_name'] ?? null,
+            $routeInfo['datagraph_version'] ?? null
+        );
     }
 
     private function handleUnsupported($conn): void
@@ -591,9 +596,10 @@ class HttpTransport
         $env = $routeInfo['env'] ?? $this->systemRegistry->getDefaultEnv();
         $dbHost = $routeInfo['db_host'] ?? null;
         $dbName = $routeInfo['db_name'] ?? null;
+        $version = $routeInfo['datagraph_version'] ?? null;
 
         try {
-            $system = $this->systemRegistry->get($env, $dbHost, $dbName);
+            $system = $this->systemRegistry->get($env, $dbHost, $dbName, $version);
         } catch (\Throwable $e) {
             $this->log("   API: failed to load System for env=$env: " . $e->getMessage());
             $this->sendResponse($conn, 500, ['Content-Type' => 'application/json'],

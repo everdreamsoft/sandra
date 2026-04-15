@@ -115,11 +115,23 @@ function cmdCreate(PDO $pdo, string $table, array $opts, array $dbConfig): void
     $dbHost = $opts['db-host'] ?? null;
     $dbName = $opts['db-name'] ?? null;
     $skipBootstrap = !empty($opts['no-bootstrap']);
+    $version = isset($opts['version']) ? (int)$opts['version'] : 8;
 
     if ($name === null || $env === null) {
         fwrite(STDERR, "Error: --name and --env are required\n\n");
         cmdHelp('create');
         exit(1);
+    }
+
+    if (!in_array($version, [7, 8], true)) {
+        fwrite(STDERR, "Error: --version must be 7 (legacy Sandra 7) or 8 (current, default)\n");
+        exit(1);
+    }
+
+    // Legacy v7 datagraphs already exist in production — don't try to create tables
+    // (and v7 uses a completely different schema, so the v8 installer would break it).
+    if ($version === 7) {
+        $skipBootstrap = true;
     }
 
     // Validate scopes
@@ -143,8 +155,8 @@ function cmdCreate(PDO $pdo, string $table, array $opts, array $dbConfig): void
     }
 
     try {
-        $sql = "INSERT INTO `{$table}` (token_hash, name, env, scopes, db_host, db_name, expires_at)
-                VALUES (:hash, :name, :env, :scopes, :db_host, :db_name, :expires_at)";
+        $sql = "INSERT INTO `{$table}` (token_hash, name, env, scopes, db_host, db_name, datagraph_version, expires_at)
+                VALUES (:hash, :name, :env, :scopes, :db_host, :db_name, :version, :expires_at)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             ':hash' => $hash,
@@ -153,6 +165,7 @@ function cmdCreate(PDO $pdo, string $table, array $opts, array $dbConfig): void
             ':scopes' => $scopes,
             ':db_host' => $dbHost,
             ':db_name' => $dbName,
+            ':version' => $version,
             ':expires_at' => $expiresAt,
         ]);
         $id = (int)$pdo->lastInsertId();
@@ -172,10 +185,11 @@ function cmdCreate(PDO $pdo, string $table, array $opts, array $dbConfig): void
     }
 
     echo "Token created successfully.\n\n";
-    echo "  ID:     $id\n";
-    echo "  Name:   $name\n";
-    echo "  Env:    $env\n";
-    echo "  Scopes: $scopes\n";
+    echo "  ID:      $id\n";
+    echo "  Name:    $name\n";
+    echo "  Env:     $env\n";
+    echo "  Version: " . ($version === 7 ? "7 (legacy Sandra)" : "8 (current)") . "\n";
+    echo "  Scopes:  $scopes\n";
     if ($expiresAt) echo "  Expires: $expiresAt\n";
     if ($bootstrapResult !== null) {
         echo "  Bootstrap: " . $bootstrapResult . "\n";
@@ -229,7 +243,7 @@ function bootstrapEnv(string $env, string $userName, array $dbConfig, ?string $o
 function cmdList(PDO $pdo, string $table): void
 {
     try {
-        $sql = "SELECT id, name, env, scopes, created_at, last_used_at, expires_at, disabled_at
+        $sql = "SELECT id, name, env, scopes, datagraph_version, created_at, last_used_at, expires_at, disabled_at
                 FROM `{$table}` ORDER BY created_at DESC";
         $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
@@ -247,15 +261,16 @@ function cmdList(PDO $pdo, string $table): void
         return;
     }
 
-    printf("%-4s %-20s %-15s %-25s %-20s %-20s %-8s\n", 'ID', 'Name', 'Env', 'Scopes', 'Last used', 'Created', 'Status');
-    echo str_repeat('─', 120) . "\n";
+    printf("%-4s %-20s %-15s %-3s %-25s %-20s %-20s %-8s\n", 'ID', 'Name', 'Env', 'Ver', 'Scopes', 'Last used', 'Created', 'Status');
+    echo str_repeat('─', 125) . "\n";
     foreach ($rows as $row) {
         $status = $row['disabled_at'] !== null ? 'DISABLED' : ($row['expires_at'] !== null && strtotime($row['expires_at']) < time() ? 'EXPIRED' : 'active');
         printf(
-            "%-4s %-20s %-15s %-25s %-20s %-20s %-8s\n",
+            "%-4s %-20s %-15s %-3s %-25s %-20s %-20s %-8s\n",
             $row['id'],
             mb_substr($row['name'], 0, 20),
             mb_substr($row['env'], 0, 15),
+            'v' . ($row['datagraph_version'] ?? 8),
             mb_substr($row['scopes'], 0, 25),
             $row['last_used_at'] ?? '—',
             $row['created_at'],
@@ -350,6 +365,9 @@ function cmdHelp(?string $command = null): void
         echo "  --expires-days=N       Expire after N days (default: never)\n";
         echo "  --db-host=HOST         Override DB host for this token (advanced)\n";
         echo "  --db-name=NAME         Override DB name for this token (advanced)\n";
+        echo "  --version=N            Datagraph version: 7 (legacy Sandra) or 8 (default)\n";
+        echo "                         v7 targets legacy tables (Concept, Link, References, aux_dataStorage)\n";
+        echo "                         and auto-skips bootstrap.\n";
         return;
     }
 
