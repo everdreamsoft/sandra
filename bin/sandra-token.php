@@ -90,9 +90,11 @@ try {
     exit(1);
 }
 
+$dbConfig = compact('dbHost', 'db', 'dbUser', 'dbPass');
+
 // ── Dispatch ────────────────────────────────────────────────────────
 match ($command) {
-    'create' => cmdCreate($pdo, $tokenTable, $opts),
+    'create' => cmdCreate($pdo, $tokenTable, $opts, $dbConfig),
     'list' => cmdList($pdo, $tokenTable),
     'revoke' => cmdRevoke($pdo, $tokenTable, $positional[0] ?? null),
     'unrevoke' => cmdUnrevoke($pdo, $tokenTable, $positional[0] ?? null),
@@ -104,7 +106,7 @@ match ($command) {
 
 // ── Commands ────────────────────────────────────────────────────────
 
-function cmdCreate(PDO $pdo, string $table, array $opts): void
+function cmdCreate(PDO $pdo, string $table, array $opts, array $dbConfig): void
 {
     $name = $opts['name'] ?? null;
     $env = $opts['env'] ?? null;
@@ -112,6 +114,7 @@ function cmdCreate(PDO $pdo, string $table, array $opts): void
     $expiresDays = isset($opts['expires-days']) ? (int)$opts['expires-days'] : null;
     $dbHost = $opts['db-host'] ?? null;
     $dbName = $opts['db-name'] ?? null;
+    $skipBootstrap = !empty($opts['no-bootstrap']);
 
     if ($name === null || $env === null) {
         fwrite(STDERR, "Error: --name and --env are required\n\n");
@@ -162,17 +165,65 @@ function cmdCreate(PDO $pdo, string $table, array $opts): void
         exit(1);
     }
 
+    // Bootstrap the env: install tables + create person entity with has_mcp_access
+    $bootstrapResult = null;
+    if (!$skipBootstrap) {
+        $bootstrapResult = bootstrapEnv($env, $name, $dbConfig, $dbHost, $dbName);
+    }
+
     echo "Token created successfully.\n\n";
     echo "  ID:     $id\n";
     echo "  Name:   $name\n";
     echo "  Env:    $env\n";
     echo "  Scopes: $scopes\n";
     if ($expiresAt) echo "  Expires: $expiresAt\n";
+    if ($bootstrapResult !== null) {
+        echo "  Bootstrap: " . $bootstrapResult . "\n";
+    }
     echo "\n";
     echo "  ╔════════════════════════════════════════════════════════════════════════╗\n";
     echo "  ║  TOKEN (save now — will not be shown again):                           ║\n";
     echo "  ╚════════════════════════════════════════════════════════════════════════╝\n\n";
     echo "  $token\n\n";
+}
+
+/**
+ * Install env tables and create a person entity linked via has_mcp_access.
+ * Returns a short status string for display.
+ */
+function bootstrapEnv(string $env, string $userName, array $dbConfig, ?string $overrideHost, ?string $overrideDb): string
+{
+    try {
+        // Reset the static PDO so the env's System gets its own connection
+        $ref = new \ReflectionProperty(\SandraCore\System::class, 'pdo');
+        $ref->setAccessible(true);
+        $ref->setValue(null, null);
+
+        $host = $overrideHost ?? $dbConfig['dbHost'];
+        $db = $overrideDb ?? $dbConfig['db'];
+
+        // Create System with install=true to create all env tables
+        $envSystem = new \SandraCore\System($env, true, $host, $db, $dbConfig['dbUser'], $dbConfig['dbPass']);
+
+        // Check if a person entity already exists for this user (idempotent)
+        $personFactory = new \SandraCore\EntityFactory('person', 'person_file', $envSystem);
+        $existing = $personFactory->getOrCreateFromRef('name', $userName);
+
+        // Ensure the has_mcp_access triplet links this person to the 'mcp_access' concept
+        $accessConceptId = $envSystem->systemConcept->get('mcp_access');
+        $verbId = $envSystem->systemConcept->get('has_mcp_access');
+
+        \SandraCore\DatabaseAdapter::rawCreateTriplet(
+            (int)$existing->subjectConcept->idConcept,
+            (int)$verbId,
+            (int)$accessConceptId,
+            $envSystem
+        );
+
+        return "env '{$env}' installed, person '{$userName}' created with has_mcp_access";
+    } catch (\Throwable $e) {
+        return "WARNING: bootstrap failed — " . $e->getMessage() . " (tables may need manual install)";
+    }
 }
 
 function cmdList(PDO $pdo, string $table): void
