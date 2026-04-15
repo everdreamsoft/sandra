@@ -49,7 +49,7 @@ class HttpTransport
         $this->authService = $authService;
         $this->systemRegistry = $systemRegistry;
         if ($authToken !== null || $authService !== null) {
-            $this->oauth = new OAuthProvider($authToken ?? '', $logFile);
+            $this->oauth = new OAuthProvider($authToken ?? '', $logFile, $authService);
         }
     }
 

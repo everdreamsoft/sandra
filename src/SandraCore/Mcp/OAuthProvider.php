@@ -16,6 +16,7 @@ class OAuthProvider
 {
     private string $authToken;
     private ?string $logFile;
+    private ?TokenAuthService $authService = null;
 
     /** @var array<string, array> client_id → metadata */
     private array $clients = [];
@@ -29,10 +30,16 @@ class OAuthProvider
     private const CODE_LIFETIME = 300;      // 5 minutes
     private const TOKEN_LIFETIME = 86400;   // 24 hours
 
-    public function __construct(string $authToken, ?string $logFile = null)
+    public function __construct(string $authToken, ?string $logFile = null, ?TokenAuthService $authService = null)
     {
         $this->authToken = $authToken;
         $this->logFile = $logFile;
+        $this->authService = $authService;
+    }
+
+    public function setAuthService(TokenAuthService $authService): void
+    {
+        $this->authService = $authService;
     }
 
     private function log(string $message): void
@@ -164,10 +171,25 @@ class OAuthProvider
         $state = $params['state'] ?? '';
         $scope = $params['scope'] ?? 'mcp:read mcp:write';
 
-        // Validate password against auth token
-        if (!hash_equals($this->authToken, $password)) {
+        // Validate password against:
+        //   1. Any valid token in the shared tokens table (preferred)
+        //   2. The static SANDRA_AUTH_TOKEN (backward compatibility)
+        $validToken = null;
+
+        if ($this->authService !== null) {
+            $routeInfo = $this->authService->validateAndRoute($password);
+            if ($routeInfo !== null) {
+                $validToken = $password;
+            }
+        }
+
+        if ($validToken === null && $this->authToken !== '' && hash_equals($this->authToken, $password)) {
+            $validToken = $password;
+        }
+
+        if ($validToken === null) {
             $this->log("authorize POST rejected: invalid password");
-            $html = $this->renderAuthorizePage($clientId, $redirectUri, $codeChallenge, $codeChallengeMethod, $state, $scope, 'Invalid password. Please try again.');
+            $html = $this->renderAuthorizePage($clientId, $redirectUri, $codeChallenge, $codeChallengeMethod, $state, $scope, 'Invalid token. Please try again.');
             $sendResponse($conn, 200, ['Content-Type' => 'text/html; charset=utf-8'], $html);
             @fclose($conn);
             return;
@@ -183,6 +205,7 @@ class OAuthProvider
             'client_id' => $clientId,
             'scope' => $scope,
             'expires' => time() + self::CODE_LIFETIME,
+            'user_token' => $validToken,
         ];
 
         // Redirect back to client
@@ -258,11 +281,13 @@ class OAuthProvider
         // Consume the code (single use)
         unset($this->authCodes[$code]);
 
-        // Use the static auth token as the access token.
-        // This way the token survives process restarts (no RAM dependency)
-        // and is validated by the same hash_equals check as Bearer tokens.
-        $accessToken = $this->authToken;
-        $this->log("token issued: access_token=" . substr($accessToken, 0, 8) . "... (static auth token)");
+        // Return the user's own token as the access token.
+        // This way:
+        //  - The token survives process restarts (stored in DB or static env)
+        //  - Validation goes through TokenAuthService (shared table lookup)
+        //  - Each user gets their own env + scopes preserved
+        $accessToken = $codeData['user_token'] ?? $this->authToken;
+        $this->log("token issued: access_token=" . substr($accessToken, 0, 8) . "... (user-scoped)");
 
         $response = [
             'access_token' => $accessToken,
