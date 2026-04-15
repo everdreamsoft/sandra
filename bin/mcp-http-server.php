@@ -41,6 +41,8 @@ if (!$autoloaded) {
 use SandraCore\System;
 use SandraCore\Mcp\McpServer;
 use SandraCore\Mcp\HttpTransport;
+use SandraCore\Mcp\SystemRegistry;
+use SandraCore\Mcp\TokenAuthService;
 
 // ── CLI args ────────────────────────────────────────────────────────
 $opts = getopt('', ['port:', 'host:', 'env:']);
@@ -82,12 +84,15 @@ $install = (bool)(getenv('SANDRA_INSTALL') ?: false);
 $authToken = getenv('SANDRA_AUTH_TOKEN') ?: null;
 
 // ── Build MCP server ────────────────────────────────────────────────
-$systemFactory = function () use ($env, $install, $dbHost, $db, $dbUser, $dbPass) {
-    static $installed = false;
-    $doInstall = $install && !$installed;
-    $installed = true;
-    return new System($env, $doInstall, $dbHost, $db, $dbUser, $dbPass);
-};
+// Install if requested, otherwise deferred to SystemRegistry
+if ($install) {
+    new System($env, true, $dbHost, $db, $dbUser, $dbPass);
+}
+
+// Multi-env system registry for API multi-tenancy
+$systemRegistry = new SystemRegistry($dbHost, $db, $dbUser, $dbPass, $env);
+
+$systemFactory = fn() => $systemRegistry->get($env);
 
 $server = new McpServer(null, $systemFactory, $logFile);
 $server->discover();
@@ -95,12 +100,27 @@ $server->discover();
 // Pre-boot discovery so first HTTP request is instant
 $server->dispatchMessage(['method' => 'notifications/initialized', 'jsonrpc' => '2.0']);
 
-// ── Start HTTP transport ────────────────────────────────────────────
-$transport = new HttpTransport($server, $logFile, $authToken);
+// ── Token auth service (unified for MCP + API) ─────────────────────
+$authService = null;
+if ($authToken !== null) {
+    $defaultSystem = $systemRegistry->getDefault();
+    $authService = new TokenAuthService(
+        $defaultSystem->getConnection(),
+        $defaultSystem->sharedTokenTable,
+        $authToken,
+        $env,
+        $logFile
+    );
+}
 
-echo "Sandra MCP HTTP server starting on http://$host:$port/mcp\n";
+// ── Start HTTP transport ────────────────────────────────────────────
+$transport = new HttpTransport($server, $logFile, $authToken, $authService, $systemRegistry);
+
+echo "Sandra MCP HTTP server starting on http://$host:$port\n";
+echo "  Endpoints: /mcp, /api/*, /.well-known/*, /authorize, /token\n";
 echo "Log: $logFile\n";
 echo "Auth: " . ($authToken ? "enabled (Bearer token required)" : "disabled (open access)") . "\n";
+echo "Token store: " . ($authService ? "sandra_api_tokens (multi-env routing)" : "static token only") . "\n";
 echo "Press Ctrl+C to stop.\n\n";
 
 $transport->listen($host, $port);

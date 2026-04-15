@@ -24,6 +24,8 @@ class HttpTransport
     private int $eventCounter = 0;
     private ?string $authToken = null;
     private ?OAuthProvider $oauth = null;
+    private ?TokenAuthService $authService = null;
+    private ?SystemRegistry $systemRegistry = null;
 
     /** @var resource[] Active SSE connections keyed by peer address */
     private array $sseClients = [];
@@ -34,13 +36,20 @@ class HttpTransport
     private const SSE_MAX_LIFETIME = 600; // 10 minutes
     private const SELECT_TIMEOUT_SEC = 5; // wake up every 5s to send keepalives
 
-    public function __construct(McpServer $server, ?string $logFile = null, ?string $authToken = null)
-    {
+    public function __construct(
+        McpServer $server,
+        ?string $logFile = null,
+        ?string $authToken = null,
+        ?TokenAuthService $authService = null,
+        ?SystemRegistry $systemRegistry = null
+    ) {
         $this->server = $server;
         $this->logFile = $logFile;
         $this->authToken = $authToken;
-        if ($authToken !== null) {
-            $this->oauth = new OAuthProvider($authToken, $logFile);
+        $this->authService = $authService;
+        $this->systemRegistry = $systemRegistry;
+        if ($authToken !== null || $authService !== null) {
+            $this->oauth = new OAuthProvider($authToken ?? '', $logFile);
         }
     }
 
@@ -190,28 +199,28 @@ class HttpTransport
             }
         }
 
-        // Only accept /mcp endpoint
-        if ($pathWithoutQuery !== '/mcp' && $pathWithoutQuery !== '/mcp/') {
-            $this->sendResponse($conn, 404, [], '{"error": "Not found. Use /mcp endpoint."}');
+        // Is this an API request or MCP request?
+        $isApiRequest = str_starts_with($pathWithoutQuery, '/api/') || $pathWithoutQuery === '/api';
+        $isMcpRequest = $pathWithoutQuery === '/mcp' || $pathWithoutQuery === '/mcp/';
+
+        if (!$isApiRequest && !$isMcpRequest) {
+            $this->sendResponse($conn, 404, [], '{"error": "Not found. Use /mcp or /api/* endpoint."}');
             @fclose($conn);
             return;
         }
 
-        // Authentication check
-        if ($this->authToken !== null) {
+        // Authentication check (when any auth layer is configured)
+        $routeInfo = null;
+        if ($this->authToken !== null || $this->authService !== null) {
             $providedToken = '';
-            $authSource = 'none';
 
-            // Check Authorization: Bearer header
             $authHeader = $headers['authorization'] ?? '';
             if (str_starts_with($authHeader, 'Bearer ')) {
                 $providedToken = substr($authHeader, 7);
-                $authSource = 'bearer';
             }
 
-            // Validate via OAuthProvider (checks static token + OAuth-issued tokens)
             if ($providedToken === '') {
-                $this->log("   AUTH REJECTED from $peer — no token provided (source=$authSource)");
+                $this->log("   AUTH REJECTED from $peer — no token provided");
                 $wwwAuth = $this->oauth->getWwwAuthenticateHeader($headers);
                 $this->sendResponse($conn, 401, array_merge($this->corsHeaders(), [
                     'WWW-Authenticate' => $wwwAuth,
@@ -220,19 +229,49 @@ class HttpTransport
                 return;
             }
 
-            if (!$this->oauth->validateToken($providedToken)) {
+            // Route via TokenAuthService (if available) or fallback to legacy validation
+            if ($this->authService !== null) {
+                $routeInfo = $this->authService->validateAndRoute($providedToken);
+            } elseif ($this->oauth !== null && $this->oauth->validateToken($providedToken)) {
+                $routeInfo = ['env' => null, 'scopes' => TokenAuthService::ALL_SCOPES, 'is_static' => true, 'token_hash' => null];
+            }
+
+            if ($routeInfo === null) {
                 $tokenPreview = substr($providedToken, 0, 8) . '...' . substr($providedToken, -4);
-                $this->log("   AUTH REJECTED from $peer — invalid token ($tokenPreview, source=$authSource)");
+                $this->log("   AUTH REJECTED from $peer — invalid token ($tokenPreview)");
                 $wwwAuth = $this->oauth->getWwwAuthenticateHeader($headers);
                 $this->sendResponse($conn, 401, array_merge($this->corsHeaders(), [
                     'WWW-Authenticate' => $wwwAuth,
                 ]), '{"error": "Unauthorized"}');
+                @fclose($conn);
+                return;
+            }
+
+            // Check scope for this endpoint
+            $requiredScope = TokenAuthService::requiredScope($pathWithoutQuery, $method);
+            if ($this->authService !== null && !$this->authService->hasScope($routeInfo['scopes'], $requiredScope)) {
+                $tokenPreview = substr($providedToken, 0, 8) . '...';
+                $this->log("   AUTH SCOPE REJECTED from $peer (token=$tokenPreview, env={$routeInfo['env']}, needs=$requiredScope, has=" . implode(',', $routeInfo['scopes']) . ")");
+                $this->sendResponse($conn, 403, $this->corsHeaders(),
+                    json_encode(['error' => 'insufficient_scope', 'required' => $requiredScope]));
                 @fclose($conn);
                 return;
             }
 
             $tokenPreview = substr($providedToken, 0, 8) . '...';
-            $this->log("   AUTH OK from $peer (token=$tokenPreview, source=$authSource)");
+            $env = $routeInfo['env'] ?? 'default';
+            $this->log("   AUTH OK from $peer (token=$tokenPreview, env=$env, scope=$requiredScope)");
+
+            // Async: update last_used_at (best-effort, failures ignored)
+            if ($this->authService !== null && !empty($routeInfo['token_hash'])) {
+                $this->authService->touchLastUsed($routeInfo['token_hash']);
+            }
+        }
+
+        // Route API requests to ApiHandler
+        if ($isApiRequest) {
+            $this->handleApiRequest($conn, $method, $path, $pathWithoutQuery, $headers, $body, $routeInfo, $peer);
+            return;
         }
 
         match ($method) {
@@ -502,5 +541,121 @@ class HttpTransport
         } else {
             fwrite(STDERR, $line);
         }
+    }
+
+    /**
+     * Handle /api/* REST request by routing to ApiHandler for the token's env.
+     */
+    private function handleApiRequest($conn, string $method, string $path, string $pathWithoutQuery, array $headers, string $body, ?array $routeInfo, string $peer): void
+    {
+        if ($this->systemRegistry === null) {
+            $this->sendResponse($conn, 503, ['Content-Type' => 'application/json'],
+                json_encode(['error' => 'API not enabled (SystemRegistry not configured)']));
+            @fclose($conn);
+            return;
+        }
+
+        // Get System for the token's env
+        $env = $routeInfo['env'] ?? $this->systemRegistry->getDefaultEnv();
+        $dbHost = $routeInfo['db_host'] ?? null;
+        $dbName = $routeInfo['db_name'] ?? null;
+
+        try {
+            $system = $this->systemRegistry->get($env, $dbHost, $dbName);
+        } catch (\Throwable $e) {
+            $this->log("   API: failed to load System for env=$env: " . $e->getMessage());
+            $this->sendResponse($conn, 500, ['Content-Type' => 'application/json'],
+                json_encode(['error' => 'Failed to load env', 'env' => $env]));
+            @fclose($conn);
+            return;
+        }
+
+        // Strip /api prefix: /api/person/5 → /person/5
+        $apiPath = substr($pathWithoutQuery, 4);  // strip /api
+        if ($apiPath === '') $apiPath = '/';
+
+        // Parse query string
+        $queryString = parse_url($path, PHP_URL_QUERY) ?? '';
+        $queryParams = [];
+        if ($queryString !== '') {
+            parse_str($queryString, $queryParams);
+        }
+
+        // Parse body (JSON or form)
+        $bodyData = [];
+        if ($body !== '') {
+            $decoded = json_decode($body, true);
+            if (is_array($decoded)) {
+                $bodyData = $decoded;
+            } else {
+                parse_str($body, $bodyData);
+            }
+        }
+
+        // Build ApiHandler with auto-discovered factories
+        $apiHandler = $this->buildApiHandler($system);
+
+        // Dispatch
+        $apiRequest = new \SandraCore\Api\ApiRequest($method, $apiPath, $queryParams, $bodyData);
+        $apiResponse = $apiHandler->handle($apiRequest);
+
+        $this->log("   API $method $apiPath (env=$env) → {$apiResponse->getStatus()}");
+
+        $this->sendResponse(
+            $conn,
+            $apiResponse->getStatus(),
+            array_merge($this->corsHeaders(), ['Content-Type' => 'application/json']),
+            $apiResponse->toJson()
+        );
+        @fclose($conn);
+    }
+
+    /**
+     * Build an ApiHandler with all discovered factories auto-registered.
+     */
+    private function buildApiHandler(\SandraCore\System $system): \SandraCore\Api\ApiHandler
+    {
+        $api = new \SandraCore\Api\ApiHandler($system);
+
+        // Reuse FactoryDiscovery logic: scan triplets for (is_a, contained_in_file) pairs
+        $pdo = $system->getConnection();
+        $linkTable = $system->linkTable;
+        $conceptTable = $system->conceptTable;
+        $isaId = $system->systemConcept->get('is_a');
+        $cifId = $system->systemConcept->get('contained_in_file');
+
+        $sql = "SELECT DISTINCT
+                    ct.shortname AS isa_name,
+                    cf.shortname AS cif_name
+                FROM `{$linkTable}` l1
+                JOIN `{$conceptTable}` ct ON ct.id = l1.idConceptTarget
+                JOIN `{$linkTable}` l2 ON l2.idConceptStart = l1.idConceptStart AND l2.idConceptLink = :cifId
+                JOIN `{$conceptTable}` cf ON cf.id = l2.idConceptTarget
+                WHERE l1.idConceptLink = :isaId
+                  AND ct.shortname IS NOT NULL
+                  AND cf.shortname IS NOT NULL";
+
+        try {
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([':isaId' => $isaId, ':cifId' => $cifId]);
+            $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            $this->log("   API discovery failed: " . $e->getMessage());
+            $rows = [];
+        }
+
+        foreach ($rows as $row) {
+            $name = $row['isa_name'];
+            $factory = new \SandraCore\EntityFactory($row['isa_name'], $row['cif_name'], $system);
+            $api->register($name, $factory, [
+                'read' => true,
+                'create' => true,
+                'update' => true,
+                'delete' => true,
+                'searchable' => [],
+            ]);
+        }
+
+        return $api;
     }
 }
