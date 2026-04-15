@@ -26,6 +26,7 @@ class HttpTransport
     private ?OAuthProvider $oauth = null;
     private ?TokenAuthService $authService = null;
     private ?SystemRegistry $systemRegistry = null;
+    private ?McpServerRegistry $mcpRegistry = null;
 
     /** @var resource[] Active SSE connections keyed by peer address */
     private array $sseClients = [];
@@ -41,13 +42,15 @@ class HttpTransport
         ?string $logFile = null,
         ?string $authToken = null,
         ?TokenAuthService $authService = null,
-        ?SystemRegistry $systemRegistry = null
+        ?SystemRegistry $systemRegistry = null,
+        ?McpServerRegistry $mcpRegistry = null
     ) {
         $this->server = $server;
         $this->logFile = $logFile;
         $this->authToken = $authToken;
         $this->authService = $authService;
         $this->systemRegistry = $systemRegistry;
+        $this->mcpRegistry = $mcpRegistry;
         if ($authToken !== null || $authService !== null) {
             $this->oauth = new OAuthProvider($authToken ?? '', $logFile, $authService);
         }
@@ -274,12 +277,40 @@ class HttpTransport
             return;
         }
 
+        // Select the MCP server for the token's env (fall back to default server)
+        $mcpServer = $this->selectMcpServer($routeInfo);
+
         match ($method) {
-            'POST' => $this->handlePost($conn, $headers, $body, $peer),
+            'POST' => $this->handlePost($conn, $headers, $body, $peer, $mcpServer),
             'GET' => $this->handleGet($conn, $headers, $peer),
             'DELETE' => $this->handleDelete($conn, $headers, $peer),
             default => $this->handleUnsupported($conn),
         };
+    }
+
+    /**
+     * Select the McpServer to use based on the token's routing info.
+     * When the token maps to a non-default env, the registry returns a
+     * dedicated McpServer for that env. Falls back to the default server
+     * when no registry is configured or the token is the static fallback.
+     */
+    private function selectMcpServer(?array $routeInfo): McpServer
+    {
+        if ($this->mcpRegistry === null || $routeInfo === null) {
+            return $this->server;
+        }
+
+        $env = $routeInfo['env'] ?? null;
+        if ($env === null) {
+            return $this->server;
+        }
+
+        // Static token routes to default env → use default server
+        if (!empty($routeInfo['is_static']) && $this->systemRegistry !== null && $env === $this->systemRegistry->getDefaultEnv()) {
+            return $this->server;
+        }
+
+        return $this->mcpRegistry->get($env, $routeInfo['db_host'] ?? null, $routeInfo['db_name'] ?? null);
     }
 
     private function handleUnsupported($conn): void
@@ -288,8 +319,9 @@ class HttpTransport
         @fclose($conn);
     }
 
-    private function handlePost($conn, array $headers, string $body, string $peer): void
+    private function handlePost($conn, array $headers, string $body, string $peer, ?McpServer $mcpServer = null): void
     {
+        $mcpServer = $mcpServer ?? $this->server;
         $msg = json_decode($body, true);
         if (!is_array($msg)) {
             $this->log("   PARSE ERROR: " . substr($body, 0, 200));
@@ -329,7 +361,7 @@ class HttpTransport
 
         // Dispatch to McpServer (transport-agnostic)
         $t0 = microtime(true);
-        $response = $this->server->dispatchMessage($msg);
+        $response = $mcpServer->dispatchMessage($msg);
         $elapsed = round((microtime(true) - $t0) * 1000, 1);
 
         $responseHeaders = $this->corsHeaders();

@@ -40,6 +40,7 @@ if (!$autoloaded) {
 
 use SandraCore\System;
 use SandraCore\Mcp\McpServer;
+use SandraCore\Mcp\McpServerRegistry;
 use SandraCore\Mcp\HttpTransport;
 use SandraCore\Mcp\SystemRegistry;
 use SandraCore\Mcp\TokenAuthService;
@@ -113,8 +114,11 @@ if ($authToken !== null) {
     );
 }
 
+// ── MCP server registry for per-token env routing ──────────────────
+$mcpRegistry = new McpServerRegistry($systemRegistry, $logFile);
+
 // ── Start HTTP transport ────────────────────────────────────────────
-$transport = new HttpTransport($server, $logFile, $authToken, $authService, $systemRegistry);
+$transport = new HttpTransport($server, $logFile, $authToken, $authService, $systemRegistry, $mcpRegistry);
 
 echo "Sandra MCP HTTP server starting on http://$host:$port\n";
 echo "  Endpoints: /mcp, /api/*, /.well-known/*, /authorize, /token\n";
