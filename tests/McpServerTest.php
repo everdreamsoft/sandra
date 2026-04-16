@@ -1341,6 +1341,82 @@ class McpServerTest extends SandraTestCase
         $this->assertEquals($entityId, $triplet['targetId']);
     }
 
+    public function testBatchTripletWithRefs(): void
+    {
+        // Triplets in a batch can carry scalar refs (price, date, etc.) attached to the link.
+        $result = $this->mcp->getToolRegistry()->call('sandra_batch', [
+            'concepts' => ['purchased', 'price', 'date', 'store'],
+            'entities' => [
+                ['factory' => 'livres', 'refs' => ['titre' => 'Ref Test Book', 'auteur' => 'Test']],
+            ],
+            'triplets' => [
+                [
+                    'subject' => '$entity.0',
+                    'verb' => 'purchased',
+                    'target' => '$concept.0',
+                    'refs' => ['price' => 350, 'date' => 'summer 2021', 'store' => 'VintageVault'],
+                ],
+            ],
+        ]);
+
+        $this->assertCount(1, $result['triplets']);
+        $triplet = $result['triplets'][0];
+        $this->assertArrayHasKey('linkId', $triplet);
+        $this->assertEquals(3, $triplet['refsAttached']);
+        $this->assertEquals(3, $result['summary']['refsAttached']);
+
+        // Read back via sandra_get_references filtered by linkId.
+        $refsResult = $this->mcp->getToolRegistry()->call('sandra_get_references', [
+            'conceptId' => $triplet['subjectId'],
+            'linkId' => $triplet['linkId'],
+        ]);
+
+        $flat = [];
+        foreach ($refsResult['links'] as $link) {
+            foreach ($link['references'] ?? [] as $key => $value) {
+                $flat[$key] = $value;
+            }
+        }
+        $this->assertEquals('350', $flat['price']);
+        $this->assertEquals('summer 2021', $flat['date']);
+        $this->assertEquals('VintageVault', $flat['store']);
+    }
+
+    public function testBatchTripletWithoutRefsStillWorks(): void
+    {
+        // Backwards compatibility: triplets without a "refs" field behave exactly as before.
+        $result = $this->mcp->getToolRegistry()->call('sandra_batch', [
+            'concepts' => ['plain_verb', 'plain_target'],
+            'triplets' => [
+                ['subject' => 'plain_verb', 'verb' => 'plain_verb', 'target' => 'plain_target'],
+            ],
+        ]);
+
+        $triplet = $result['triplets'][0];
+        $this->assertArrayHasKey('linkId', $triplet);
+        $this->assertArrayNotHasKey('refsAttached', $triplet);
+        $this->assertEquals(0, $result['summary']['refsAttached']);
+    }
+
+    public function testBatchTripletRefsSkipNullAndEmpty(): void
+    {
+        // Null and empty string refs are silently skipped — not written as empty references.
+        $result = $this->mcp->getToolRegistry()->call('sandra_batch', [
+            'concepts' => ['event_of', 'subject_c', 'target_c'],
+            'triplets' => [
+                [
+                    'subject' => 'subject_c',
+                    'verb' => 'event_of',
+                    'target' => 'target_c',
+                    'refs' => ['kept' => 'yes', 'dropped_null' => null, 'dropped_empty' => '', 'kept_zero' => '0'],
+                ],
+            ],
+        ]);
+
+        // 'kept' + 'kept_zero' should be attached; null and empty-string are skipped.
+        $this->assertEquals(2, $result['triplets'][0]['refsAttached']);
+    }
+
     // --- ListEntities: brother_filters ---
 
     public function testListEntitiesWithBrotherFilter(): void

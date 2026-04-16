@@ -46,7 +46,9 @@ class BatchTool implements McpToolInterface
             . 'Use this instead of repeated single-creation calls. '
             . 'Operations run in order: concepts first, then entities, then triplets. '
             . 'Triplets can reference results from the same batch using "$concept.0" or "$entity.2" syntax '
-            . '(index into the concepts/entities arrays).';
+            . '(index into the concepts/entities arrays). '
+            . 'Triplets also accept an optional "refs" object ({key: value}) to attach scalar metadata '
+            . '(price, date, score...) directly to the link. Ref keys are auto-created as concepts if needed.';
     }
 
     public function inputSchema(): array
@@ -89,10 +91,14 @@ class BatchTool implements McpToolInterface
                                 'type' => ['string', 'integer'],
                                 'description' => 'Target: concept ID, shortname, "$concept.N", or "$entity.N"',
                             ],
+                            'refs' => [
+                                'type' => 'object',
+                                'description' => 'Optional key-value scalar metadata attached to the link (e.g. {"price": 350, "date": "summer 2021", "holiday": "Christmas"}). Keys become reusable concepts; values are stored as strings (truncated to 255 chars).',
+                            ],
                         ],
                         'required' => ['subject', 'verb', 'target'],
                     ],
-                    'description' => 'List of triplets to create. Use "$concept.N" / "$entity.N" to reference items created in this batch.',
+                    'description' => 'List of triplets to create. Use "$concept.N" / "$entity.N" to reference items created in this batch. Use "refs" to attach scalar metadata to the link.',
                 ],
             ],
             'required' => [],
@@ -189,12 +195,29 @@ class BatchTool implements McpToolInterface
                 continue;
             }
 
-            $results['triplets'][] = [
+            $refs = $def['refs'] ?? [];
+            $refsAttached = 0;
+            foreach ($refs as $key => $value) {
+                if ($value === null || $value === '') {
+                    continue;
+                }
+                $keyConceptId = (int)$this->system->systemConcept->get((string)$key, null, true);
+                $refResult = DatabaseAdapter::rawCreateReference($linkId, $keyConceptId, (string)$value, $this->system, true);
+                if ($refResult !== null) {
+                    $refsAttached++;
+                }
+            }
+
+            $tripletResult = [
                 'linkId' => (int)$linkId,
                 'subjectId' => $subjectId,
                 'verbId' => $verbId,
                 'targetId' => $targetId,
             ];
+            if ($refsAttached > 0) {
+                $tripletResult['refsAttached'] = $refsAttached;
+            }
+            $results['triplets'][] = $tripletResult;
         }
 
         $results['summary'] = [
@@ -202,6 +225,7 @@ class BatchTool implements McpToolInterface
             'conceptsReused' => count(array_filter($results['concepts'], fn($c) => !$c['created'])),
             'entitiesCreated' => count($results['entities']),
             'tripletsCreated' => count(array_filter($results['triplets'], fn($t) => isset($t['linkId']))),
+            'refsAttached' => array_sum(array_map(fn($t) => $t['refsAttached'] ?? 0, $results['triplets'])),
             'errors' => count(array_filter($results['triplets'], fn($t) => isset($t['error']))),
         ];
 
