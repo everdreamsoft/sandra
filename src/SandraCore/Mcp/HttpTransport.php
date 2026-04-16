@@ -16,26 +16,59 @@ namespace SandraCore\Mcp;
  *
  * Uses non-blocking I/O with stream_select to handle concurrent SSE + POST.
  */
+/**
+ * Per-client MCP session state.
+ * Each connected client (Claude Code, claude.ai, mobile) gets its own session
+ * with isolated SSE streams, route info, and McpServer reference.
+ */
+class McpSession
+{
+    public string $id;
+    public ?array $routeInfo;
+    public McpServer $mcpServer;
+    public int $eventCounter = 0;
+    public float $lastActivity;
+
+    /** @var resource[] SSE connections keyed by peer address */
+    public array $sseClients = [];
+    /** @var float[] Last keepalive time per SSE client */
+    public array $sseLastKeepalive = [];
+
+    public function __construct(string $id, McpServer $mcpServer, ?array $routeInfo = null)
+    {
+        $this->id = $id;
+        $this->mcpServer = $mcpServer;
+        $this->routeInfo = $routeInfo;
+        $this->lastActivity = microtime(true);
+    }
+
+    public function closeSseClients(): void
+    {
+        foreach ($this->sseClients as $conn) {
+            @fclose($conn);
+        }
+        $this->sseClients = [];
+        $this->sseLastKeepalive = [];
+    }
+}
+
 class HttpTransport
 {
     private McpServer $server;
-    private ?string $sessionId = null;
     private ?string $logFile;
-    private int $eventCounter = 0;
     private ?string $authToken = null;
     private ?OAuthProvider $oauth = null;
     private ?TokenAuthService $authService = null;
     private ?SystemRegistry $systemRegistry = null;
     private ?McpServerRegistry $mcpRegistry = null;
 
-    /** @var resource[] Active SSE connections keyed by peer address */
-    private array $sseClients = [];
-    /** @var float[] Last keepalive time per SSE client */
-    private array $sseLastKeepalive = [];
+    /** @var array<string, McpSession> Multi-session support */
+    private array $sessions = [];
 
     private const SSE_KEEPALIVE_INTERVAL = 30; // seconds
     private const SSE_MAX_LIFETIME = 600; // 10 minutes
     private const SELECT_TIMEOUT_SEC = 5; // wake up every 5s to send keepalives
+    private const MAX_SESSIONS = 100;
 
     public function __construct(
         McpServer $server,
@@ -76,13 +109,15 @@ class HttpTransport
         $this->log("Configure .mcp.json with: {\"type\": \"http\", \"url\": \"http://$host:$port/mcp\"}");
 
         while (true) {
-            // Build read array: main socket + all SSE clients
+            // Build read array: main socket + SSE clients from ALL sessions
             $read = [$socket];
-            foreach ($this->sseClients as $peer => $sseConn) {
-                if (is_resource($sseConn)) {
-                    $read[] = $sseConn;
-                } else {
-                    unset($this->sseClients[$peer], $this->sseLastKeepalive[$peer]);
+            foreach ($this->sessions as $session) {
+                foreach ($session->sseClients as $peer => $sseConn) {
+                    if (is_resource($sseConn)) {
+                        $read[] = $sseConn;
+                    } else {
+                        unset($session->sseClients[$peer], $session->sseLastKeepalive[$peer]);
+                    }
                 }
             }
             $write = null;
@@ -109,48 +144,72 @@ class HttpTransport
                     } catch (\Throwable $e) {
                         $this->log("!! Connection error from $peer: " . $e->getMessage());
                     }
-                    // Note: POST/DELETE connections are closed after handling.
-                    // GET (SSE) connections are kept open in $this->sseClients.
                 } else {
-                    // SSE client became readable — means it disconnected
-                    $peer = array_search($readSock, $this->sseClients, true);
-                    if ($peer !== false) {
-                        $data = @fread($readSock, 1);
-                        if ($data === false || $data === '' || feof($readSock)) {
-                            $this->log("   SSE client disconnected: $peer");
-                            @fclose($readSock);
-                            unset($this->sseClients[$peer], $this->sseLastKeepalive[$peer]);
-                        }
-                    }
+                    // SSE client became readable — means it disconnected. Find which session.
+                    $this->handleSseDisconnect($readSock);
                 }
             }
         }
     }
 
-    /** Send keepalive comments to SSE clients and close expired ones */
+    /** Send keepalive comments to SSE clients across all sessions */
     private function tickSseKeepalives(): void
     {
         $now = microtime(true);
-        foreach ($this->sseClients as $peer => $conn) {
-            if (!is_resource($conn) || feof($conn)) {
-                unset($this->sseClients[$peer], $this->sseLastKeepalive[$peer]);
-                continue;
-            }
-
-            $startTime = $this->sseLastKeepalive[$peer] - self::SSE_KEEPALIVE_INTERVAL; // approx start
-            $elapsed = $now - ($this->sseLastKeepalive[$peer] ?? $now);
-
-            if ($elapsed >= self::SSE_KEEPALIVE_INTERVAL) {
-                $written = @fwrite($conn, ": keepalive\n\n");
-                if ($written === false || $written === 0) {
-                    $this->log("   SSE keepalive failed for $peer, closing");
-                    @fclose($conn);
-                    unset($this->sseClients[$peer], $this->sseLastKeepalive[$peer]);
+        foreach ($this->sessions as $session) {
+            foreach ($session->sseClients as $peer => $conn) {
+                if (!is_resource($conn) || feof($conn)) {
+                    unset($session->sseClients[$peer], $session->sseLastKeepalive[$peer]);
                     continue;
                 }
-                @fflush($conn);
-                $this->sseLastKeepalive[$peer] = $now;
+
+                $elapsed = $now - ($session->sseLastKeepalive[$peer] ?? $now);
+
+                if ($elapsed >= self::SSE_KEEPALIVE_INTERVAL) {
+                    $written = @fwrite($conn, ": keepalive\n\n");
+                    if ($written === false || $written === 0) {
+                        $this->log("   SSE keepalive failed for $peer, closing");
+                        @fclose($conn);
+                        unset($session->sseClients[$peer], $session->sseLastKeepalive[$peer]);
+                        continue;
+                    }
+                    @fflush($conn);
+                    $session->sseLastKeepalive[$peer] = $now;
+                }
             }
+        }
+    }
+
+    /** Find which session owns a disconnected SSE socket and clean it up */
+    private function handleSseDisconnect($readSock): void
+    {
+        foreach ($this->sessions as $session) {
+            $peer = array_search($readSock, $session->sseClients, true);
+            if ($peer !== false) {
+                $data = @fread($readSock, 1);
+                if ($data === false || $data === '' || feof($readSock)) {
+                    $this->log("   SSE client disconnected: $peer (session=" . substr($session->id, 0, 8) . ")");
+                    @fclose($readSock);
+                    unset($session->sseClients[$peer], $session->sseLastKeepalive[$peer]);
+                }
+                return;
+            }
+        }
+    }
+
+    /** Remove oldest sessions when cap is exceeded */
+    private function cleanupSessions(): void
+    {
+        if (count($this->sessions) <= self::MAX_SESSIONS) {
+            return;
+        }
+        // Sort by lastActivity, remove oldest
+        uasort($this->sessions, fn($a, $b) => $a->lastActivity <=> $b->lastActivity);
+        while (count($this->sessions) > self::MAX_SESSIONS) {
+            $oldest = array_key_first($this->sessions);
+            $this->sessions[$oldest]->closeSseClients();
+            $this->log("   Session $oldest evicted (max sessions reached)");
+            unset($this->sessions[$oldest]);
         }
     }
 
@@ -170,7 +229,9 @@ class HttpTransport
         $body = $request['body'];
 
         $pathWithoutQuery = parse_url($path, PHP_URL_PATH) ?? $path;
-        $this->log(">> $method $pathWithoutQuery from $peer" . ($this->sessionId ? " session=" . substr($this->sessionId, 0, 8) . "..." : ''));
+        $clientSessionId = $headers['mcp-session-id'] ?? null;
+        $sessionTag = $clientSessionId ? " session=" . substr($clientSessionId, 0, 8) . "..." : '';
+        $this->log(">> $method $pathWithoutQuery from $peer$sessionTag");
 
         // CORS preflight (for any endpoint)
         if ($method === 'OPTIONS') {
@@ -214,6 +275,8 @@ class HttpTransport
 
         // Authentication check (when any auth layer is configured)
         $routeInfo = null;
+        $existingSession = $this->sessions[$clientSessionId] ?? null;
+
         if ($this->authToken !== null || $this->authService !== null) {
             $providedToken = '';
 
@@ -222,52 +285,64 @@ class HttpTransport
                 $providedToken = substr($authHeader, 7);
             }
 
-            if ($providedToken === '') {
+            // Workaround: if no token but known session, use cached auth (claude.ai bug)
+            if ($providedToken === '' && $existingSession !== null && $existingSession->routeInfo !== null) {
+                $routeInfo = $existingSession->routeInfo;
+                $this->log("   AUTH via cached session (no token, session=" . substr($existingSession->id, 0, 8) . ")");
+            } elseif ($providedToken === '') {
                 $this->log("   AUTH REJECTED from $peer — no token provided");
-                $wwwAuth = $this->oauth->getWwwAuthenticateHeader($headers);
-                $this->sendResponse($conn, 401, array_merge($this->corsHeaders(), [
-                    'WWW-Authenticate' => $wwwAuth,
-                ]), '{"error": "Unauthorized"}');
+                if ($this->oauth) {
+                    $wwwAuth = $this->oauth->getWwwAuthenticateHeader($headers);
+                    $this->sendResponse($conn, 401, array_merge($this->corsHeaders(), [
+                        'WWW-Authenticate' => $wwwAuth,
+                    ]), '{"error": "Unauthorized"}');
+                } else {
+                    $this->sendResponse($conn, 401, $this->corsHeaders(), '{"error": "Unauthorized"}');
+                }
                 @fclose($conn);
                 return;
-            }
+            } else {
+                // Route via TokenAuthService (if available) or fallback to legacy validation
+                if ($this->authService !== null) {
+                    $routeInfo = $this->authService->validateAndRoute($providedToken);
+                } elseif ($this->oauth !== null && $this->oauth->validateToken($providedToken)) {
+                    $routeInfo = ['env' => null, 'scopes' => TokenAuthService::ALL_SCOPES, 'is_static' => true, 'token_hash' => null];
+                }
 
-            // Route via TokenAuthService (if available) or fallback to legacy validation
-            if ($this->authService !== null) {
-                $routeInfo = $this->authService->validateAndRoute($providedToken);
-            } elseif ($this->oauth !== null && $this->oauth->validateToken($providedToken)) {
-                $routeInfo = ['env' => null, 'scopes' => TokenAuthService::ALL_SCOPES, 'is_static' => true, 'token_hash' => null];
-            }
+                if ($routeInfo === null) {
+                    $tokenPreview = substr($providedToken, 0, 8) . '...' . substr($providedToken, -4);
+                    $this->log("   AUTH REJECTED from $peer — invalid token ($tokenPreview)");
+                    if ($this->oauth) {
+                        $wwwAuth = $this->oauth->getWwwAuthenticateHeader($headers);
+                        $this->sendResponse($conn, 401, array_merge($this->corsHeaders(), [
+                            'WWW-Authenticate' => $wwwAuth,
+                        ]), '{"error": "Unauthorized"}');
+                    } else {
+                        $this->sendResponse($conn, 401, $this->corsHeaders(), '{"error": "Unauthorized"}');
+                    }
+                    @fclose($conn);
+                    return;
+                }
 
-            if ($routeInfo === null) {
-                $tokenPreview = substr($providedToken, 0, 8) . '...' . substr($providedToken, -4);
-                $this->log("   AUTH REJECTED from $peer — invalid token ($tokenPreview)");
-                $wwwAuth = $this->oauth->getWwwAuthenticateHeader($headers);
-                $this->sendResponse($conn, 401, array_merge($this->corsHeaders(), [
-                    'WWW-Authenticate' => $wwwAuth,
-                ]), '{"error": "Unauthorized"}');
-                @fclose($conn);
-                return;
-            }
+                // Check scope for this endpoint
+                $requiredScope = TokenAuthService::requiredScope($pathWithoutQuery, $method);
+                if ($this->authService !== null && !$this->authService->hasScope($routeInfo['scopes'], $requiredScope)) {
+                    $tokenPreview = substr($providedToken, 0, 8) . '...';
+                    $this->log("   AUTH SCOPE REJECTED from $peer (token=$tokenPreview, env={$routeInfo['env']}, needs=$requiredScope, has=" . implode(',', $routeInfo['scopes']) . ")");
+                    $this->sendResponse($conn, 403, $this->corsHeaders(),
+                        json_encode(['error' => 'insufficient_scope', 'required' => $requiredScope]));
+                    @fclose($conn);
+                    return;
+                }
 
-            // Check scope for this endpoint
-            $requiredScope = TokenAuthService::requiredScope($pathWithoutQuery, $method);
-            if ($this->authService !== null && !$this->authService->hasScope($routeInfo['scopes'], $requiredScope)) {
                 $tokenPreview = substr($providedToken, 0, 8) . '...';
-                $this->log("   AUTH SCOPE REJECTED from $peer (token=$tokenPreview, env={$routeInfo['env']}, needs=$requiredScope, has=" . implode(',', $routeInfo['scopes']) . ")");
-                $this->sendResponse($conn, 403, $this->corsHeaders(),
-                    json_encode(['error' => 'insufficient_scope', 'required' => $requiredScope]));
-                @fclose($conn);
-                return;
-            }
+                $env = $routeInfo['env'] ?? 'default';
+                $this->log("   AUTH OK from $peer (token=$tokenPreview, env=$env, scope=$requiredScope)");
 
-            $tokenPreview = substr($providedToken, 0, 8) . '...';
-            $env = $routeInfo['env'] ?? 'default';
-            $this->log("   AUTH OK from $peer (token=$tokenPreview, env=$env, scope=$requiredScope)");
-
-            // Async: update last_used_at (best-effort, failures ignored)
-            if ($this->authService !== null && !empty($routeInfo['token_hash'])) {
-                $this->authService->touchLastUsed($routeInfo['token_hash']);
+                // Async: update last_used_at (best-effort, failures ignored)
+                if ($this->authService !== null && !empty($routeInfo['token_hash'])) {
+                    $this->authService->touchLastUsed($routeInfo['token_hash']);
+                }
             }
         }
 
@@ -277,12 +352,9 @@ class HttpTransport
             return;
         }
 
-        // Select the MCP server for the token's env (fall back to default server)
-        $mcpServer = $this->selectMcpServer($routeInfo);
-
         match ($method) {
-            'POST' => $this->handlePost($conn, $headers, $body, $peer, $mcpServer),
-            'GET' => $this->handleGet($conn, $headers, $peer),
+            'POST' => $this->handlePost($conn, $headers, $body, $peer, $routeInfo, $existingSession),
+            'GET' => $this->handleGet($conn, $headers, $peer, $existingSession),
             'DELETE' => $this->handleDelete($conn, $headers, $peer),
             default => $this->handleUnsupported($conn),
         };
@@ -324,9 +396,8 @@ class HttpTransport
         @fclose($conn);
     }
 
-    private function handlePost($conn, array $headers, string $body, string $peer, ?McpServer $mcpServer = null): void
+    private function handlePost($conn, array $headers, string $body, string $peer, ?array $routeInfo, ?McpSession $existingSession): void
     {
-        $mcpServer = $mcpServer ?? $this->server;
         $msg = json_decode($body, true);
         if (!is_array($msg)) {
             $this->log("   PARSE ERROR: " . substr($body, 0, 200));
@@ -340,49 +411,42 @@ class HttpTransport
         $toolName = ($rpcMethod === 'tools/call') ? ($msg['params']['name'] ?? '?') : '';
         $this->log("   JSON-RPC method=$rpcMethod id=$rpcId" . ($toolName ? " tool=$toolName" : ''));
 
-        // Session management
-        $clientSessionId = $headers['mcp-session-id'] ?? null;
+        // Session management (multi-session)
+        $session = $existingSession;
 
         if ($rpcMethod === 'initialize') {
-            // New session — close old SSE clients
-            foreach ($this->sseClients as $ssePeer => $sseConn) {
-                @fclose($sseConn);
-            }
-            $this->sseClients = [];
-            $this->sseLastKeepalive = [];
-            $this->sessionId = bin2hex(random_bytes(16));
-            $this->eventCounter = 0;
-            $this->log("   New session: " . $this->sessionId);
-        } elseif ($this->sessionId !== null && $clientSessionId !== null && $clientSessionId !== $this->sessionId) {
-            // Tolerate session mismatch — single-server, reassign to current session
-            $this->log("   Session mismatch: got=$clientSessionId expected=$this->sessionId — reassigning");
-        } elseif ($this->sessionId === null && $rpcMethod !== 'initialize') {
-            // No active session and not initializing — require initialize first
-            $this->log("   No active session, rejecting $rpcMethod");
+            // Create a NEW session without touching existing ones
+            $sessionId = bin2hex(random_bytes(16));
+            $mcpServer = $this->selectMcpServer($routeInfo);
+            $session = new McpSession($sessionId, $mcpServer, $routeInfo);
+            $this->sessions[$sessionId] = $session;
+            $this->cleanupSessions();
+            $this->log("   New session: $sessionId (total: " . count($this->sessions) . ")");
+        } elseif ($session === null && $rpcMethod !== 'initialize') {
+            $clientSessionId = $headers['mcp-session-id'] ?? 'none';
+            $this->log("   Unknown session $clientSessionId, rejecting $rpcMethod");
             $this->sendResponse($conn, 404, $this->corsHeaders(), '{"error": "Session not found — send initialize first"}');
             @fclose($conn);
             return;
         }
 
-        // Dispatch to McpServer (transport-agnostic)
+        $session->lastActivity = microtime(true);
+
+        // Dispatch to THIS session's McpServer
         $t0 = microtime(true);
-        $response = $mcpServer->dispatchMessage($msg);
+        $response = $session->mcpServer->dispatchMessage($msg);
         $elapsed = round((microtime(true) - $t0) * 1000, 1);
 
         $responseHeaders = $this->corsHeaders();
-        if ($this->sessionId) {
-            $responseHeaders['Mcp-Session-Id'] = $this->sessionId;
-        }
+        $responseHeaders['Mcp-Session-Id'] = $session->id;
 
         if ($response === null) {
-            // Notification — no response body
             $this->log("   << 202 Accepted ($rpcMethod, {$elapsed}ms)");
             $this->sendResponse($conn, 202, $responseHeaders);
             @fclose($conn);
             return;
         }
 
-        // Send JSON response
         $responseHeaders['Content-Type'] = 'application/json';
         $json = json_encode($response, JSON_UNESCAPED_UNICODE);
         $this->log("   << 200 OK ($rpcMethod, {$elapsed}ms, " . strlen($json) . " bytes)");
@@ -390,27 +454,21 @@ class HttpTransport
         @fclose($conn);
     }
 
-    private function handleGet($conn, array $headers, string $peer): void
+    private function handleGet($conn, array $headers, string $peer, ?McpSession $session): void
     {
         // SSE stream — keep alive without blocking the main loop
-        $clientSessionId = $headers['mcp-session-id'] ?? null;
-        if ($this->sessionId === null) {
+        if ($session === null) {
             $this->log("   SSE rejected: no active session");
             $this->sendResponse($conn, 404, $this->corsHeaders(), '{"error": "Session not found — send initialize first"}');
             @fclose($conn);
             return;
-        }
-        if ($clientSessionId !== null && $clientSessionId !== $this->sessionId) {
-            $this->log("   SSE session mismatch: reassigning");
         }
 
         $responseHeaders = $this->corsHeaders();
         $responseHeaders['Content-Type'] = 'text/event-stream';
         $responseHeaders['Cache-Control'] = 'no-cache';
         $responseHeaders['Connection'] = 'keep-alive';
-        if ($this->sessionId) {
-            $responseHeaders['Mcp-Session-Id'] = $this->sessionId;
-        }
+        $responseHeaders['Mcp-Session-Id'] = $session->id;
 
         $this->sendResponseHeaders($conn, 200, $responseHeaders);
 
@@ -418,27 +476,24 @@ class HttpTransport
         @fwrite($conn, ": keepalive\n\n");
         @fflush($conn);
 
-        // Register in SSE pool — main loop will handle keepalives
+        // Register in THIS session's SSE pool
         stream_set_blocking($conn, false);
-        $this->sseClients[$peer] = $conn;
-        $this->sseLastKeepalive[$peer] = microtime(true);
+        $session->sseClients[$peer] = $conn;
+        $session->sseLastKeepalive[$peer] = microtime(true);
+        $session->lastActivity = microtime(true);
 
-        $this->log("   SSE stream opened for $peer (non-blocking)");
-        // DO NOT close $conn — it stays open for SSE
+        $this->log("   SSE stream opened for $peer (session=" . substr($session->id, 0, 8) . ")");
     }
 
     private function handleDelete($conn, array $headers, string $peer): void
     {
         $clientSessionId = $headers['mcp-session-id'] ?? null;
-        if ($this->sessionId !== null && $clientSessionId === $this->sessionId) {
-            $this->log("   Session terminated by client: $this->sessionId");
-            $this->sessionId = null;
-            // Close all SSE clients for this session
-            foreach ($this->sseClients as $ssePeer => $sseConn) {
-                @fclose($sseConn);
-            }
-            $this->sseClients = [];
-            $this->sseLastKeepalive = [];
+        $session = $this->sessions[$clientSessionId] ?? null;
+
+        if ($session !== null) {
+            $this->log("   Session terminated by client: $clientSessionId (total remaining: " . (count($this->sessions) - 1) . ")");
+            $session->closeSseClients();
+            unset($this->sessions[$clientSessionId]);
             $this->sendResponse($conn, 200, $this->corsHeaders());
         } else {
             $this->sendResponse($conn, 404, $this->corsHeaders(), '{"error": "Session not found"}');
