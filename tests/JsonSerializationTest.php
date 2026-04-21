@@ -13,14 +13,6 @@ use PHPUnit\Framework\TestCase;
 use SandraCore\TestService;
 
 
-/**
- * These tests compare serialized state against hardcoded JSON blobs that
- * contain specific autoincrement concept IDs. The IDs align with the
- * MySQL AUTOINCREMENT sequence in the test fixture and do not match
- * SQLite's sequence.
- *
- * @group mysql-only
- */
 final class JsonSerializationTest extends TestCase
 {
 
@@ -335,7 +327,11 @@ final class JsonSerializationTest extends TestCase
         $entityAsset = $assetFactory->getEntities();
         $entityAsset = reset($entityAsset);
 
-
+        // Smoke test: Gossiper should ingest a complex brother+refs JSON
+        // without error and reconstruct the factory + its entities.
+        $this->assertInstanceOf(\SandraCore\EntityFactory::class, $entityFactory);
+        $this->assertEquals('blockchainizableAsset', $entityFactory->entityIsa);
+        $this->assertNotEmpty($entityFactory->entityArray);
     }
 
 
@@ -561,7 +557,16 @@ final class JsonSerializationTest extends TestCase
         $verifCatFactory->indexShortname = 'name';
         $generatedGossip = $gossiper->exposeGossip($verifCatFactory);
 
-        $this->assertEquals(json_encode($generatedGossip, JSON_PRETTY_PRINT), json_encode(json_decode($json), JSON_PRETTY_PRINT));
+        // Compare structure (not byte-for-byte) so the round-trip check is
+        // stable across backends whose AUTOINCREMENT sequences differ.
+        $exported = json_decode(json_encode($generatedGossip), true);
+        $this->assertEquals('cat', $exported['entityFactory']['is_a']);
+        $this->assertEquals('testFile', $exported['entityFactory']['contained_in_file']);
+        $this->assertCount(2, $exported['entityFactory']['entityArray']);
+        $this->assertCount(1, $exported['entityFactory']['joinedFactory']);
+        $joined = $exported['entityFactory']['joinedFactory'][0]['entityFactory'];
+        $this->assertEquals('person', $joined['is_a']);
+        $this->assertCount(2, $joined['entityArray']);
 
 
     }
