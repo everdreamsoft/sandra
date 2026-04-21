@@ -917,7 +917,7 @@ class EntityFactory extends FactoryBase implements Dumpable
                 if (!isset  ($value->entityRefs[$valOfConcept])) continue ;
                 $valueOfThisRef = $value->entityRefs[$valOfConcept]->refValue;
 
-                $this->refMap[$valOfConcept][$valueOfThisRef][] = $value;
+                $this->refMap[$valOfConcept][(string) $valueOfThisRef][] = $value;
 
             }
         }
@@ -1085,7 +1085,7 @@ class EntityFactory extends FactoryBase implements Dumpable
 
         foreach ($addedRefMap as $key => $value){
 
-            $this->refMap[$key][$value][] = $createdEntity ;
+            $this->refMap[$key][(string) $value][] = $createdEntity ;
         }
 
         $this->addNewEtities(array($createdEntity->subjectConcept->idConcept=>$createdEntity),$addedReferenceMap);
@@ -1184,14 +1184,17 @@ class EntityFactory extends FactoryBase implements Dumpable
         $refmap = $this->getRefMap($referenceConcept);
 
 
-        if (is_array($refmap) && key_exists($referenceValue, $refmap)) {
+        // Cast to string so lookups match refMap keys (which are stored as strings
+        // to avoid PHP 8.1+ float-to-int implicit conversion on array keys).
+        $refKey = (string) $referenceValue;
+        if (is_array($refmap) && key_exists($refKey, $refmap)) {
 
             //If we have a single entity make sure to return an array
-            if (!is_array($refmap[$referenceValue])) {
-                return array($refmap[$referenceValue]);
+            if (!is_array($refmap[$refKey])) {
+                return array($refmap[$refKey]);
             }
 
-            return $refmap[$referenceValue];
+            return $refmap[$refKey];
         } //the factory is not populated so we look in database
         else if (!$this->populated) {
 
@@ -1236,7 +1239,7 @@ class EntityFactory extends FactoryBase implements Dumpable
                     //$entity = new Entity($concept,$refArray,$this,$entityId,$entityVerb,$entityTarget,$this->system);
                     $referenceCreated = $entity->getReference($referenceName);
                     $referenceCreated->refEntity = $entity;
-                    $this->refMap[$referenceConcept->idConcept][$referenceValue][] = $entity ;
+                    $this->refMap[$referenceConcept->idConcept][(string) $referenceValue][] = $entity ;
 
                     $this->entityArray[] = $entity;
 
@@ -1279,7 +1282,7 @@ class EntityFactory extends FactoryBase implements Dumpable
                         $conceptObject = $this->system->conceptFactory->getConceptFromId($conceptId);
                         $conceptMeta = $conceptObject->dumpMeta();
 
-                        $refMap[$conceptMeta][$valueOfIndex][$entityCounter] = $entity->dumpMeta();
+                        $refMap[$conceptMeta][(string) $valueOfIndex][$entityCounter] = $entity->dumpMeta();
                     }
                 }
             }
