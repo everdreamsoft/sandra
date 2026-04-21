@@ -189,12 +189,12 @@ Layer 3: AGENT
 
 ## Technical Decisions
 
-### Why MySQL (not a dedicated vector DB)?
-- Zero additional infrastructure
-- Sandra already uses MySQL
-- JSON column for vectors works fine up to ~100k entities
-- Cosine similarity in PHP is fast enough for this scale
-- Can migrate to pgvector/dedicated solution later if needed
+### Why MySQL (or SQLite) — not a dedicated vector DB?
+- Runs on the database you already have: MySQL/MariaDB in production, SQLite for lightweight or embedded setups.
+- MySQL fits naturally with complex web systems — no new service to run alongside your app.
+- JSON column for vectors works fine up to ~100k entities.
+- Cosine similarity in PHP is fast enough at this scale.
+- Migration path to pgvector or a dedicated vector store stays open if your workload outgrows it.
 
 ### Why OpenAI embeddings (not local)?
 - `text-embedding-3-small` is $0.02/1M tokens — effectively free
@@ -202,11 +202,12 @@ Layer 3: AGENT
 - Can be swapped for any embedding provider (Voyage, Cohere, local)
 - API key optional — everything works without it
 
-### Why MCP (not REST API)?
-- MCP is the emerging standard for LLM tool use
-- Direct integration with Claude, and growing ecosystem
-- No authentication complexity — runs locally
-- Can add REST API later for external apps
+### Why MCP as the first-class interface for agents?
+- MCP is the emerging standard for LLM tool use.
+- Direct integration with Claude and a growing ecosystem.
+- Low friction locally; token-based auth when the server needs to be reachable.
+
+Sandra also ships with a **REST API** (see [`api-guide.md`](api-guide.md)). Having both surfaces matters in practice: an operator can use an LLM through MCP to reason about a site while the same data is served and modified through REST on the back end. One vocabulary, two surfaces — that's what makes it practical to let an LLM actually operate a real application, not just answer questions about it.
 
 ## Appendix: Cost Model
 
