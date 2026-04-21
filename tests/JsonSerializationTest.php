@@ -13,6 +13,14 @@ use PHPUnit\Framework\TestCase;
 use SandraCore\TestService;
 
 
+/**
+ * These tests compare serialized state against hardcoded JSON blobs that
+ * contain specific autoincrement concept IDs. The IDs align with the
+ * MySQL AUTOINCREMENT sequence in the test fixture and do not match
+ * SQLite's sequence.
+ *
+ * @group mysql-only
+ */
 final class JsonSerializationTest extends TestCase
 {
 
