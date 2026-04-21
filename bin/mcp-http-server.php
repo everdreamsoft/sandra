@@ -44,6 +44,7 @@ use SandraCore\Mcp\McpServerRegistry;
 use SandraCore\Mcp\HttpTransport;
 use SandraCore\Mcp\SystemRegistry;
 use SandraCore\Mcp\TokenAuthService;
+use SandraCore\Mcp\SessionStore;
 
 // ── CLI args ────────────────────────────────────────────────────────
 $opts = getopt('', ['port:', 'host:', 'env:']);
@@ -117,14 +118,26 @@ if ($authToken !== null) {
 // ── MCP server registry for per-token env routing ──────────────────
 $mcpRegistry = new McpServerRegistry($systemRegistry, $logFile);
 
+// ── Session store (persists sessions across process restarts) ──────
+$sessionStore = null;
+if ($authService !== null) {
+    $defaultSystem = $systemRegistry->getDefault();
+    $sessionStore = new SessionStore(
+        $defaultSystem->getConnection(),
+        $defaultSystem->sharedSessionsTable,
+        $logFile
+    );
+}
+
 // ── Start HTTP transport ────────────────────────────────────────────
-$transport = new HttpTransport($server, $logFile, $authToken, $authService, $systemRegistry, $mcpRegistry);
+$transport = new HttpTransport($server, $logFile, $authToken, $authService, $systemRegistry, $mcpRegistry, $sessionStore);
 
 echo "Sandra MCP HTTP server starting on http://$host:$port\n";
 echo "  Endpoints: /mcp, /api/*, /.well-known/*, /authorize, /token\n";
 echo "Log: $logFile\n";
 echo "Auth: " . ($authToken ? "enabled (Bearer token required)" : "disabled (open access)") . "\n";
 echo "Token store: " . ($authService ? "sandra_api_tokens (multi-env routing)" : "static token only") . "\n";
+echo "Session store: " . ($sessionStore ? "sandra_mcp_sessions (persisted across restarts)" : "in-memory only") . "\n";
 echo "Press Ctrl+C to stop.\n\n";
 
 $transport->listen($host, $port);

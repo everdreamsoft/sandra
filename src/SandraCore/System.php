@@ -34,6 +34,7 @@ class System
     protected string $tableConf = '';
     public string $tableEmbedding = '';
     public string $sharedTokenTable = 'sandra_api_tokens';
+    public string $sharedSessionsTable = 'sandra_mcp_sessions';
     public mixed $foreignConceptFactory = null;
 
     public int $errorLevelToKill = 3;
@@ -131,7 +132,7 @@ class System
 
     public function install(): void
     {
-        SandraDatabaseDefinition::createEnvTables($this->conceptTable, $this->linkTable, $this->tableReference, $this->tableStorage, $this->tableConf, $this->driver, $this->tableEmbedding, $this->sharedTokenTable);
+        SandraDatabaseDefinition::createEnvTables($this->conceptTable, $this->linkTable, $this->tableReference, $this->tableStorage, $this->tableConf, $this->driver, $this->tableEmbedding, $this->sharedTokenTable, $this->sharedSessionsTable);
     }
 
 

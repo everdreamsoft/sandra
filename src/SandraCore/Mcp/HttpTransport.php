@@ -50,6 +50,26 @@ class McpSession
         $this->sseClients = [];
         $this->sseLastKeepalive = [];
     }
+
+    /**
+     * Rebuild a session from a DB row + a McpServer instance.
+     * Used when a client reconnects after a process restart.
+     */
+    public static function rehydrate(array $row, McpServer $mcpServer): self
+    {
+        $scopes = array_values(array_filter(array_map('trim', explode(',', (string)($row['scopes'] ?? '')))));
+        $routeInfo = [
+            'env' => (string)($row['env'] ?? ''),
+            'scopes' => $scopes,
+            'db_host' => $row['db_host'] !== null ? (string)$row['db_host'] : null,
+            'db_name' => $row['db_name'] !== null ? (string)$row['db_name'] : null,
+            'datagraph_version' => isset($row['datagraph_version']) ? (int)$row['datagraph_version'] : 8,
+            'is_static' => false,
+            'token_hash' => (string)($row['token_hash'] ?? ''),
+        ];
+        // SSE clients are intentionally empty — the client will re-open via GET /mcp
+        return new self((string)$row['id'], $mcpServer, $routeInfo);
+    }
 }
 
 class HttpTransport
@@ -61,6 +81,7 @@ class HttpTransport
     private ?TokenAuthService $authService = null;
     private ?SystemRegistry $systemRegistry = null;
     private ?McpServerRegistry $mcpRegistry = null;
+    private ?SessionStore $sessionStore = null;
 
     /** @var array<string, McpSession> Multi-session support */
     private array $sessions = [];
@@ -76,7 +97,8 @@ class HttpTransport
         ?string $authToken = null,
         ?TokenAuthService $authService = null,
         ?SystemRegistry $systemRegistry = null,
-        ?McpServerRegistry $mcpRegistry = null
+        ?McpServerRegistry $mcpRegistry = null,
+        ?SessionStore $sessionStore = null
     ) {
         $this->server = $server;
         $this->logFile = $logFile;
@@ -84,6 +106,7 @@ class HttpTransport
         $this->authService = $authService;
         $this->systemRegistry = $systemRegistry;
         $this->mcpRegistry = $mcpRegistry;
+        $this->sessionStore = $sessionStore;
         if ($authToken !== null || $authService !== null) {
             $this->oauth = new OAuthProvider($authToken ?? '', $logFile, $authService);
         }
@@ -277,6 +300,17 @@ class HttpTransport
         $routeInfo = null;
         $existingSession = $this->sessions[$clientSessionId] ?? null;
 
+        // Cache miss → try to restore from persistent store (survives restarts)
+        if ($existingSession === null && $clientSessionId !== null && $this->sessionStore !== null) {
+            $row = $this->sessionStore->load($clientSessionId);
+            if ($row !== null) {
+                $mcpServer = $this->selectMcpServerForRow($row);
+                $existingSession = McpSession::rehydrate($row, $mcpServer);
+                $this->sessions[$clientSessionId] = $existingSession;
+                $this->log("   Session restored from DB: " . substr($clientSessionId, 0, 8) . "... (env={$row['env']})");
+            }
+        }
+
         if ($this->authToken !== null || $this->authService !== null) {
             $providedToken = '';
 
@@ -390,6 +424,22 @@ class HttpTransport
         );
     }
 
+    /**
+     * Select the McpServer for a session restored from DB (no static fallback).
+     */
+    private function selectMcpServerForRow(array $row): McpServer
+    {
+        if ($this->mcpRegistry === null) {
+            return $this->server;
+        }
+        return $this->mcpRegistry->get(
+            (string)($row['env'] ?? ''),
+            $row['db_host'] ?? null,
+            $row['db_name'] ?? null,
+            isset($row['datagraph_version']) ? (int)$row['datagraph_version'] : null
+        );
+    }
+
     private function handleUnsupported($conn): void
     {
         $this->sendResponse($conn, 405, $this->corsHeaders(), '{"error": "Method not allowed"}');
@@ -422,6 +472,11 @@ class HttpTransport
             $this->sessions[$sessionId] = $session;
             $this->cleanupSessions();
             $this->log("   New session: $sessionId (total: " . count($this->sessions) . ")");
+
+            // Persist to DB (only real token-backed sessions)
+            if ($this->sessionStore !== null && $routeInfo !== null && !empty($routeInfo['token_hash'])) {
+                $this->sessionStore->create($sessionId, $routeInfo);
+            }
         } elseif ($session === null && $rpcMethod !== 'initialize') {
             $clientSessionId = $headers['mcp-session-id'] ?? 'none';
             $this->log("   Unknown session $clientSessionId, rejecting $rpcMethod");
@@ -431,6 +486,9 @@ class HttpTransport
         }
 
         $session->lastActivity = microtime(true);
+        if ($this->sessionStore !== null) {
+            $this->sessionStore->touch($session->id);  // throttled internally
+        }
 
         // Dispatch to THIS session's McpServer
         $t0 = microtime(true);
@@ -490,10 +548,24 @@ class HttpTransport
         $clientSessionId = $headers['mcp-session-id'] ?? null;
         $session = $this->sessions[$clientSessionId] ?? null;
 
+        // DB fallback: client may be terminating a session that's not in RAM cache
+        if ($session === null && $clientSessionId !== null && $this->sessionStore !== null) {
+            if ($this->sessionStore->load($clientSessionId) !== null) {
+                $this->sessionStore->delete($clientSessionId);
+                $this->log("   Session terminated (DB only): $clientSessionId");
+                $this->sendResponse($conn, 200, $this->corsHeaders());
+                @fclose($conn);
+                return;
+            }
+        }
+
         if ($session !== null) {
             $this->log("   Session terminated by client: $clientSessionId (total remaining: " . (count($this->sessions) - 1) . ")");
             $session->closeSseClients();
             unset($this->sessions[$clientSessionId]);
+            if ($this->sessionStore !== null) {
+                $this->sessionStore->delete($clientSessionId);
+            }
             $this->sendResponse($conn, 200, $this->corsHeaders());
         } else {
             $this->sendResponse($conn, 404, $this->corsHeaders(), '{"error": "Session not found"}');

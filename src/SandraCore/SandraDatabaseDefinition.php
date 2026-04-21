@@ -13,7 +13,7 @@ use SandraCore\Driver\DatabaseDriverInterface;
 class SandraDatabaseDefinition
 {
 
-    public static function createEnvTables($tableConcept, $tableTriplet, $tableReference, $tablestorage, $tableConf, ?DatabaseDriverInterface $driver = null, ?string $tableEmbedding = null, ?string $sharedTokenTable = null)
+    public static function createEnvTables($tableConcept, $tableTriplet, $tableReference, $tablestorage, $tableConf, ?DatabaseDriverInterface $driver = null, ?string $tableEmbedding = null, ?string $sharedTokenTable = null, ?string $sharedSessionsTable = null)
     {
 
         if ($driver !== null) {
@@ -160,6 +160,27 @@ class SandraDatabaseDefinition
                     );
                 }
             }
+        }
+
+        if ($sharedSessionsTable !== null) {
+            $sql = "CREATE TABLE IF NOT EXISTS `$sharedSessionsTable` (
+                `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                `token_hash` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                `env` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                `scopes` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+                `db_host` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                `db_name` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                `datagraph_version` tinyint(3) unsigned NOT NULL DEFAULT 8,
+                `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `last_activity_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `deleted_at` timestamp NULL DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                KEY `token_hash_idx` (`token_hash`),
+                KEY `last_activity_idx` (`last_activity_at`),
+                KEY `env_idx` (`env`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
+
+            System::$pdo->get()->query($sql);
         }
 
     }
