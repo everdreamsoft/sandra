@@ -13,6 +13,12 @@ use SandraCore\SandraDatabaseDefinition;
 /**
  * Tests for the shared-token authentication service.
  *
+ * TokenAuthService uses the shared `sandra_api_tokens` table, defined with
+ * MySQL-specific schema (AUTO_INCREMENT, timestamp ON UPDATE). Skipped in the
+ * default SQLite suite until the driver gains shared-token support.
+ *
+ * @group mysql-only
+ *
  * Covers:
  *  - token hash lookup and routing info resolution
  *  - scope validation (mcp:r, mcp:w, api:r, api:w)
