@@ -2,20 +2,20 @@
 
 ## Vision
 
-Transform Sandra from a graph database into the **open-source standard for AI agent memory** — a self-hosted, graph + vector, MCP-native memory layer that gives any LLM persistent, relational, semantic memory.
+A self-hosted, graph + vector, MCP-native memory layer that gives any LLM persistent, relational, semantic memory.
 
-No AI agent today has a satisfying long-term memory. Sandra solves this.
+No AI agent today has a satisfying long-term memory. Sandra addresses this directly.
 
 ## The Problem
 
 Every AI agent suffers from amnesia:
 - Conversations reset. Context is lost.
 - Text-based memory (LangChain, etc.) stores blobs with no structure.
-- Vector-only databases (Pinecone, Chroma) find similar text but don't understand relationships.
-- Enterprise graph databases (Neo4j) are too heavy for personal agents.
-- SaaS memory services (Mem0, Zep) lock your data on their servers.
+- Vector-only databases find similar text but don't understand relationships.
+- Enterprise graph databases are too heavy for personal agents.
+- SaaS memory services lock your data on their servers.
 
-**Nobody has shipped**: a lightweight, self-hosted, graph + vector, MCP-native memory layer for AI agents.
+**What's missing**: a lightweight, self-hosted, graph + vector, MCP-native memory layer.
 
 ## Core Design Insight: A Shared Vocabulary Between Humans and AI
 
@@ -132,22 +132,20 @@ Sandra is not "another graph database". It is a **living ontology** designed to 
 
 **Positioning**: "A shared vocabulary between humans and AI agents — where every concept is named in natural language, has a unique identity, and can be reasoned about."
 
-## The Solution: Sandra Memory Agent
-
-Three layers working together:
+## The Solution: Three Layers
 
 ```
-Layer 1: GRAPH (exists today)
+Layer 1: GRAPH
     Entities, concepts, triplets
     Exact relationships: "Shaban works_at EverdreamSoft"
     Traversable: "Who works at EverdreamSoft?" -> complete answer
 
-Layer 2: VECTOR (implemented - pending deployment)
+Layer 2: VECTOR
     Embeddings on every entity
     Semantic search: "funding history" -> finds FIT, Venture Kick
     Auto-embedded on create/update
 
-Layer 3: AGENT (next phase)
+Layer 3: AGENT
     Auto-recall before responding
     Auto-save after conversations
     Consolidation of stale/duplicate data
@@ -189,153 +187,6 @@ Layer 3: AGENT (next phase)
                     +------------------+
 ```
 
-## Implementation Phases
-
-### Phase 1: Graph + Vector (DONE)
-
-**Status: Implemented**
-
-- Sandra graph database with MCP server (18 tools)
-- Embedding table in MySQL (JSON vectors)
-- `EmbeddingService` — OpenAI API, cosine similarity, hash-based skip
-- `sandra_semantic_search` — new MCP tool for natural language search
-- Auto-embed on entity create/update/batch
-- Graceful degradation without API key
-
-**Cost**: ~$0.02 per 1M tokens embedded. Effectively free.
-
-### Phase 2: Agent Middleware
-
-**Status: Next**
-
-The middleware intercepts every conversation turn and orchestrates recall + save.
-
-#### 2a. Auto-Recall (before LLM responds)
-
-When a user message comes in:
-
-1. **Entity detection** — extract names, companies, topics from the message
-   - Use a fast LLM call (Haiku) or regex for known patterns
-   - Cost: ~$0.001 per message
-
-2. **Semantic search** — embed the message, find relevant entities
-   - `sandra_semantic_search(message)` -> top 5-10 relevant entities
-   - Cost: ~$0.00002 per search (one embedding call)
-
-3. **Graph traversal** — for each found entity, pull related entities
-   - `sandra_get_triplets(entityId)` -> relationships
-   - Load connected entities for context
-
-4. **Context injection** — assemble a brief and inject into the LLM prompt
-   - "Here's what you know about the entities mentioned: ..."
-   - Keep it compact: max ~500 tokens of context
-
-**Implementation options:**
-- **MCP tool**: `sandra_recall(message)` — the LLM calls it explicitly
-- **Hook/middleware**: automatically runs before every LLM response (transparent)
-- **Hybrid**: MCP tool + system prompt instruction to always call it first
-
-#### 2b. Auto-Save (after LLM responds)
-
-After the conversation turn:
-
-1. **Extract new information** from the exchange
-   - New people mentioned? New facts? Preferences? Tasks?
-   - Use a structured LLM call: "What new facts were learned?"
-
-2. **Decide what to store**
-   - New entity? Update existing? New relationship?
-   - Conservative: better to miss info than pollute the graph
-
-3. **Execute** via Sandra MCP tools
-   - `sandra_create_entity`, `sandra_update_entity`, `sandra_batch`
-   - Embedding happens automatically
-
-**Rules:**
-- Only save non-trivial, reusable information
-- Don't save ephemeral conversation details
-- Don't save information already in the graph (check first)
-- Always prefer updating existing entities over creating duplicates
-
-#### 2c. Consolidation (periodic background task)
-
-Runs on a schedule (daily or weekly):
-
-1. **Duplicate detection** — find entities with similar embeddings
-   - "Universit de Geneve" vs "UNIGE" vs "Uni Geneva"
-   - Propose merges
-
-2. **Stale data detection** — find old tasks, outdated info
-   - Tasks older than 30 days still "pending"
-   - Contact info that hasn't been verified
-
-3. **Relationship inference** — suggest new connections
-   - Two people who share the same company but aren't linked
-   - Entities that belong to the same semantic cluster
-
-4. **Cleanup** — remove orphaned concepts, empty entities
-
-### Phase 3: Multi-Agent & API
-
-**Status: Future**
-
-- REST API for external apps to read/write Sandra memory
-- Multiple agents sharing the same memory (team knowledge base)
-- Memory namespaces (personal vs team vs project)
-- Access control and privacy layers
-- Export/import for portability
-
-## Competitive Landscape
-
-| Solution | Graph | Vector | Self-hosted | MCP | Agent layer |
-|----------|-------|--------|-------------|-----|-------------|
-| **Sandra (target)** | Yes | Yes | Yes | Yes | Yes |
-| Mem0 | No | Yes | No (SaaS) | No | Partial |
-| Zep | No | Yes | No (SaaS) | No | Yes |
-| LangChain Memory | No | Partial | Yes | No | No |
-| Neo4j | Yes | Plugin | Yes | No | No |
-| ChromaDB | No | Yes | Yes | No | No |
-
-**Sandra's unique position**: the only solution combining all five columns.
-
-## Go-to-Market
-
-### Target Audience
-AI developers building agents with Claude, GPT, or local LLMs who need persistent memory.
-
-### Positioning
-**Primary**: "A shared vocabulary between humans and AI — persistent memory where every concept has a name and an identity."
-
-**Technical**: "The open-source AI memory layer. Graph + Vector. Self-hosted. MCP-native."
-
-### Validation Strategy (4 weeks)
-
-**Week 1 — Smoke test**
-- Tweet/post showing the demo (this conversation = the demo)
-- Reddit r/LocalLLaMA, Hacker News "Show HN"
-- Measure: engagement, DMs, interest
-
-**Week 2 — Video demo**
-- 2-minute video: "Watch this AI remember everything"
-- Show: create entities, new conversation, recall, semantic search
-- Publish: Twitter, YouTube, Reddit, HN
-
-**Week 3 — Early adopters**
-- Target: 10 developers who actually use it
-- Channels: Anthropic Discord, LangChain Discord, GitHub Issues of competitors
-- Approach: "I have this problem, here's my solution, try it"
-
-**Week 4 — Signal**
-- If traction: announce design partner program
-- If no traction: pivot positioning or feature set
-
-### Key Channels
-- GitHub (primary distribution)
-- Twitter/X (AI developer community)
-- Hacker News (early adopters)
-- Anthropic MCP ecosystem (natural home)
-- Reddit r/LocalLLaMA, r/artificial
-
 ## Technical Decisions
 
 ### Why MySQL (not a dedicated vector DB)?
@@ -355,25 +206,7 @@ AI developers building agents with Claude, GPT, or local LLMs who need persisten
 - MCP is the emerging standard for LLM tool use
 - Direct integration with Claude, and growing ecosystem
 - No authentication complexity — runs locally
-- Can add REST API later (Phase 3) for external apps
-
-## Success Metrics
-
-### Phase 1 (current)
-- Embeddings work end-to-end
-- Semantic search returns relevant results
-- No performance degradation on normal operations
-
-### Phase 2
-- Agent auto-recalls relevant context in >80% of cases
-- Auto-save captures >60% of new important information
-- Consolidation reduces duplicates by >50%
-
-### Phase 3
-- 1,000+ GitHub stars
-- 100+ active installations
-- 10+ contributors
-- First paid enterprise inquiry
+- Can add REST API later for external apps
 
 ## Appendix: Cost Model
 
