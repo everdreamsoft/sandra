@@ -149,13 +149,13 @@ This prevents one user's vocabulary from polluting another's concept table and k
 
 **Effort:** High. Requires rethinking the concept table schema and all queries.
 
-## Recommendation
+## Current approach
 
-**Short term:** Do nothing. The current design works perfectly for the target use case (personal AI assistant, small teams). Document the concept reuse principle in MCP instructions.
+For the typical use case (personal AI assistant, small teams), the eager load works well. The concept reuse principle is documented in the MCP instructions so the LLM reuses vocabulary instead of creating concepts per fact.
 
-**When needed:** Implement lazy loading (solution 1). It's a minimal change that eliminates the scaling concern without altering Sandra's architecture. The `get()` fallback already exists — we just stop calling `load()` eagerly.
+Lazy loading (solution 1) is the natural next step if an installation crosses ~10,000 concepts — a minimal change that preserves Sandra's architecture, since the `get()` fallback already exists.
 
-**Monitor:** Track concept count per environment. If any installation crosses 10,000 concepts, investigate whether it's legitimate vocabulary growth or concept pollution (agent creating instead of reusing).
+Concept count per environment is worth tracking. A sudden jump often indicates pollution (agent creating instead of reusing) rather than legitimate vocabulary growth.
 
 ## Key Takeaway
 
