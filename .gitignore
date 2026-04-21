@@ -22,6 +22,8 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 *.db
+# Default SQLite file name when SANDRA_DB=sandra (ad-hoc manual runs)
+/sandra
 
 # Claude Code local config
 /.claude/
