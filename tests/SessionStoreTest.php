@@ -12,6 +12,12 @@ use SandraCore\SandraDatabaseDefinition;
 
 /**
  * Tests for SessionStore — the persistent MCP session layer.
+ *
+ * SessionStore uses MySQL-specific UPSERT (`ON DUPLICATE KEY UPDATE`),
+ * so these tests require a MySQL backend. They are excluded from the
+ * default SQLite suite.
+ *
+ * @group mysql-only
  */
 class SessionStoreTest extends SandraTestCase
 {
