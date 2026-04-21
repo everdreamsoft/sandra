@@ -8,213 +8,140 @@
  */
 
 declare(strict_types=1);
-require_once __DIR__ . '/../vendor/autoload.php'; // Autoload files using Composer autoload
-
-
+require_once __DIR__ . '/../vendor/autoload.php';
 
 use PHPUnit\Framework\TestCase;
-
-/**
- * ForeignEntityAdapter tests hit a live Google Apps Script URL to validate
- * remote population. They are flaky when the external service is slow,
- * down, or has changed its response shape. Excluded from the default suite.
- *
- * @group integration-live
- */
 use SandraCore\Entity;
 use SandraCore\ForeignEntityAdapter;
 
-
+/**
+ * Tests for ForeignEntityAdapter — pulls JSON from a URL and populates
+ * entities in-memory, optionally fusing with a local Sandra factory.
+ *
+ * Historically this test pointed at a live Google Apps Script. It now
+ * reads a local fixture file via `file://`, so it's deterministic and
+ * network-free — safe to run as part of the default suite.
+ */
 final class ForeignEntityAdapterTest extends TestCase
 {
-    private $baseFactory ;
-
-    public function testCanBeCreated(): void    {
-
-        $sandraToFlush = new SandraCore\System('_phpUnit',true);
-        \SandraCore\Setup::flushDatagraph($sandraToFlush);
-
-        $sandra = new SandraCore\System('_phpUnit',true);
-
-
-        $createdClass =  new \SandraCore\ForeignEntityAdapter('http://www.google.com','',$sandra);
-
-        $this->assertInstanceOf(
-            \SandraCore\ForeignEntityAdapter::class,
-            $createdClass
-        );
+    private function fixtureUrl(): string
+    {
+        return 'file://' . realpath(__DIR__ . '/fixtures/foreign-users.json');
     }
 
-    public function testPureForeignAdapter(): void    {
-
-
-
-        $sandraToFlush = new SandraCore\System('_phpUnit', true);
+    public function testCanBeCreated(): void
+    {
+        $sandraToFlush = new \SandraCore\System('_phpUnit', true);
         \SandraCore\Setup::flushDatagraph($sandraToFlush);
-        
-        $sandra = new SandraCore\System('_phpUnit',true);
-        $factory = $sandra->factoryManager->create('personnelFactory','person','peopleFile');
 
-        $foreignAdapter = new ForeignEntityAdapter("https://script.google.com/macros/s/AKfycbzJWIW1e0rsVx611g4EcYmZ9SJonpnzwmskDsg_A_9j3qGlht0/exec",'user',$sandra);
+        $sandra = new \SandraCore\System('_phpUnit', true);
 
-        $this->assertInstanceOf(
-            \SandraCore\ForeignEntityAdapter::class,
-            $foreignAdapter
-        );
+        $createdClass = new \SandraCore\ForeignEntityAdapter('http://www.google.com', '', $sandra);
 
-        $this->assertInstanceOf(
-            \SandraCore\EntityFactory::class,
-            $factory
-        );
+        $this->assertInstanceOf(\SandraCore\ForeignEntityAdapter::class, $createdClass);
+    }
 
+    public function testPureForeignAdapter(): void
+    {
+        $sandraToFlush = new \SandraCore\System('_phpUnit', true);
+        \SandraCore\Setup::flushDatagraph($sandraToFlush);
+
+        $sandra = new \SandraCore\System('_phpUnit', true);
+        $factory = $sandra->factoryManager->create('personnelFactory', 'person', 'peopleFile');
+
+        // The fixture is a top-level array, so the mainEntityPath is empty.
+        $foreignAdapter = new ForeignEntityAdapter($this->fixtureUrl(), '', $sandra);
+
+        $this->assertInstanceOf(\SandraCore\ForeignEntityAdapter::class, $foreignAdapter);
+        $this->assertInstanceOf(\SandraCore\EntityFactory::class, $factory);
 
         $foreignAdapter->populate();
 
+        $this->assertArrayHasKey('f:1', $foreignAdapter->entityArray, 'Failed to populate foreign entity');
 
-      $this->assertArrayHasKey('f:1',$foreignAdapter->entityArray,'Failed to populate foreign entity');
+        // Search for a known Visa value.
+        $entityArray = $foreignAdapter->getAllWith('Visa', 'MR542');
+        $noMatch = $foreignAdapter->getAllWith('Visa', 'MR599');     // non-existing value
+        $invalidRef = $foreignAdapter->getAllWith('VisaX', 'MR542'); // non-existing reference
 
-      //search
-        
-             $entityArray = $foreignAdapter->getAllWith('Visa','MR542');
-             $noMatch = $foreignAdapter->getAllWith('Visa','MR599'); //Unexisting entity
-             $invalidRef = $foreignAdapter->getAllWith('VisaX','MR542'); // Unexisting Reference
+        $this->assertNull($invalidRef, 'Invalid reference returned a response');
+        $this->assertNull($noMatch, 'Non-existing reference value returned something');
+        $this->assertIsArray($entityArray, 'Search for Visa MR542 did not return an array');
 
+        $entity = reset($entityArray);
+        $this->assertInstanceOf(\SandraCore\ForeignEntity::class, $entity, 'Entity with Visa MR542 not found');
+    }
 
-            //$entityArray = $foreignAdapter->getAllWith('Visa','MR548','Error getting Visa ');
-             $entity = reset($entityArray);
-             $this->assertNull($invalidRef,'Invalid Reference returned a response');
-             $this->assertNull($noMatch,'Non existing reference value  returned something');
-             $this->assertIsArray($entityArray,'Search for Visa MR542 Did not return an Array of Entities');
+    public function testForeignAndLocalFusion(): void
+    {
+        $sandraToFlush = new \SandraCore\System('_phpUnit', true);
+        \SandraCore\Setup::flushDatagraph($sandraToFlush);
 
+        $sandra = new \SandraCore\System('_phpUnit', true);
+        $factory = $sandra->factoryManager->create('personnelFactoryTestLocal', 'person', 'peopleFile');
+        $factory->populateLocal();
 
+        $foreignAdapter = new ForeignEntityAdapter($this->fixtureUrl(), '', $sandra);
 
-                    $this->assertInstanceOf(\SandraCore\ForeignEntity::class,$entity,'Entity with Visa MR542 Not found');
+        // limit=1 → only the first entity is populated
+        $foreignAdapter->populate(1);
 
-        $vocabulary = array(
+        $this->assertCount(1, $foreignAdapter->entityArray, 'The limitation of 1 in Foreign entity failed');
+
+        $vocabulary = [
             'Visa' => 'visa',
-            'Title'=> 'Title',
-        );
+            'Title' => 'Title',
+            'Age' => 'age',
+            'First Name' => 'firstname',
+        ];
 
-/*
-        $foreignAdapter->adaptToLocalVocabulary($vocabulary); // If after populate then fail
+        $foreignAdapter->adaptToLocalVocabulary($vocabulary);
+        $controlFactory = clone $factory;
 
-        $factory->foreignPopulate($foreignAdapter,500);
-        $factory->setFuseForeignOnRef('Visa','visa',$vocabulary);
+        $factory->foreignPopulate($foreignAdapter, 2);
+
+        $this->assertCount(2, $factory->entityArray, 'Our local factory should have 2 foreign concepts');
+
+        $factory->setFuseForeignOnRef('Visa', 'visa', $vocabulary);
+        $factory->getAllWith('Visa', 'MR542');
         $factory->fuseRemoteEntity();
         $factory->saveEntitiesNotInLocal();
 
-*/
-
-
-    }
-
-    public function testForeignAndLocalFusion(): void    {
-
-
-
-        $sandraToFlush = new SandraCore\System('_phpUnit', true);
-        \SandraCore\Setup::flushDatagraph($sandraToFlush);
-
-        $sandra = new SandraCore\System('_phpUnit',true);
-        $factory = $sandra->factoryManager->create('personnelFactoryTestLocal','person','peopleFile');
-        $factory->populateLocal();
-
-
-        $foreignAdapter = new ForeignEntityAdapter("https://script.google.com/macros/s/AKfycbzJWIW1e0rsVx611g4EcYmZ9SJonpnzwmskDsg_A_9j3qGlht0/exec",'user',$sandra);
-
-
-// testing limit should return only one entity
-        $foreignAdapter->populate(1);
-
-        $this->assertCount(1,$foreignAdapter->entityArray,'The limitation of 1 in Foreign entity failed');
-
-
-        $vocabulary = array(
-            'Visa' => 'visa',
-            'Title' => 'Title',
-            'Age' => 'age',
-            'First Name' => 'firstname'
-        );
-
-
-                $foreignAdapter->adaptToLocalVocabulary($vocabulary); // If after populate then fail
-        $controlFactory = clone $factory ;
-
-                $factory->foreignPopulate($foreignAdapter,2);
-
-
-        $this->assertCount(2,$factory->entityArray,'Our local factory should have 2 foreign concepts');
-
-                $factory->setFuseForeignOnRef('Visa','visa',$vocabulary);
-        $entityArray = $factory->getAllWith('Visa', 'MR542');
-                $factory->fuseRemoteEntity();
-        //  $factory->saveEntitiesNotInLocal();
-        $factory->saveEntitiesNotInLocal();
-
-                //We should have a local entity
-                $entityArray = $factory->getAllWith('Visa','MR542');
-                $entity = reset($entityArray);
-
-
+        $factory->getAllWith('Visa', 'MR542');
 
         $controlFactory->populateLocal();
-        //did the two has been saved in the database
-        $this->assertCount(2,$controlFactory->entityArray,'The two foreign entity not successful saved');
-        $controlFactory->foreignPopulate($foreignAdapter,3);
-        $controlFactory->setFuseForeignOnRef('Visa','visa',$vocabulary);
-        $controlFactory->fuseRemoteEntity();
-
-        //Now we should have two local entities and other foreign assuming the size of foreign data
-
-
-
-
-        $dump= $controlFactory->dumpMeta();
-
-        //
-
-
+        $this->assertCount(2, $controlFactory->entityArray, 'The two foreign entities were not successfully saved');
     }
 
-    public function testFusionAndUpdate()
+    public function testFusionAndUpdate(): void
     {
+        $sandraToFlush = new \SandraCore\System('_phpUnit', true);
+        \SandraCore\Setup::flushDatagraph($sandraToFlush);
 
+        $sandra = new \SandraCore\System('_phpUnit', true);
 
-        $sandra = new SandraCore\System('_phpUnit', true);
-
-        $foreignAdapter = new ForeignEntityAdapter("https://script.googleusercontent.com/macros/echo?user_content_key=BOhSs78kogORwwxMQYorClE9WArdfTgNaG8ta6jCvMBhEVzGhzeADYbWquh988RM2kzpycxoXJjxXhyDkG6d0zUHNbGjG8gAm5_BxDlH2jW0nuo2oDemN9CCS2h10ox_1xSncGQajx_ryfhECjZEnJiAX7CGU1Nfkw_f4I0D2VGRnCi3suSssTD3wo78iqcZlr0Bqrn_VaBemvrYY_vLpdpytj_A4aoE&lib=M2kgtu8MqTDiOvkCzXVbAhPk0k5gXsDeZ", 'data', $sandra);
+        $foreignAdapter = new ForeignEntityAdapter($this->fixtureUrl(), '', $sandra);
 
         $factory = $sandra->factoryManager->create('personnelFactoryTestLocal', 'person', 'peopleFile');
-        $controlFactory = clone $factory;
         $factory->populateLocal();
-        $ent = $foreignAdapter->populate(5);
+        $foreignAdapter->populate(5);
 
-
-        $vocabulary = array(
+        $vocabulary = [
             'Visa' => 'visa',
             'Title' => 'Title',
             'Age' => 'age',
-            'First Name' => 'firstname'
-        );
+            'First Name' => 'firstname',
+        ];
 
-        $foreignAdapter->adaptToLocalVocabulary($vocabulary); // If after populate then fail
-
-        $ent2 = $factory->foreignPopulate($foreignAdapter, 5);
+        $foreignAdapter->adaptToLocalVocabulary($vocabulary);
+        $factory->foreignPopulate($foreignAdapter, 5);
 
         $factory->mergeEntities('Visa', 'visa');
         $factory->fuseRemoteEntity(true);
         $entities = $factory->getEntities();
         $firstEntity = reset($entities);
 
-        //did the age was updated ?
-        $this->assertEquals($firstEntity->getReference('age')->refValue, 55);
-
-
-
-
+        // Leanne Graham's Age in the fixture is 55 — verify fusion applied it.
+        $this->assertEquals(55, $firstEntity->getReference('age')->refValue);
     }
-
-
-
-
 }

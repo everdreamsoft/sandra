@@ -1,0 +1,52 @@
+[
+  {
+    "id": 1,
+    "username": "bret",
+    "First Name": "Leanne",
+    "Last Name": "Graham",
+    "Visa": "MR542",
+    "Title": "Engineer",
+    "Age": 55,
+    "email": "sincere@april.biz"
+  },
+  {
+    "id": 2,
+    "username": "antonette",
+    "First Name": "Ervin",
+    "Last Name": "Howell",
+    "Visa": "MR877",
+    "Title": "Designer",
+    "Age": 33,
+    "email": "shanna@melissa.tv"
+  },
+  {
+    "id": 3,
+    "username": "samantha",
+    "First Name": "Clementine",
+    "Last Name": "Bauch",
+    "Visa": "MR104",
+    "Title": "Analyst",
+    "Age": 41,
+    "email": "nathan@yesenia.net"
+  },
+  {
+    "id": 4,
+    "username": "karianne",
+    "First Name": "Patricia",
+    "Last Name": "Lebsack",
+    "Visa": "MR215",
+    "Title": "Manager",
+    "Age": 48,
+    "email": "julianne.oconner@kory.org"
+  },
+  {
+    "id": 5,
+    "username": "kamren",
+    "First Name": "Chelsey",
+    "Last Name": "Dietrich",
+    "Visa": "MR390",
+    "Title": "Developer",
+    "Age": 27,
+    "email": "lucio_hettinger@annie.ca"
+  }
+]
