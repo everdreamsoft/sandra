@@ -1,9 +1,30 @@
+# Dependencies
+/vendor/
+
+# Environment & secrets
+.env
+bin/.env
+
+# IDE / editor
+.idea/
+.vscode/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# PHPUnit
+.phpunit.result.cache
+/build/
+/coverage/
+
+# Claude Code local config
+/.claude/
+
+# Benchmarks — large datasets, cloned upstream repos
+/benchmark/longmemeval/
+/benchmark/longmemeval_repo/
+
+# Ad-hoc local scratch files (historical)
 testopensea.php
 localTest
-/vendor/
-vendor/
-vendor
-.idea
-.env
-
-
