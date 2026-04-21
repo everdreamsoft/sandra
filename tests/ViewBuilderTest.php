@@ -8,6 +8,13 @@
 
 use PHPUnit\Framework\TestCase;
 
+/**
+ * createViewTable() generates `CREATE OR REPLACE VIEW` plus `FROM_UNIXTIME()`,
+ * both MySQL-specific. Excluded from the default SQLite suite until the
+ * view builder is ported to the driver interface.
+ *
+ * @group mysql-only
+ */
 class ViewBuilderTest extends TestCase
 {
 
