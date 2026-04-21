@@ -1,4 +1,4 @@
-# Sandra Agent Memory Strategy
+# Sandra Agent Memory
 
 ## Vision
 

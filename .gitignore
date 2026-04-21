@@ -21,6 +21,9 @@ Thumbs.db
 # Claude Code local config
 /.claude/
 
+# Internal-only docs, drafts, research notes
+/_internal/
+
 # Benchmarks — large datasets, cloned upstream repos
 /benchmark/longmemeval/
 /benchmark/longmemeval_repo/
