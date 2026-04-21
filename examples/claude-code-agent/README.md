@@ -20,10 +20,10 @@ Turn Claude Code into a personal assistant with persistent memory powered by San
 
 ```bash
 # Project-level (shared with team)
-cp examples/agent/CLAUDE.md /path/to/your/project/CLAUDE.md
+cp examples/claude-code-agent/CLAUDE.md /path/to/your/project/CLAUDE.md
 
 # Or user-level (all your projects)
-cp examples/agent/CLAUDE.md ~/.claude/CLAUDE.md
+cp examples/claude-code-agent/CLAUDE.md ~/.claude/CLAUDE.md
 ```
 
 ### 2. Install hooks
@@ -33,7 +33,7 @@ cp examples/agent/CLAUDE.md ~/.claude/CLAUDE.md
 mkdir -p /path/to/your/project/.claude/hooks
 
 # Copy the session hook
-cp examples/agent/hooks/session-recall.sh /path/to/your/project/.claude/hooks/
+cp examples/claude-code-agent/hooks/session-recall.sh /path/to/your/project/.claude/hooks/
 chmod +x /path/to/your/project/.claude/hooks/session-recall.sh
 ```
 
@@ -63,7 +63,7 @@ Then merge the hooks config into your project's `.claude/settings.json`:
 mkdir -p /path/to/your/project/.claude/skills
 
 # Copy skills
-cp examples/agent/skills/*.md /path/to/your/project/.claude/skills/
+cp examples/claude-code-agent/skills/*.md /path/to/your/project/.claude/skills/
 ```
 
 ### 4. Backfill embeddings (if using semantic search)
