@@ -31,7 +31,7 @@ class SQLiteDriver implements DatabaseDriverInterface
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 idConcept INTEGER NOT NULL,
                 linkReferenced INTEGER NOT NULL,
-                value VARCHAR(255) NOT NULL DEFAULT '',
+                value VARCHAR(255) NOT NULL DEFAULT '' COLLATE NOCASE,
                 UNIQUE (idConcept, linkReferenced)
             )",
             'storage' => "CREATE TABLE IF NOT EXISTS `$tableName` (
