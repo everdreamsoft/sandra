@@ -29,6 +29,7 @@
     <groups>
         <exclude>
             <group>mysql-only</group>
+            <group>integration-live</group>
         </exclude>
     </groups>
 </phpunit>

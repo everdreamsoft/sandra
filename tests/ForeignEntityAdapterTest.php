@@ -13,6 +13,14 @@ require_once __DIR__ . '/../vendor/autoload.php'; // Autoload files using Compos
 
 
 use PHPUnit\Framework\TestCase;
+
+/**
+ * ForeignEntityAdapter tests hit a live Google Apps Script URL to validate
+ * remote population. They are flaky when the external service is slow,
+ * down, or has changed its response shape. Excluded from the default suite.
+ *
+ * @group integration-live
+ */
 use SandraCore\Entity;
 use SandraCore\ForeignEntityAdapter;
 
