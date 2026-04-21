@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         cacheResult="false"
+         convertErrorsToExceptions="true"
+         convertNoticesToExceptions="true"
+         convertWarningsToExceptions="true"
+         stopOnFailure="false">
+
+    <testsuites>
+        <testsuite name="Sandra">
+            <directory>tests</directory>
+            <exclude>tests/SandraTestCase.php</exclude>
+            <exclude>tests/MyService.php</exclude>
+        </testsuite>
+    </testsuites>
+
+    <php>
+        <!-- Tests run against SQLite by default so no MySQL is required.
+             Override with SANDRA_DRIVER=mysql to run the suite against MySQL. -->
+        <env name="SANDRA_DRIVER" value="sqlite"/>
+        <env name="SANDRA_DB_HOST" value=""/>
+        <env name="SANDRA_DB" value="/tmp/sandra-phpunit.sqlite"/>
+        <env name="SANDRA_DB_USER" value=""/>
+        <env name="SANDRA_DB_PASS" value=""/>
+    </php>
+
+    <groups>
+        <exclude>
+            <group>mysql-only</group>
+        </exclude>
+    </groups>
+</phpunit>

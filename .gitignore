@@ -18,6 +18,11 @@ Thumbs.db
 /build/
 /coverage/
 
+# SQLite scratch files (test runs, local experiments)
+*.sqlite
+*.sqlite3
+*.db
+
 # Claude Code local config
 /.claude/
 
