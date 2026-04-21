@@ -46,6 +46,19 @@ class SystemRegistryTest extends SandraTestCase
         );
     }
 
+    /**
+     * Bootstrap the schema for an alternative env so that a cached,
+     * install=false System from SystemRegistry can read its tables.
+     */
+    private function installEnv(string $env): void
+    {
+        new System($env, true, $this->dbHost, $this->dbName, $this->dbUser, $this->dbPass);
+        // Reset the static PDO so the next System call (via registry) gets a fresh one
+        $ref = new \ReflectionProperty(System::class, 'pdo');
+        $ref->setAccessible(true);
+        $ref->setValue(null, null);
+    }
+
     public function testGetReturnsSystemForDefaultEnv(): void
     {
         $registry = $this->makeRegistry();
@@ -67,6 +80,7 @@ class SystemRegistryTest extends SandraTestCase
 
     public function testGetReturnsDifferentInstancesForDifferentEnvs(): void
     {
+        $this->installEnv('phpUnit_other');
         $registry = $this->makeRegistry();
 
         $envA = $registry->get('phpUnit_');
@@ -116,6 +130,8 @@ class SystemRegistryTest extends SandraTestCase
 
     public function testTableNamesArePrefixedByEnv(): void
     {
+        $this->installEnv('alpha_');
+        $this->installEnv('beta_');
         $registry = $this->makeRegistry();
 
         $envA = $registry->get('alpha_');
