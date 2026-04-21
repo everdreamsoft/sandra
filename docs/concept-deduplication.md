@@ -77,18 +77,14 @@ This matters because an agent creating 10 entities in a batch would consume:
 - Smart approach: 10 x 100 tokens = 1'000 tokens for dedup
 - Naive approach: 10 x 5'000 tokens = 50'000 tokens wasted
 
-## Implementation Status
+## What's in place
 
-### Done
-- MCP instructions updated with Concept Reuse Protocol
-- Anti-patterns documented in instructions
-- `sandra_semantic_search` available for dedup checks
-- `sandra_embed_all` for backfilling existing entity embeddings
+- MCP instructions include the Concept Reuse Protocol
+- Anti-patterns documented in those instructions
+- `sandra_semantic_search` is available for dedup checks
+- `sandra_embed_all` backfills embeddings on existing entities
 
-### Future (when needed)
-- **Auto-suggest on create**: `sandra_create_concept` could automatically return similar existing concepts in its response, so the LLM sees them without an extra call
-- **Concept clustering**: periodic job that groups similar concepts and proposes merges
-- **Hard limit**: reject concept creation if a very similar concept exists (threshold > 0.95)
+Natural extensions, if real-world usage surfaces the need: auto-suggesting similar concepts inside the `sandra_create_concept` response, periodic clustering to propose merges, and optional thresholds on creation when near-duplicates exist.
 
 ## Design Principles
 
