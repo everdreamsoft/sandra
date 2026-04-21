@@ -97,7 +97,7 @@ The magic is that `likes` and `works_at` are themselves concepts with their own 
 | [`concept-deduplication.md`](docs/concept-deduplication.md) | How the vocabulary stays clean at scale |
 | [`system-concept-scaling.md`](docs/system-concept-scaling.md) | Memory and performance profile as concept count grows |
 
-Examples live in [`examples/`](examples/): a Claude Code agent setup and a browser-based MCP test harness.
+Examples live in [`examples/`](examples/): a Claude Code agent setup ready to drop into any project.
 
 ## Status
 
