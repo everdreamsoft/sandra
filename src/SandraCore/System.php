@@ -63,6 +63,13 @@ class System
 
         self::$sandraLogger = new Logger();
 
+        if ($driver === null) {
+            $driverEnv = strtolower((string) getenv('SANDRA_DRIVER'));
+            if ($driverEnv === 'sqlite') {
+                $driver = new \SandraCore\Driver\SQLiteDriver();
+            }
+        }
+
         $this->driver = $driver;
 
         if ($driver !== null) {
