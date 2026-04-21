@@ -23,8 +23,7 @@ All tests should pass before you open a pull request. If you add new behavior, a
 ## Branch policy
 
 - `master` is the stable line.
-- `sandraxclaude` carries the MCP / agent-memory work and merges to `master` once a feature set is stabilized.
-- Feature branches (`feature/short-name`) branch off `sandraxclaude` or `master` depending on what they touch.
+- Feature branches (`feature/short-name`) branch off `master`.
 - **Never merge benchmark datasets, large fixtures, or third-party artifacts into `master` or shared feature branches.** Keep them on dedicated branches and point to them via documentation instead.
 
 ## Commit messages
@@ -48,7 +47,7 @@ If your change touches the core model (concepts, entities, factories, triplets),
 
 ## Reporting issues
 
-- Reproduce the problem on a clean clone of `master` (or `sandraxclaude`) before reporting.
+- Reproduce the problem on a clean clone of `master` before reporting.
 - Include PHP version, MySQL/MariaDB version, and the exact command that fails.
 - Trim logs to the relevant part.
 

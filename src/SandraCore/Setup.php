@@ -37,8 +37,10 @@ class Setup
         $sql="DROP TABLE  $system->tableStorage";
         System::$pdo->get()->query($sql);
 
-
-
+        // Optional tables — drop if present so a subsequent install() rebuilds fresh schema.
+        if (!empty($system->tableEmbedding)) {
+            System::$pdo->get()->query("DROP TABLE IF EXISTS $system->tableEmbedding");
+        }
 
 
 

@@ -22,6 +22,10 @@ class SandraDatabaseDefinition
             System::$pdo->get()->exec($driver->getCreateTableSQL($tableReference, 'reference'));
             System::$pdo->get()->exec($driver->getCreateTableSQL($tablestorage, 'storage'));
             System::$pdo->get()->exec($driver->getCreateTableSQL($tableConf, 'config'));
+            if ($tableEmbedding !== null) {
+                System::$pdo->get()->exec($driver->getCreateTableSQL($tableEmbedding, 'embedding'));
+            }
+            // shared_token and shared_sessions tables are MySQL-only for now.
             return;
         }
 

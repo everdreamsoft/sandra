@@ -4,12 +4,12 @@
 
 <p align="center">
     <strong>A graph database where every concept has a name, a unique identity, and a story.</strong><br>
-    Strict typed queries, infinite relational memory, and a vocabulary that any intelligence — human or AI — can read, write, and reason over.
+    Strict typed queries, infinite relational memory, and a vocabulary that any intelligence  human or AI  can read, write, and reason over.
 </p>
 
 ---
 
-Sandra is a semantic graph database built around a radical idea: every concept — every verb, every category, every relationship — is a **first-class citizen with a unique ID and a human-readable name**. That makes the whole graph readable by code, by humans, and natively by large language models. You get strict typed tables when you want SQL-like precision, and a living ontology when you want relational depth. Agents on top (via MCP) are a natural consequence, not the reason Sandra exists.
+Sandra is a semantic graph database built around a radical idea: every concept  every verb, every category, every relationship is a **first-class citizen with a unique ID and a human-readable name**. That makes the whole graph readable by code, by humans, and natively by large language models. You get strict typed tables when you want SQL-like precision, and a living ontology when you want relational depth. Agents on top (via MCP) are a natural consequence, not the reason Sandra exists.
 
 ## Why Sandra
 

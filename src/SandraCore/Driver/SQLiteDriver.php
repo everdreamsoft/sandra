@@ -43,8 +43,20 @@ class SQLiteDriver implements DatabaseDriverInterface
                 name VARCHAR(255) NOT NULL,
                 value VARCHAR(255) NOT NULL
             )",
+            'embedding' => "CREATE TABLE IF NOT EXISTS `$tableName` (
+                conceptId INTEGER NOT NULL PRIMARY KEY,
+                embedding TEXT NOT NULL,
+                textHash VARCHAR(64) NOT NULL DEFAULT '',
+                updatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )",
             default => throw new \InvalidArgumentException("Unknown table type: $tableType"),
         };
+    }
+
+    public function getUpsertEmbeddingSQL(string $table): string
+    {
+        return "INSERT INTO `$table` (conceptId, embedding, textHash) VALUES (:conceptId, :embedding, :textHash)
+                ON CONFLICT(conceptId) DO UPDATE SET embedding = excluded.embedding, textHash = excluded.textHash";
     }
 
     public function getUpsertReferenceSQL(string $table): string

@@ -52,8 +52,21 @@ class MySQLDriver implements DatabaseDriverInterface
                 `value` varchar(255) NOT NULL,
                 PRIMARY KEY (`id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8",
+            'embedding' => "CREATE TABLE IF NOT EXISTS `$tableName` (
+                `conceptId` int(11) NOT NULL,
+                `embedding` JSON NOT NULL,
+                `textHash` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+                `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (`conceptId`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
             default => throw new \InvalidArgumentException("Unknown table type: $tableType"),
         };
+    }
+
+    public function getUpsertEmbeddingSQL(string $table): string
+    {
+        return "INSERT INTO `$table` (conceptId, embedding, textHash) VALUES (:conceptId, :embedding, :textHash)
+                ON DUPLICATE KEY UPDATE embedding = :embedding2, textHash = :textHash2";
     }
 
     public function getUpsertReferenceSQL(string $table): string

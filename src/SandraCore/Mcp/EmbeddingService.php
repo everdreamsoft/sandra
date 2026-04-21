@@ -210,21 +210,26 @@ class EmbeddingService
     {
         $table = $this->system->tableEmbedding;
         $pdo = $this->system->getConnection();
+        $driver = $this->system->getDriver() ?? new \SandraCore\Driver\MySQLDriver();
 
-        $sql = "INSERT INTO `$table` (conceptId, embedding, textHash)
-                VALUES (:conceptId, :embedding, :textHash)
-                ON DUPLICATE KEY UPDATE embedding = :embedding2, textHash = :textHash2";
-
+        $sql = $driver->getUpsertEmbeddingSQL($table);
         $embeddingJson = json_encode($embedding);
 
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([
+        $params = [
             ':conceptId' => $conceptId,
             ':embedding' => $embeddingJson,
             ':textHash' => $textHash,
-            ':embedding2' => $embeddingJson,
-            ':textHash2' => $textHash,
-        ]);
+        ];
+        // MySQL `ON DUPLICATE KEY UPDATE` references the same placeholders twice
+        // with distinct names; SQLite's `ON CONFLICT DO UPDATE` uses `excluded.*`
+        // and only needs them once.
+        if ($driver->getName() === 'mysql') {
+            $params[':embedding2'] = $embeddingJson;
+            $params[':textHash2'] = $textHash;
+        }
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
     }
 
     /**

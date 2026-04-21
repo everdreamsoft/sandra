@@ -8,7 +8,7 @@ interface DatabaseDriverInterface
     public function getDsn(string $host, string $database): string;
 
     /**
-     * @param string $tableType One of: 'concept', 'triplet', 'reference', 'storage', 'config'
+     * @param string $tableType One of: 'concept', 'triplet', 'reference', 'storage', 'config', 'embedding'
      */
     public function getCreateTableSQL(string $tableName, string $tableType): string;
 
@@ -17,6 +17,8 @@ interface DatabaseDriverInterface
     public function getUpsertTripletSQL(string $table): string;
 
     public function getUpsertStorageSQL(string $table): string;
+
+    public function getUpsertEmbeddingSQL(string $table): string;
 
     public function getRandomOrderSQL(): string;
 
