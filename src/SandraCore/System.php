@@ -14,7 +14,21 @@ use SandraCore\Exception\CriticalSystemException;
  */
 class System
 {
+    /** @deprecated Points at the most recently instantiated System's connection. Prefer getConnectionWrapper() on the owning System instance. */
     public static ?PdoConnexionWrapper $pdo = null;
+
+    /**
+     * Per-process cache of PDO wrappers keyed by host|db|user, so multiple
+     * System instances (e.g. a v7 legacy datagraph + a v8 token store) can
+     * coexist in the same process without stomping each other's connection.
+     *
+     * @var array<string,PdoConnexionWrapper>
+     */
+    private static array $pdoPool = [];
+
+    /** This System's own connection wrapper, independent of static::$pdo. */
+    protected ?PdoConnexionWrapper $pdoWrapper = null;
+
     public static ILogger $sandraLogger;
 
     public string $env = 'main';
@@ -76,10 +90,13 @@ class System
             DatabaseAdapter::$driver = $driver;
         }
 
-        if (!static::$pdo)
-            static::$pdo = new PdoConnexionWrapper($dbHost, $db, $dbUsername, $dbpassword, $driver);
-
-        $pdoWrapper = static::$pdo;
+        $poolKey = "$dbHost|$db|$dbUsername";
+        if (!isset(self::$pdoPool[$poolKey])) {
+            self::$pdoPool[$poolKey] = new PdoConnexionWrapper($dbHost, $db, $dbUsername, $dbpassword, $driver);
+        }
+        $pdoWrapper = self::$pdoPool[$poolKey];
+        $this->pdoWrapper = $pdoWrapper;
+        static::$pdo = $pdoWrapper; // BC for legacy callers that read System::$pdo statically
 
         $this->env = $env;
         $this->tablePrefix = $env;
@@ -125,7 +142,16 @@ class System
      */
     public function getConnection(): \PDO
     {
-        return static::$pdo->get();
+        return $this->pdoWrapper->get();
+    }
+
+    /**
+     * Get the PdoConnexionWrapper owned by THIS System instance (safe when
+     * multiple Systems coexist in the same process).
+     */
+    public function getConnectionWrapper(): ?PdoConnexionWrapper
+    {
+        return $this->pdoWrapper;
     }
 
     public function getTableConf(): string

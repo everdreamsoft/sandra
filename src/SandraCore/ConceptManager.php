@@ -33,7 +33,7 @@ class ConceptManager
         $this->system = $system;
 
         $this->deletedUnid = $system->deletedUNID;
-        $this->pdo = System::$pdo->get();
+        $this->pdo = $system->getConnectionWrapper()->get();
 
         //table as instance data
         if ($tableLinkParam == 'default') {
