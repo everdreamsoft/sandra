@@ -30,6 +30,7 @@ class SystemRegistry
     private string $dbUser;
     private string $dbPass;
     private string $defaultEnv;
+    private int $defaultVersion;
 
     /** @var array<string, System> */
     private array $cache = [];
@@ -39,13 +40,20 @@ class SystemRegistry
         string $defaultDbName,
         string $dbUser,
         string $dbPass,
-        string $defaultEnv
+        string $defaultEnv,
+        int $defaultVersion = self::DEFAULT_VERSION
     ) {
         $this->defaultDbHost = $defaultDbHost;
         $this->defaultDbName = $defaultDbName;
         $this->dbUser = $dbUser;
         $this->dbPass = $dbPass;
         $this->defaultEnv = $defaultEnv;
+        $this->defaultVersion = $defaultVersion;
+    }
+
+    public function getDefaultVersion(): int
+    {
+        return $this->defaultVersion;
     }
 
     /**
@@ -64,7 +72,7 @@ class SystemRegistry
     ): System {
         $host = $dbHost ?? $this->defaultDbHost;
         $name = $dbName ?? $this->defaultDbName;
-        $v = $version ?? self::DEFAULT_VERSION;
+        $v = $version ?? $this->defaultVersion;
         $key = "$host:$name:$env:v$v";
 
         if (!isset($this->cache[$key])) {

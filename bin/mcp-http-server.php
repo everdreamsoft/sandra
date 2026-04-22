@@ -8,9 +8,14 @@
  *
  * Usage:
  *   php bin/mcp-http-server.php [--port=8090] [--host=127.0.0.1] [--env=/path/to/.env]
+ *                               [--version=7|8] [--token-env=/path/to/tokens.env]
  *
  * As a composer dependency:
  *   php vendor/everdreamsoft/sandra/bin/mcp-http-server.php --env=.env
+ *
+ * Legacy Sandra 7 datagraph with v8 token store in a separate DB:
+ *   php vendor/everdreamsoft/sandra/bin/mcp-http-server.php \
+ *       --env=.envSandra7 --token-env=.env --version=7
  *
  * Then configure .mcp.json:
  *   {"type": "streamable-http", "url": "http://127.0.0.1:8090/mcp"}
@@ -38,6 +43,7 @@ if (!$autoloaded) {
     exit(1);
 }
 
+use SandraCore\Sandra7LegacySystem;
 use SandraCore\System;
 use SandraCore\Mcp\McpServer;
 use SandraCore\Mcp\McpServerRegistry;
@@ -47,7 +53,7 @@ use SandraCore\Mcp\TokenAuthService;
 use SandraCore\Mcp\SessionStore;
 
 // ── CLI args ────────────────────────────────────────────────────────
-$opts = getopt('', ['port:', 'host:', 'env:']);
+$opts = getopt('', ['port:', 'host:', 'env:', 'version:', 'token-env:']);
 
 // ── Load .env file ─────────────────────────────────────────────────
 // Priority: --env flag → bin/.env → project root .env
@@ -72,11 +78,36 @@ foreach ($envPaths as $envFile) {
         break; // Use first .env found
     }
 }
+// ── Load --token-env file (local parse, no putenv) ─────────────────
+// This is used only to build the auth/session store connection below —
+// we never inject its vars into the process env, so it can't shadow the
+// datagraph .env loaded above.
+$tokenEnvFile = $opts['token-env'] ?? null;
+/** @var array<string,string> $tokenVars */
+$tokenVars = [];
+if ($tokenEnvFile !== null && file_exists($tokenEnvFile)) {
+    foreach (file($tokenEnvFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        $line = trim($line);
+        if ($line === '' || $line[0] === '#' || !str_contains($line, '=')) continue;
+        [$k, $v] = explode('=', $line, 2);
+        $tokenVars[trim($k)] = trim($v);
+    }
+}
+
 $port = (int)($opts['port'] ?? getenv('SANDRA_MCP_PORT') ?: 8090);
 $host = $opts['host'] ?? getenv('SANDRA_MCP_HOST') ?: '127.0.0.1';
 
 // ── Database config ─────────────────────────────────────────────────
-$env = getenv('SANDRA_ENV') ?: 'mcp_';
+// SANDRA_ENV: distinguish "unset" (→ default 'mcp_') from "set to empty"
+// (→ '', which Sandra 7 legacy mode uses to mean "tables without suffix").
+$envRaw = getenv('SANDRA_ENV');
+$env = $envRaw !== false ? $envRaw : 'mcp_';
+
+// Datagraph version: 7 = legacy Sandra 7 tables (Concept/Link/References/aux_dataStorage),
+// 8 = current schema. CLI flag wins over env var.
+$version = isset($opts['version'])
+    ? (int)$opts['version']
+    : (int)(getenv('SANDRA_DATAGRAPH_VERSION') ?: SystemRegistry::DEFAULT_VERSION);
 $dbHost = getenv('SANDRA_DB_HOST') ?: '127.0.0.1';
 $db = getenv('SANDRA_DB') ?: getenv('SANDRA_DB_DATABASE') ?: 'sandra';
 $dbUser = getenv('SANDRA_DB_USER') ?: getenv('SANDRA_DB_USERNAME') ?: 'root';
@@ -88,11 +119,15 @@ $authToken = getenv('SANDRA_AUTH_TOKEN') ?: null;
 // ── Build MCP server ────────────────────────────────────────────────
 // Install if requested, otherwise deferred to SystemRegistry
 if ($install) {
-    new System($env, true, $dbHost, $db, $dbUser, $dbPass);
+    $version === SystemRegistry::LEGACY_VERSION
+        ? new Sandra7LegacySystem($env, true, $dbHost, $db, $dbUser, $dbPass)
+        : new System($env, true, $dbHost, $db, $dbUser, $dbPass);
 }
 
-// Multi-env system registry for API multi-tenancy
-$systemRegistry = new SystemRegistry($dbHost, $db, $dbUser, $dbPass, $env);
+// Multi-env system registry for API multi-tenancy.
+// $version sets the *default* datagraph version for bootstrap + tokens that
+// don't specify one; individual tokens can still override via datagraph_version.
+$systemRegistry = new SystemRegistry($dbHost, $db, $dbUser, $dbPass, $env, $version);
 
 $systemFactory = fn() => $systemRegistry->get($env);
 
@@ -102,13 +137,35 @@ $server->discover();
 // Pre-boot discovery so first HTTP request is instant
 $server->dispatchMessage(['method' => 'notifications/initialized', 'jsonrpc' => '2.0']);
 
-// ── Token auth service (unified for MCP + API) ─────────────────────
-$authService = null;
+// ── Auth System (token + sessions storage) ─────────────────────────
+// When --token-env= is passed, build a dedicated v8 System for the shared
+// token store so it can live in a separate DB from the datagraph (required
+// when the datagraph is Sandra 7 legacy). Otherwise fall back to the default
+// datagraph System — historical single-DB behaviour.
+$authSystem = null;
 if ($authToken !== null) {
-    $defaultSystem = $systemRegistry->getDefault();
+    if ($tokenVars !== []) {
+        $tokenEnvRaw = $tokenVars['SANDRA_ENV'] ?? null;
+        $tokenEnv    = $tokenEnvRaw ?? 'mcp_';
+        $tokenHost   = $tokenVars['SANDRA_DB_HOST'] ?? $dbHost;
+        $tokenDb     = $tokenVars['SANDRA_DB'] ?? $tokenVars['SANDRA_DB_DATABASE'] ?? $db;
+        $tokenUser   = $tokenVars['SANDRA_DB_USER'] ?? $tokenVars['SANDRA_DB_USERNAME'] ?? $dbUser;
+        $tokenPass   = $tokenVars['SANDRA_DB_PASS'] ?? $tokenVars['SANDRA_DB_PASSWORD'] ?? $dbPass;
+        // Token store is always v8 — the schema only exists in the modern datagraph.
+        $authSystem = new System($tokenEnv, $install, $tokenHost, $tokenDb, $tokenUser, $tokenPass);
+    } else {
+        if ($version === SystemRegistry::LEGACY_VERSION) {
+            fwrite(STDERR, "Warning: auth enabled on a Sandra 7 legacy datagraph without --token-env=. The token store will be searched in the legacy DB and will fail. Pass --token-env=/path/to/v8.env\n");
+        }
+        $authSystem = $systemRegistry->getDefault();
+    }
+}
+
+$authService = null;
+if ($authToken !== null && $authSystem !== null) {
     $authService = new TokenAuthService(
-        $defaultSystem->getConnection(),
-        $defaultSystem->sharedTokenTable,
+        $authSystem->getConnection(),
+        $authSystem->sharedTokenTable,
         $authToken,
         $env,
         $logFile
@@ -120,11 +177,10 @@ $mcpRegistry = new McpServerRegistry($systemRegistry, $logFile);
 
 // ── Session store (persists sessions across process restarts) ──────
 $sessionStore = null;
-if ($authService !== null) {
-    $defaultSystem = $systemRegistry->getDefault();
+if ($authService !== null && $authSystem !== null) {
     $sessionStore = new SessionStore(
-        $defaultSystem->getConnection(),
-        $defaultSystem->sharedSessionsTable,
+        $authSystem->getConnection(),
+        $authSystem->sharedSessionsTable,
         $logFile
     );
 }
@@ -134,10 +190,16 @@ $transport = new HttpTransport($server, $logFile, $authToken, $authService, $sys
 
 echo "Sandra MCP HTTP server starting on http://$host:$port\n";
 echo "  Endpoints: /mcp, /api/*, /.well-known/*, /authorize, /token\n";
+echo "Datagraph: $dbHost/$db  (v$version" . ($version === SystemRegistry::LEGACY_VERSION ? " legacy" : "") . ", env='" . ($env === '' ? "" : $env) . "')\n";
+if ($authSystem !== null && $tokenVars !== []) {
+    echo "Token store: " . ($tokenVars['SANDRA_DB_HOST'] ?? $dbHost) . "/" . ($tokenVars['SANDRA_DB'] ?? $tokenVars['SANDRA_DB_DATABASE'] ?? $db) . "  (v8, env='" . ($tokenVars['SANDRA_ENV'] ?? 'mcp_') . "')\n";
+} elseif ($authSystem !== null) {
+    echo "Token store: (same DB as datagraph)\n";
+}
 echo "Log: $logFile\n";
 echo "Auth: " . ($authToken ? "enabled (Bearer token required)" : "disabled (open access)") . "\n";
-echo "Token store: " . ($authService ? "sandra_api_tokens (multi-env routing)" : "static token only") . "\n";
-echo "Session store: " . ($sessionStore ? "sandra_mcp_sessions (persisted across restarts)" : "in-memory only") . "\n";
+echo "Token table: " . ($authService ? "sandra_api_tokens (multi-env routing)" : "static token only") . "\n";
+echo "Session table: " . ($sessionStore ? "sandra_mcp_sessions (persisted across restarts)" : "in-memory only") . "\n";
 echo "Press Ctrl+C to stop.\n\n";
 
 $transport->listen($host, $port);

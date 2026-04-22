@@ -32,7 +32,7 @@ class Sandra7LegacySystem extends System
     {
         // Legacy tables are assumed to already exist in production.
         // If you ever need to create them from scratch, pass only the 5 core tables
-        // (no embedding, no shared-token table — those are v8-only).
+        // (no embedding, no shared-token table — those live in a separate v8 DB).
         SandraDatabaseDefinition::createEnvTables(
             $this->conceptTable,
             $this->linkTable,
