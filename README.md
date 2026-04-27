@@ -3,80 +3,70 @@
 </p>
 
 <p align="center">
-    <strong>A graph database where every concept has a name, a unique identity, and a story.</strong><br>
-    Strict typed queries, infinite relational memory, and a vocabulary that any intelligence  human or AI  can read, write, and reason over.
+    <strong>Long-term memory for AI agents.</strong><br>
+    Self-hosted, MCP-native, with a vocabulary your LLM can read.
+</p>
+
+<p align="center">
+    Sandra + a query planner scores <strong>0.89</strong> on <a href="https://github.com/everdreamsoft/structured-recall-bench">Structured Recall Bench</a>,
+    where top-K retrievers cluster at 0.25 to 0.48.
 </p>
 
 ---
 
-Sandra is a semantic graph database built around a radical idea: every concept  every verb, every category, every relationship is a **first-class citizen with a unique ID and a human-readable name**. That makes the whole graph readable by code, by humans, and natively by large language models. You get strict typed tables when you want SQL-like precision, and a living ontology when you want relational depth. Agents on top (via MCP) are a natural consequence, not the reason Sandra exists.
+Every AI agent forgets. Vector memory finds similar text but can't enumerate or relate. Classical graph DBs use free-form labels that no LLM can read. SaaS memory ships your data to someone else's servers.
 
-## Why Sandra
+Sandra is a self-hostable graph + vector memory layer where every concept (verb, label, category) has a unique ID and a human-readable name. Your agent reads, writes, and reasons over a shared vocabulary instead of an implicit schema. Exposed natively via MCP.
 
-Existing memory options for AI agents fall into three camps, each with a ceiling:
-
-| Approach | Example | Great at | Ceiling |
-|---|---|---|---|
-| Vector retrieval | Mem0, Zep, Supermemory | Fuzzy top-K recall on prose | Can't enumerate, can't relate, locks data in SaaS |
-| Classical graph DB | Neo4j, TigerGraph | Typed relationships | Schema is implicit strings; LLMs can't read it |
-| Plain text memory | LangChain buffers | Simplicity | No structure, no query, no scale |
-
-Sandra combines **typed structure** (like a graph DB), **semantic search** (like a vector DB), **self-hostable** (you own your data), and a **shared vocabulary** that any LLM can browse and reason over without a schema file. See [`docs/agent-memory-design.md`](docs/agent-memory-design.md) for the full rationale.
-
-## Quickstart
+## Give your agent memory
 
 ```bash
-composer require everdreamsoft/sandra
-```
-
-Minimal program — create a factory, add entities, link them, query back:
-
-```php
-<?php
-require 'vendor/autoload.php';
-
-use SandraCore\System;
-use SandraCore\EntityFactory;
-
-$sandra = new System('myapp', true, 'localhost', 'sandra', 'root', '');
-
-$people = new EntityFactory('person', 'peopleFile', $sandra);
-
-$alice = $people->createNew(['name' => 'Alice', 'role' => 'founder']);
-$bob   = $people->createNew(['name' => 'Bob',   'role' => 'engineer']);
-
-$alice->setJoinedEntity('works_with', $bob, ['since' => '2024']);
-
-$people->populateLocal();
-foreach ($people->getEntities() as $p) {
-    echo $p->get('name') . "\n";
-}
-```
-
-For a longer walkthrough, see [`docs/code-samples/animal-shelter.php`](docs/code-samples/animal-shelter.php).
-
-## Sandra as Claude's memory (MCP)
-
-Sandra exposes the graph to any MCP-compatible LLM — Claude Code, Claude Desktop, or your own client — as a set of tools (`sandra_search`, `sandra_get_entity`, `sandra_create_entity`, `sandra_semantic_search`, …).
-
-```bash
-# 1. Start the Sandra MCP server
+# 1. Run Sandra locally (5 min, see installation guide)
+git clone https://github.com/everdreamsoft/sandra
+cd sandra && composer install
+# ...configure DB and (optional) OpenAI key, then:
 php bin/mcp-http-server.php
 
-# 2. Point Claude Code at it
+# 2. Connect Claude Code
 claude mcp add sandra --transport http --url http://127.0.0.1:8090/mcp
 ```
 
-From Claude's side, memory is simply recalled and written as part of normal conversation. Full setup, OAuth, and auth tokens in [`docs/installation-guide.md`](docs/installation-guide.md). MCP protocol details in [`docs/mcp-guide.md`](docs/mcp-guide.md). A ready-made agent configuration lives in [`examples/claude-code-agent/`](examples/claude-code-agent/).
+Open Claude. Memory now persists across sessions, projects, and any other MCP-aware agent on the same Sandra instance.
 
-## Core model
+Full setup, OAuth 2.1/PKCE, and auth tokens: [`docs/installation-guide.md`](docs/installation-guide.md). MCP tool reference: [`docs/mcp-guide.md`](docs/mcp-guide.md). A ready-made Claude Code agent configuration: [`examples/claude-code-agent/`](examples/claude-code-agent/).
 
-Sandra has four primitives, and everything else is built from them:
+## Why Sandra
 
-- **Concept** — a named, unique ID in a shared vocabulary (`likes`, `works_at`, `strawberry`). Concepts are the *words* of the graph.
-- **Entity** — a typed record with short reference fields (name, email, price…) plus optional long text storage. Entities are the *rows*.
-- **Factory** — a typed collection of entities (`person`, `product`, `task`). Factories are the *tables*.
-- **Triplet** — a `(subject, verb, target)` link between any two concepts or entities. Triplets are the *sentences*.
+| Approach              | Example                | SRB composite | Limit                                       |
+|-----------------------|------------------------|---------------|---------------------------------------------|
+| Vector retrieval      | Mem0, Zep, Supermemory | 0.25 to 0.33  | Can't enumerate, can't relate               |
+| Verbatim retrieval    | MemPalace              | 0.48          | Same architecture, better organized         |
+| Classical graph DB    | Neo4j, TigerGraph      | (no provider) | Free-form labels, unreadable for LLMs       |
+| **Sandra + planner**  | this repo              | **0.89**      | Graph + vector + shared LLM-readable vocab  |
+
+Numbers from [Structured Recall Bench](https://github.com/everdreamsoft/structured-recall-bench): 130 deterministic questions, no LLM-judge, raw responses archived. Full design rationale: [`docs/agent-memory-design.md`](docs/agent-memory-design.md).
+
+## What Sandra is, and is not
+
+**Sandra is for you if:**
+- You want your agent to remember across sessions, projects, and machines
+- You want to own the memory data, not lease it from a SaaS
+- You build with multiple LLMs and need a shared substrate
+- You need explicit relationships, not just fuzzy similarity
+
+**Sandra is not for you if:**
+- You need a transactional database (use Postgres)
+- You need pure vector retrieval at massive scale (use a dedicated vector store)
+- You want zero infrastructure (use Mem0 or another hosted service)
+
+## How memory works
+
+Four primitives. Everything else is built from them.
+
+- **Concept**: a named, unique ID in a shared vocabulary (`likes`, `works_at`, `strawberry`). The *words* of the graph.
+- **Entity**: a typed record with short reference fields, plus optional long text. The *rows*.
+- **Factory**: a typed collection of entities (`person`, `product`, `task`). The *tables*.
+- **Triplet**: a `(subject, verb, target)` link. The *sentences*.
 
 ```
 Entity(Alice) ── likes ────▶ Concept(strawberry)
@@ -84,28 +74,49 @@ Entity(Alice) ── likes ────▶ Concept(strawberry)
      └── works_with ──▶ Entity(Bob)
 ```
 
-The magic is that `likes` and `works_at` are themselves concepts with their own IDs. The vocabulary is explicit, queryable, and self-describing — which is exactly what makes the graph readable by LLMs out of the box.
+Because `likes` and `works_with` are themselves concepts with stable IDs, an LLM can call `sandra_list_concepts` and read the entire vocabulary. No schema file, no documentation needed. That is what makes the graph natively LLM-readable.
+
+## Building on Sandra
+
+Sandra is also a full data backend. If you build an app on top of it:
+
+- **PHP SDK**: `composer require everdreamsoft/sandra` ([api-guide.md](docs/api-guide.md))
+- **REST API**: language-agnostic ([api-guide.md](docs/api-guide.md))
+- **Python and TypeScript SDKs**: coming
+
+```php
+<?php
+use SandraCore\System;
+use SandraCore\EntityFactory;
+
+$sandra = new System('myapp', true, 'localhost', 'sandra', 'root', '');
+$people = new EntityFactory('person', 'peopleFile', $sandra);
+
+$alice = $people->createNew(['name' => 'Alice', 'role' => 'founder']);
+$bob   = $people->createNew(['name' => 'Bob',   'role' => 'engineer']);
+$alice->setJoinedEntity('works_with', $bob, ['since' => '2024']);
+```
+
+Longer walkthrough: [`docs/code-samples/animal-shelter.php`](docs/code-samples/animal-shelter.php).
 
 ## Documentation
 
 | Guide | What it covers |
 |---|---|
 | [`installation-guide.md`](docs/installation-guide.md) | Set up Sandra + MCP server + Claude Code skill |
-| [`api-guide.md`](docs/api-guide.md) | REST API layer — wire Sandra into Slim, Laravel, or vanilla PHP |
-| [`mcp-guide.md`](docs/mcp-guide.md) | MCP server reference — tools, configuration, custom tools |
-| [`agent-memory-design.md`](docs/agent-memory-design.md) | Why Sandra is shaped the way it is — the design rationale |
+| [`mcp-guide.md`](docs/mcp-guide.md) | MCP server reference: tools, configuration, custom tools |
+| [`api-guide.md`](docs/api-guide.md) | REST API and PHP SDK: wire Sandra into Slim, Laravel, or vanilla PHP |
+| [`agent-memory-design.md`](docs/agent-memory-design.md) | Why Sandra is shaped the way it is, the design rationale |
 | [`concept-deduplication.md`](docs/concept-deduplication.md) | How the vocabulary stays clean at scale |
 | [`system-concept-scaling.md`](docs/system-concept-scaling.md) | Memory and performance profile as concept count grows |
 
-Examples live in [`examples/`](examples/): a Claude Code agent setup ready to drop into any project.
-
 ## Status
 
-Used in production at [EverdreamSoft](https://everdreamsoft.com). The MCP layer and OAuth 2.1/PKCE auth are active.
+Used in production at [EverdreamSoft](https://everdreamsoft.com), notably in [Spells of Genesis](https://spellsofgenesis.com). The MCP layer and OAuth 2.1/PKCE auth are active.
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+MIT, see [`LICENSE`](LICENSE).
 
 ## Contributing
 
