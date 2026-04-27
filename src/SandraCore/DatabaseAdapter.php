@@ -548,14 +548,24 @@ class DatabaseAdapter
 
         $linkConceptSQL = '';
         if ($conceptLinkConcept !== '') {
-            $linkConceptSQL = "AND $tableLink.idConceptLink = :linkConcept";
-            $bindParamArray[':linkConcept'] = [(int)$conceptLinkConcept, \PDO::PARAM_INT];
+            $linkConceptId = is_numeric($conceptLinkConcept)
+                ? (int)$conceptLinkConcept
+                : (int)CommonFunctions::somethingToConceptId($conceptLinkConcept, $system);
+            if ($linkConceptId) {
+                $linkConceptSQL = "AND $tableLink.idConceptLink = :linkConcept";
+                $bindParamArray[':linkConcept'] = [$linkConceptId, \PDO::PARAM_INT];
+            }
         }
 
         $targetConceptSQL = '';
         if ($conceptTargetConcept !== '') {
-            $targetConceptSQL = "AND $tableLink.idConceptTarget = :targetConcept";
-            $bindParamArray[':targetConcept'] = [(int)$conceptTargetConcept, \PDO::PARAM_INT];
+            $targetConceptId = is_numeric($conceptTargetConcept)
+                ? (int)$conceptTargetConcept
+                : (int)CommonFunctions::somethingToConceptId($conceptTargetConcept, $system);
+            if ($targetConceptId) {
+                $targetConceptSQL = "AND $tableLink.idConceptTarget = :targetConcept";
+                $bindParamArray[':targetConcept'] = [$targetConceptId, \PDO::PARAM_INT];
+            }
         }
 
         $limitSQL = '';
@@ -582,6 +592,185 @@ class DatabaseAdapter
         }
 
         return $array;
+    }
+
+    /**
+     * Search concept IDs by a structured multi-filter query on references.
+     *
+     * Unlike searchConceptByRef (single filter), this joins the References table
+     * once per filter (aliased R0, R1, ...) so filters on different ref fields
+     * can be combined with AND semantics in a single SQL round-trip.
+     *
+     * @param System $system
+     * @param array<int, array{ref: string, op: string, value: mixed}> $filters
+     *        Each filter: ref = reference shortname, op in =,!=,>,>=,<,<=,LIKE,IN,
+     *        value = scalar (or array for IN). Numeric ops cast value column.
+     * @param string $conceptLinkConcept Factory's entityReferenceContainer concept
+     * @param string $conceptTargetConcept Factory's entityContainedIn concept
+     * @param array{ref: string, direction?: string, numeric?: bool}|null $sort
+     *        Optional ORDER BY on one of the filter refs (or any ref).
+     *        direction defaults to ASC, numeric false = lexicographic.
+     * @param int|null $limit
+     * @param int|null $offset
+     * @return array<int, int>|null Ordered list of idConceptStart, or null on error
+     */
+    public static function searchConceptByRefQuery(
+        System $system,
+        array $filters,
+        $conceptLinkConcept = '',
+        $conceptTargetConcept = '',
+        ?array $sort = null,
+        ?int $limit = null,
+        ?int $offset = null
+    ): ?array {
+        if (empty($filters)) {
+            return null;
+        }
+
+        $allowedOps = ['=', '!=', '>', '>=', '<', '<=', 'LIKE', 'IN'];
+        $numericOps = ['>', '>=', '<', '<='];
+
+        $pdo = $system->getConnection();
+        $tableReference = $system->tableReference;
+        $tableLink = $system->linkTable;
+        $deletedUNID = (int)$system->deletedUNID;
+
+        $bindParamArray = [];
+        $bindParamArray[':deletedFlag'] = [$deletedUNID, \PDO::PARAM_INT];
+
+        $joinSQL = '';
+        $whereSQL = '';
+        // Map ref shortname → alias, so sort can reuse an existing join
+        $refAlias = [];
+
+        foreach ($filters as $i => $f) {
+            $refName = $f['ref'] ?? null;
+            $op      = strtoupper((string)($f['op'] ?? '='));
+            $value   = $f['value'] ?? null;
+
+            if (!$refName || !in_array($op, $allowedOps, true)) {
+                return null;
+            }
+            $refConceptId = CommonFunctions::somethingToConceptId($refName, $system);
+            if (!$refConceptId) {
+                return null;
+            }
+
+            $alias = "R{$i}";
+            $refAlias[$refName] = $alias;
+
+            $bindParamArray[":refConcept_{$i}"] = [(int)$refConceptId, \PDO::PARAM_INT];
+            $joinSQL .= " INNER JOIN `$tableReference` $alias "
+                      . " ON $alias.linkReferenced = $tableLink.id "
+                      . " AND $alias.idConcept = :refConcept_{$i} ";
+
+            if ($op === 'IN') {
+                if (!is_array($value) || empty($value)) {
+                    return null;
+                }
+                $placeholders = [];
+                foreach (array_values($value) as $j => $v) {
+                    $ph = ":inVal_{$i}_{$j}";
+                    $placeholders[] = $ph;
+                    $bindParamArray[$ph] = $v;
+                }
+                $whereSQL .= " AND $alias.value IN (" . implode(',', $placeholders) . ") ";
+            } elseif (in_array($op, $numericOps, true)) {
+                $castCol = self::$driver !== null
+                    ? self::$driver->getCastNumericSQL("$alias.value")
+                    : "CAST($alias.value AS DECIMAL)";
+                $bindParamArray[":val_{$i}"] = $value;
+                $whereSQL .= " AND $castCol $op :val_{$i} ";
+            } else {
+                $bindParamArray[":val_{$i}"] = $value;
+                $whereSQL .= " AND $alias.value $op :val_{$i} ";
+            }
+        }
+
+        $linkConceptSQL = '';
+        if ($conceptLinkConcept !== '') {
+            // Resolve shortname → concept id (callers pass 'contained_in_file' etc.)
+            $linkConceptId = is_numeric($conceptLinkConcept)
+                ? (int)$conceptLinkConcept
+                : (int)CommonFunctions::somethingToConceptId($conceptLinkConcept, $system);
+            if ($linkConceptId) {
+                $linkConceptSQL = "AND $tableLink.idConceptLink = :linkConcept";
+                $bindParamArray[':linkConcept'] = [$linkConceptId, \PDO::PARAM_INT];
+            }
+        }
+        $targetConceptSQL = '';
+        if ($conceptTargetConcept !== '') {
+            $targetConceptId = is_numeric($conceptTargetConcept)
+                ? (int)$conceptTargetConcept
+                : (int)CommonFunctions::somethingToConceptId($conceptTargetConcept, $system);
+            if ($targetConceptId) {
+                $targetConceptSQL = "AND $tableLink.idConceptTarget = :targetConcept";
+                $bindParamArray[':targetConcept'] = [$targetConceptId, \PDO::PARAM_INT];
+            }
+        }
+
+        // Optional ORDER BY — reuse existing join alias if sort ref is already filtered,
+        // otherwise add a LEFT JOIN so entities without that ref still appear (null last)
+        $orderSQL = '';
+        if ($sort !== null && !empty($sort['ref'])) {
+            $sortRef = $sort['ref'];
+            $direction = strtoupper($sort['direction'] ?? 'ASC');
+            if (!in_array($direction, ['ASC', 'DESC'], true)) {
+                $direction = 'ASC';
+            }
+            $numeric = !empty($sort['numeric']);
+
+            if (isset($refAlias[$sortRef])) {
+                $sortAlias = $refAlias[$sortRef];
+            } else {
+                $sortConceptId = CommonFunctions::somethingToConceptId($sortRef, $system);
+                if ($sortConceptId) {
+                    $sortAlias = 'RS';
+                    $bindParamArray[':sortRefConcept'] = [(int)$sortConceptId, \PDO::PARAM_INT];
+                    $joinSQL .= " LEFT JOIN `$tableReference` $sortAlias "
+                              . " ON $sortAlias.linkReferenced = $tableLink.id "
+                              . " AND $sortAlias.idConcept = :sortRefConcept ";
+                } else {
+                    $sortAlias = null;
+                }
+            }
+
+            if ($sortAlias !== null) {
+                $col = "$sortAlias.value";
+                if ($numeric) {
+                    $col = self::$driver !== null
+                        ? self::$driver->getCastNumericSQL($col)
+                        : "CAST($col AS DECIMAL)";
+                }
+                $orderSQL = " ORDER BY $col $direction ";
+            }
+        }
+
+        $limitSQL = '';
+        if ($limit !== null) {
+            $limitSQL = " LIMIT " . (int)$limit;
+            if ($offset !== null && $offset > 0) {
+                $limitSQL .= " OFFSET " . (int)$offset;
+            }
+        }
+
+        $sql = "SELECT DISTINCT $tableLink.idConceptStart FROM $tableLink
+                $joinSQL
+                WHERE $tableLink.flag != :deletedFlag
+                $linkConceptSQL $targetConceptSQL
+                $whereSQL
+                $orderSQL $limitSQL";
+
+        $results = QueryExecutor::fetchAll($pdo, $sql, $bindParamArray);
+        if ($results === null) {
+            return null;
+        }
+
+        $out = [];
+        foreach ($results as $row) {
+            $out[] = (int)$row['idConceptStart'];
+        }
+        return $out;
     }
 
     /**

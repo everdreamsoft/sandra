@@ -395,6 +395,60 @@ class EntityFactory extends FactoryBase implements Dumpable
     }
 
     /**
+     * Populate the factory from a structured reference query.
+     *
+     * Unlike populateLocal() which loads a LIMIT/OFFSET window of the full set,
+     * this pushes filter + sort + pagination into SQL. Useful for "top N by
+     * lastLogin", "price between X and Y", "name LIKE foo AND status = active"
+     * without dragging the whole factory into memory.
+     *
+     * @param array<int, array{ref: string, op: string, value: mixed}> $filters
+     *        AND-combined filters on reference fields. Ops: =,!=,>,>=,<,<=,LIKE,IN.
+     * @param array{ref: string, direction?: string, numeric?: bool}|null $sort
+     *        Optional ORDER BY on a reference field (can be outside filters).
+     * @param int|null $limit
+     * @param int|null $offset
+     * @return Entity[] Entities in the order returned by the query
+     */
+    public function populateFromRefQuery(
+        array $filters,
+        ?array $sort = null,
+        ?int $limit = null,
+        ?int $offset = null
+    ): array {
+        $conceptIds = DatabaseAdapter::searchConceptByRefQuery(
+            $this->system,
+            $filters,
+            $this->entityReferenceContainer,
+            $this->entityContainedIn,
+            $sort,
+            $limit,
+            $offset
+        );
+
+        if (!$conceptIds) {
+            return [];
+        }
+
+        // populateLocal() uses this array via the !empty(conceptArray) branch,
+        // bypassing LIMIT/OFFSET so we load exactly the matched set.
+        $this->conceptArray = $conceptIds;
+        $this->populateLocal();
+
+        // Re-order the populated entities to match SQL order (getConceptsFromArray
+        // does not guarantee preservation of the input order).
+        $ordered = [];
+        foreach ($conceptIds as $cid) {
+            if (isset($this->entityArray[$cid])) {
+                $ordered[$cid] = $this->entityArray[$cid];
+            }
+        }
+        $this->entityArray = $ordered;
+
+        return $this->entityArray;
+    }
+
+    /**
      * @return Entity[]
      */
     public function populateBrotherEntities($verb = 0, $target = null, $force = false)
