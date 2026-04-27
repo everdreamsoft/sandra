@@ -1,0 +1,57 @@
+services:
+  sandra:
+    build: .
+    image: everdreamsoft/sandra:latest
+    ports:
+      - "8090:8090"
+    environment:
+      SANDRA_ENV: docker
+      SANDRA_DB_HOST: db
+      SANDRA_DB: sandra
+      SANDRA_DB_USER: sandra
+      SANDRA_DB_PASS: ${SANDRA_DB_PASS:-sandra}
+      SANDRA_INSTALL: "1"
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      SANDRA_AUTH_TOKEN: ${SANDRA_AUTH_TOKEN:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: sandra
+      MYSQL_USER: sandra
+      MYSQL_PASSWORD: ${SANDRA_DB_PASS:-sandra}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+    volumes:
+      - sandra_db:/var/lib/mysql
+    healthcheck:
+      test:
+        - CMD
+        - mysqladmin
+        - ping
+        - -h
+        - localhost
+        - -uroot
+        - -p${MYSQL_ROOT_PASSWORD:-root}
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  # Optional HTTPS quick-start for claude.ai (web interface requires HTTPS).
+  # Enable with:  docker compose --profile tunnel up
+  # Then:         docker compose logs tunnel  → look for https://xxx.trycloudflare.com
+  # The URL is PUBLIC — set SANDRA_AUTH_TOKEN in .env before exposing.
+  tunnel:
+    profiles: ["tunnel"]
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate --url http://sandra:8090
+    depends_on:
+      - sandra
+    restart: unless-stopped
+
+volumes:
+  sandra_db:
