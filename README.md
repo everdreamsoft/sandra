@@ -128,7 +128,7 @@ Entity(Alice) ── likes ───────▶ Concept(strawberry)
      └── works_with ──────────▶ Entity(Bob)
 ```
 
-When your agent encounters `Alice`, Sandra activates that node and follows every synapse outward (e.g. `Alice → likes → strawberry`, `Alice → works_with → Bob`) in a single query. Encounter `Bob` later and the same network lights up from a different angle. This is *spreading activation* (Collins & Loftus, 1975), the mechanism behind associative human recall. Vector retrievers approximate it via embedding similarity; Sandra implements it directly via typed graph edges.
+When your agent encounters `Alice`, Sandra activates that node and follows every synapse outward (e.g. `Alice → likes → strawberry`, `Alice → works_with → Bob`) in a single query. Encounter `Bob` later and the same network lights up from a different angle. This is *spreading activation* ([Collins & Loftus, 1975](https://doi.org/10.1037/0033-295X.82.6.407)), the mechanism behind associative human recall. Vector retrievers approximate it via embedding similarity; Sandra implements it directly via typed graph edges.
 
 Because every concept is itself a stable, named ID, an LLM can call `sandra_list_concepts` and read the entire vocabulary. No schema file, no documentation needed. That is what makes the graph natively LLM-readable.
 
@@ -145,7 +145,7 @@ Concept(user)
 
 One referent, three radically different elaborations. A vector store would collapse them via cosine similarity and lose the structure; a classical graph DB would let you connect them but couldn't show the LLM the vocabulary. Sandra preserves the identity (`Concept(user)` has one ID across all triplets), lets each source attach its own refs, and exposes the whole lexicon to any MCP-aware agent.
 
-This is what philosophers since Frege have called *invariance of reference under variation of sense*. What programmers call polymorphism. What your agents need so they can answer questions like "show me everything we know about this user" without lying, conflating, or losing source attribution.
+This is what philosophers [since Frege](https://en.wikipedia.org/wiki/Sense_and_reference) have called *invariance of reference under variation of sense*. What programmers call polymorphism. What your agents need so they can answer questions like "show me everything we know about this user" without lying, conflating, or losing source attribution.
 
 ### Building a team of agents?
 
