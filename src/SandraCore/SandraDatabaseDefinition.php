@@ -31,7 +31,7 @@ class SandraDatabaseDefinition
 
         $sql = "create table IF NOT EXISTS $tableConcept
                 (
-                    `id` int(11) NOT NULL AUTO_INCREMENT,
+                    `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
                     `code` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
                     `shortname` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
                 PRIMARY KEY (`id`),
@@ -45,10 +45,10 @@ class SandraDatabaseDefinition
 
         $sql = "CREATE TABLE  IF NOT EXISTS `$tableTriplet`
                 (
-                    `id` int(11) NOT NULL AUTO_INCREMENT,
-                    `idConceptStart` int(11) NOT NULL,
-                    `idConceptLink` int(11) NOT NULL,
-                    `idConceptTarget` int(11) NOT NULL,
+                    `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+                    `idConceptStart` int(10) UNSIGNED NOT NULL,
+                    `idConceptLink` int(10) UNSIGNED NOT NULL,
+                    `idConceptTarget` int(10) UNSIGNED NOT NULL,
                     `flag` int(11) NOT NULL,
                 PRIMARY KEY (`id`),
                 UNIQUE KEY `idx_name` (`idConceptStart`,`idConceptLink`,`idConceptTarget`),
@@ -63,9 +63,9 @@ class SandraDatabaseDefinition
 
         $sql = "CREATE TABLE  IF NOT EXISTS `$tableReference`
                 (
-                  `id` int(11) NOT NULL AUTO_INCREMENT,
-                  `idConcept` int(11) NOT NULL,
-                  `linkReferenced` int(11) NOT NULL,
+                  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+                  `idConcept` int(10) UNSIGNED NOT NULL,
+                  `linkReferenced` int(10) UNSIGNED NOT NULL,
                   `value` varchar(255) CHARACTER SET utf8 NOT NULL DEFAULT '',
                 PRIMARY KEY (`id`),
                 UNIQUE KEY `unique_ref` (`idConcept`,`linkReferenced`),
@@ -81,7 +81,7 @@ class SandraDatabaseDefinition
 
         $sql = "CREATE TABLE IF NOT EXISTS `$tablestorage`
                 (
-                    `linkReferenced` int(11) NOT NULL,
+                    `linkReferenced` int(10) UNSIGNED NOT NULL,
                     `value` mediumtext CHARACTER SET utf8mb4 NOT NULL,
                 PRIMARY KEY (`linkReferenced`)
                 )
@@ -107,7 +107,7 @@ class SandraDatabaseDefinition
         if ($tableEmbedding !== null) {
             $sql = "CREATE TABLE IF NOT EXISTS `$tableEmbedding`
                     (
-                        `conceptId` int(11) NOT NULL,
+                        `conceptId` int(10) UNSIGNED NOT NULL,
                         `embedding` JSON NOT NULL,
                         `textHash` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
                         `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
