@@ -51,9 +51,10 @@ use SandraCore\Mcp\HttpTransport;
 use SandraCore\Mcp\SystemRegistry;
 use SandraCore\Mcp\TokenAuthService;
 use SandraCore\Mcp\SessionStore;
+use SandraCore\Mcp\SqlRateLimiter;
 
 // ── CLI args ────────────────────────────────────────────────────────
-$opts = getopt('', ['port:', 'host:', 'env:', 'version:', 'token-env:']);
+$opts = getopt('', ['port:', 'host:', 'env:', 'version:', 'token-env:', 'no-oauth']);
 
 // ── Load .env file ─────────────────────────────────────────────────
 // Priority: --env flag → bin/.env → project root .env
@@ -142,6 +143,12 @@ $server->dispatchMessage(['method' => 'notifications/initialized', 'jsonrpc' => 
 // token store so it can live in a separate DB from the datagraph (required
 // when the datagraph is Sandra 7 legacy). Otherwise fall back to the default
 // datagraph System — historical single-DB behaviour.
+// Auth is enabled when SANDRA_AUTH_TOKEN is set — this is the legacy contract.
+// Other projects (claudia, eleonora, ...) rely on this: no token = no auth =
+// open access. Don't break that. For sandra-docs and similar deploys that
+// want per-token routing without a static fallback token, just set
+// SANDRA_AUTH_TOKEN to ANY random string — the value is unused if no client
+// presents it; the real auth happens via sandra_api_tokens.
 $authSystem = null;
 if ($authToken !== null) {
     if ($tokenVars !== []) {
@@ -186,7 +193,18 @@ if ($authService !== null && $authSystem !== null) {
 }
 
 // ── Start HTTP transport ────────────────────────────────────────────
-$transport = new HttpTransport($server, $logFile, $authToken, $authService, $systemRegistry, $mcpRegistry, $sessionStore);
+// --no-oauth: don't advertise OAuth discovery. Clients with pre-shared Bearer
+// tokens (e.g. sandra-docs visitors) won't try the browser OAuth dance and
+// stall on the callback when their local listener isn't reachable.
+$enableOAuth = !isset($opts['no-oauth']);
+$transport = new HttpTransport($server, $logFile, $authToken, $authService, $systemRegistry, $mcpRegistry, $sessionStore, $enableOAuth);
+
+// ── Per-token rate limiter (read=60, api_read=300, write=600 RPM) ───
+// Active by default whenever a token store is configured. Fail-open: if the
+// rate-limit table is unreachable, requests are let through rather than 429.
+if ($authSystem !== null) {
+    $transport->setRateLimiter(new SqlRateLimiter($authSystem->getConnection()));
+}
 
 echo "Sandra MCP HTTP server starting on http://$host:$port\n";
 echo "  Endpoints: /mcp, /api/*, /.well-known/*, /authorize, /token\n";
@@ -198,6 +216,7 @@ if ($authSystem !== null && $tokenVars !== []) {
 }
 echo "Log: $logFile\n";
 echo "Auth: " . ($authToken ? "enabled (Bearer token required)" : "disabled (open access)") . "\n";
+echo "OAuth discovery: " . ($enableOAuth ? "advertised" : "DISABLED (--no-oauth)") . "\n";
 echo "Token table: " . ($authService ? "sandra_api_tokens (multi-env routing)" : "static token only") . "\n";
 echo "Session table: " . ($sessionStore ? "sandra_mcp_sessions (persisted across restarts)" : "in-memory only") . "\n";
 echo "Press Ctrl+C to stop.\n\n";

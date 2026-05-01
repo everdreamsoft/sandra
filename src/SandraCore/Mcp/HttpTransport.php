@@ -82,6 +82,8 @@ class HttpTransport
     private ?SystemRegistry $systemRegistry = null;
     private ?McpServerRegistry $mcpRegistry = null;
     private ?SessionStore $sessionStore = null;
+    private ?McpAuditLogger $auditLogger = null;
+    private ?RateLimiter $rateLimiter = null;
 
     /** @var array<string, McpSession> Multi-session support */
     private array $sessions = [];
@@ -98,7 +100,8 @@ class HttpTransport
         ?TokenAuthService $authService = null,
         ?SystemRegistry $systemRegistry = null,
         ?McpServerRegistry $mcpRegistry = null,
-        ?SessionStore $sessionStore = null
+        ?SessionStore $sessionStore = null,
+        bool $enableOAuth = true
     ) {
         $this->server = $server;
         $this->logFile = $logFile;
@@ -107,9 +110,34 @@ class HttpTransport
         $this->systemRegistry = $systemRegistry;
         $this->mcpRegistry = $mcpRegistry;
         $this->sessionStore = $sessionStore;
-        if ($authToken !== null || $authService !== null) {
+        // OAuth advertising is opt-out: when $enableOAuth is false, /.well-known
+        // discovery returns 404 and 401 responses use a plain Bearer challenge
+        // (no auth_uri). Use this when you ship pre-shared tokens via /me/key
+        // and don't want clients to try the browser-based OAuth dance, which
+        // can stall if the client's local callback listener isn't reachable.
+        if ($enableOAuth && ($authToken !== null || $authService !== null)) {
             $this->oauth = new OAuthProvider($authToken ?? '', $logFile, $authService);
         }
+    }
+
+    /**
+     * Register an optional audit logger called after every tool/call dispatch.
+     * No-op when unset (default). Failures inside the logger are swallowed
+     * so audit never crashes the user-facing response.
+     */
+    public function setAuditLogger(?McpAuditLogger $logger): void
+    {
+        $this->auditLogger = $logger;
+    }
+
+    /**
+     * Register an optional per-token rate limiter. Checked AFTER scope
+     * validation but BEFORE session/dispatch. Throttled requests get 429
+     * with no MCP work executed. No-op when unset (default).
+     */
+    public function setRateLimiter(?RateLimiter $limiter): void
+    {
+        $this->rateLimiter = $limiter;
     }
 
     /** Start listening for HTTP connections (blocks forever) */
@@ -325,14 +353,12 @@ class HttpTransport
                 $this->log("   AUTH via cached session (no token, session=" . substr($existingSession->id, 0, 8) . ")");
             } elseif ($providedToken === '') {
                 $this->log("   AUTH REJECTED from $peer — no token provided");
-                if ($this->oauth) {
-                    $wwwAuth = $this->oauth->getWwwAuthenticateHeader($headers);
-                    $this->sendResponse($conn, 401, array_merge($this->corsHeaders(), [
-                        'WWW-Authenticate' => $wwwAuth,
-                    ]), '{"error": "Unauthorized"}');
-                } else {
-                    $this->sendResponse($conn, 401, $this->corsHeaders(), '{"error": "Unauthorized"}');
-                }
+                $wwwAuth = $this->oauth
+                    ? $this->oauth->getWwwAuthenticateHeader($headers)
+                    : 'Bearer realm="sandra-mcp"';
+                $this->sendResponse($conn, 401, array_merge($this->corsHeaders(), [
+                    'WWW-Authenticate' => $wwwAuth,
+                ]), '{"error": "Unauthorized"}');
                 @fclose($conn);
                 return;
             } else {
@@ -358,8 +384,10 @@ class HttpTransport
                     return;
                 }
 
-                // Check scope for this endpoint
-                $requiredScope = TokenAuthService::requiredScope($pathWithoutQuery, $method);
+                // Check scope for this endpoint. For /mcp the body's JSON-RPC
+                // method + tool name decides read vs write; the HTTP method is
+                // always POST and meaningless on its own.
+                $requiredScope = TokenAuthService::requiredScope($pathWithoutQuery, $method, $body);
                 if ($this->authService !== null && !$this->authService->hasScope($routeInfo['scopes'], $requiredScope)) {
                     $tokenPreview = substr($providedToken, 0, 8) . '...';
                     $this->log("   AUTH SCOPE REJECTED from $peer (token=$tokenPreview, env={$routeInfo['env']}, needs=$requiredScope, has=" . implode(',', $routeInfo['scopes']) . ")");
@@ -367,6 +395,19 @@ class HttpTransport
                         json_encode(['error' => 'insufficient_scope', 'required' => $requiredScope]));
                     @fclose($conn);
                     return;
+                }
+
+                // Per-token rate limiting (optional). Runs AFTER scope check so
+                // a request that would 403 doesn't also count against the bucket.
+                if ($this->rateLimiter !== null && !empty($routeInfo['token_hash'])) {
+                    if (!$this->rateLimiter->allow($routeInfo['token_hash'], $routeInfo['scopes'])) {
+                        $tokenPreview = substr($providedToken, 0, 8) . '...';
+                        $this->log("   RATE LIMITED from $peer (token=$tokenPreview, env={$routeInfo['env']})");
+                        $this->sendResponse($conn, 429, array_merge($this->corsHeaders(), ['Retry-After' => '60']),
+                            json_encode(['error' => 'rate_limit_exceeded', 'retry_after_seconds' => 60]));
+                        @fclose($conn);
+                        return;
+                    }
                 }
 
                 $tokenPreview = substr($providedToken, 0, 8) . '...';
@@ -403,19 +444,22 @@ class HttpTransport
     private function selectMcpServer(?array $routeInfo): McpServer
     {
         if ($this->mcpRegistry === null || $routeInfo === null) {
+            $this->log('   selectMcpServer: default (registry=null or routeInfo=null)');
             return $this->server;
         }
 
         $env = $routeInfo['env'] ?? null;
         if ($env === null) {
+            $this->log('   selectMcpServer: default (env=null)');
             return $this->server;
         }
 
-        // Static token routes to default env → use default server
         if (!empty($routeInfo['is_static']) && $this->systemRegistry !== null && $env === $this->systemRegistry->getDefaultEnv()) {
+            $this->log("   selectMcpServer: default (static + matches default env=$env)");
             return $this->server;
         }
 
+        $this->log("   selectMcpServer: routing to env=$env via registry");
         return $this->mcpRegistry->get(
             $env,
             $routeInfo['db_host'] ?? null,
@@ -494,6 +538,22 @@ class HttpTransport
         $t0 = microtime(true);
         $response = $session->mcpServer->dispatchMessage($msg);
         $elapsed = round((microtime(true) - $t0) * 1000, 1);
+
+        // Audit hook (no-op if no logger registered; never crashes the response).
+        if ($this->auditLogger !== null && $rpcMethod === 'tools/call') {
+            try {
+                $this->auditLogger->logToolCall(
+                    $session->id,
+                    $session->routeInfo,
+                    $toolName,
+                    is_array($msg['params']['arguments'] ?? null) ? $msg['params']['arguments'] : [],
+                    !isset($response['error']),
+                    (float) $elapsed,
+                );
+            } catch (\Throwable $e) {
+                $this->log('   audit logger failed: '.$e->getMessage());
+            }
+        }
 
         $responseHeaders = $this->corsHeaders();
         $responseHeaders['Mcp-Session-Id'] = $session->id;

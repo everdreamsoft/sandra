@@ -166,6 +166,21 @@ class SandraDatabaseDefinition
             }
         }
 
+        // Per-token rate limit buckets — one row per (token, minute). Used by
+        // SqlRateLimiter; safe to leave around even if no limiter is wired.
+        // Created alongside the token table since its lifecycle is the same.
+        if ($sharedTokenTable !== null) {
+            $sql = "CREATE TABLE IF NOT EXISTS `sandra_rate_limit_buckets` (
+                `token_hash` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+                `minute_bucket` int unsigned NOT NULL,
+                `hits` int unsigned NOT NULL DEFAULT 1,
+                PRIMARY KEY (`token_hash`, `minute_bucket`),
+                KEY `bucket_idx` (`minute_bucket`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
+
+            System::$pdo->get()->query($sql);
+        }
+
         if ($sharedSessionsTable !== null) {
             $sql = "CREATE TABLE IF NOT EXISTS `$sharedSessionsTable` (
                 `id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
