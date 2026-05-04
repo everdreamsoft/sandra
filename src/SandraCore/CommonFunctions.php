@@ -44,7 +44,10 @@ class CommonFunctions
         $verbConceptId = self::somethingToConceptId($verb,$system);
         $targetConceptId = self::somethingToConceptId($target,$system);
 
-       // Start a single transaction for the whole entity creation
+       // Start a single transaction for the whole entity creation.
+       // Always commit to balance the begin() — TransactionManager handles nesting:
+       // if a caller wraps in their own begin/commit (or wrap()), this commit just
+       // decrements depth; only the outermost commit actually fires PDO::commit().
        $pdo = $system->getConnection();
        TransactionManager::begin($pdo);
 
@@ -59,9 +62,7 @@ class CommonFunctions
        }
         DatabaseAdapter::rawCreateReference($entityId, $system->systemConcept->get('creationTimestamp'), time(), $system, true);
 
-       if($autocommit){
-           TransactionManager::commit();
-       }
+       TransactionManager::commit();
 
         return new Entity($subject,$referenceArray,$factory,$entityId,$verb,$target,$system);
 

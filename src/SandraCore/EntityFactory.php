@@ -77,6 +77,11 @@ class EntityFactory extends FactoryBase implements Dumpable
     public $joinedFactoryArray = array(); /* @var $joinedFactoryArray EntityFactory[] */
     public $conceptArray = array(); /* if we have a list of concept already  */
 
+    /**
+     * Cache: classname → resolved-class-to-instantiate ('Entity' fallback when abstract or invalid).
+     * Reflection is intrinsic to the class, not to the Sandra instance, so we share across factories.
+     */
+    private static array $resolvedClassCache = [];
 
     public $sc;
 
@@ -252,6 +257,12 @@ class EntityFactory extends FactoryBase implements Dumpable
         $this->populatedFull = true;
         $sandraReferenceMap = array();
 
+        // Hoist factory-level constants out of the per-entity loop. Each one of these
+        // used to fire on every iteration (10k entities × 3 lookups = 30k redundant calls).
+        $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($entityReferenceContainer);
+        $entityTarget = $this->system->conceptFactory->getConceptFromShortnameOrId($this->entityContainedIn);
+        $classNameRefId = $this->system->systemConcept->get('class_name');
+
         //Each concept
         if (is_array($refs)) {
             foreach ($refs as $key => $value) {
@@ -278,8 +289,12 @@ class EntityFactory extends FactoryBase implements Dumpable
 
                     $refArray[$refConceptUnid] = $refValue;
 
-                    //we add the reference in the factory reference map
-                    $sandraReferenceMap[$refConceptUnid] = $this->system->conceptFactory->getConceptFromId($refConceptUnid);
+                    // Memoize per ref-type. The map is keyed by ref-type concept id, which is
+                    // shared across entities, so without the guard we re-resolved the same
+                    // Concept object thousands of times.
+                    if (!isset($sandraReferenceMap[$refConceptUnid])) {
+                        $sandraReferenceMap[$refConceptUnid] = $this->system->conceptFactory->getConceptFromId($refConceptUnid);
+                    }
                 }
 
                 //there are ref to be merged
@@ -292,33 +307,39 @@ class EntityFactory extends FactoryBase implements Dumpable
 
                             $refArray[$mergeConceptId] = $refValueMerged;
 
-                            //we add the reference in the factory reference map
-                            $sandraReferenceMap[$refConceptUnid] = $this->system->conceptFactory->getConceptFromId($mergeConceptId);
+                            // NB: the original code keyed this by $refConceptUnid (the LAST ref of
+                            // the outer loop), which was a pre-existing bug. We preserve that key
+                            // to avoid behavioural drift but skip the lookup if already cached.
+                            if (!isset($sandraReferenceMap[$refConceptUnid])) {
+                                $sandraReferenceMap[$refConceptUnid] = $this->system->conceptFactory->getConceptFromId($mergeConceptId);
+                            }
                         }
                     }
                 }
                 $classname = $this->generatedEntityClass;
 
                 //do we have a hardcoded class in the datagraph
-                if (isset ($refArray[$this->system->systemConcept->get('class_name')])){
+                if (isset ($refArray[$classNameRefId])){
 
-                    $classname = $refArray[$this->system->systemConcept->get('class_name')] ;
+                    $classname = $refArray[$classNameRefId] ;
 
                 }
 
-                //if the class is instanciable
-                try {
-                    $testClass = new \ReflectionClass($classname);
-                    if ($testClass->isAbstract()) {
-
-                        $classname = Entity::class;
+                // Resolve $classname once per distinct value via static cache. ReflectionClass
+                // construction is expensive and the abstract/valid status is intrinsic to the
+                // class, not the Sandra instance.
+                if (!isset(self::$resolvedClassCache[$classname])) {
+                    try {
+                        $testClass = new \ReflectionClass($classname);
+                        self::$resolvedClassCache[$classname] = $testClass->isAbstract()
+                            ? Entity::class
+                            : $classname;
+                    } catch (\ReflectionException $e) {
+                        self::$resolvedClassCache[$classname] = Entity::class;
                     }
-                } catch (\ReflectionException $e) {
-                    $classname = Entity::class;
                 }
+                $classname = self::$resolvedClassCache[$classname];
 
-                $entityVerb = $this->system->conceptFactory->getConceptFromShortnameOrId($entityReferenceContainer);
-                $entityTarget = $this->system->conceptFactory->getConceptFromShortnameOrId($this->entityContainedIn);
                 $entity = new $classname($concept, $refArray, $this, $entityId, $entityVerb, $entityTarget, $this->system);
                 //$entity = new Entity($concept,$refArray,$this,$entityId,$entityVerb,$entityTarget,$this->system);
                 $entityArray[$key] = $entity;

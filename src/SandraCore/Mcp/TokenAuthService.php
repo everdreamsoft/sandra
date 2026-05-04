@@ -123,20 +123,74 @@ class TokenAuthService
     }
 
     /**
-     * Derive the required scope for an endpoint + method.
+     * Tools that modify the graph. Anything not in this set is read-only at
+     * the auth layer (the tool's own logic may further restrict).
+     *
+     * MCP transport is JSON-RPC over POST regardless of read/write intent, so
+     * we can't infer scope from HTTP method alone — we must look at the tool
+     * name. A tools/call to `sandra_search` is a read; to `sandra_create_entity`
+     * is a write. Both are HTTP POSTs.
      */
-    public static function requiredScope(string $endpoint, string $method): string
-    {
-        $isWrite = !in_array(strtoupper($method), ['GET', 'HEAD', 'OPTIONS'], true);
+    private const MCP_WRITE_TOOLS = [
+        'sandra_create_concept',
+        'sandra_create_entity',
+        'sandra_create_factory',
+        'sandra_create_triplet',
+        'sandra_update_entity',
+        'sandra_link_entities',
+        'sandra_delete_triplet',
+        'sandra_batch',
+        'sandra_embed_all',
+    ];
 
+    /**
+     * Derive the required scope for an endpoint + method, optionally
+     * inspecting the JSON-RPC body to distinguish read vs write tool calls
+     * on the MCP transport.
+     */
+    public static function requiredScope(string $endpoint, string $method, ?string $body = null): string
+    {
         if (str_starts_with($endpoint, '/mcp')) {
-            return $isWrite ? self::SCOPE_MCP_WRITE : self::SCOPE_MCP_READ;
+            return self::scopeForMcpBody($body);
         }
         if (str_starts_with($endpoint, '/api/')) {
+            $isWrite = !in_array(strtoupper($method), ['GET', 'HEAD', 'OPTIONS'], true);
             return $isWrite ? self::SCOPE_API_WRITE : self::SCOPE_API_READ;
         }
 
-        return self::SCOPE_MCP_READ; // safe default
+        return self::SCOPE_MCP_READ;
+    }
+
+    /**
+     * Inspect a JSON-RPC body to decide if the MCP request needs read or write.
+     *
+     *   initialize / notifications/* / tools/list   → read
+     *   tools/call → look at params.name; if it's in MCP_WRITE_TOOLS → write
+     *
+     * Falls back to read on any parse failure or unknown tool — the per-tool
+     * code can still enforce stricter checks later. We err toward "read" at
+     * the gate so a malformed body doesn't accidentally need write scope.
+     */
+    private static function scopeForMcpBody(?string $body): string
+    {
+        if ($body === null || $body === '') {
+            return self::SCOPE_MCP_READ;
+        }
+        $msg = json_decode($body, true);
+        if (! is_array($msg)) {
+            return self::SCOPE_MCP_READ;
+        }
+
+        $rpcMethod = (string) ($msg['method'] ?? '');
+        if ($rpcMethod !== 'tools/call') {
+            return self::SCOPE_MCP_READ;
+        }
+
+        $toolName = (string) ($msg['params']['name'] ?? '');
+
+        return in_array($toolName, self::MCP_WRITE_TOOLS, true)
+            ? self::SCOPE_MCP_WRITE
+            : self::SCOPE_MCP_READ;
     }
 
     /**

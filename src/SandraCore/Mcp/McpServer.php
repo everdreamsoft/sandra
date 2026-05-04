@@ -56,6 +56,15 @@ class McpServer
     private ?string $instructions = null;
 
     /**
+     * Optional whitelist of default tool names registered by {@see boot()}.
+     * null = register all defaults (current behaviour).
+     * Empty array = register no defaults — caller must add tools via {@see registerTool}.
+     *
+     * @var list<string>|null
+     */
+    private ?array $toolAllowlist = null;
+
+    /**
      * @param System $system Initial system for discovery/registration
      * @param \Closure|null $systemFactory Optional closure that returns a fresh System for each tool call
      * @param string|null $logFile Optional file path for persistent logging
@@ -66,6 +75,53 @@ class McpServer
         $this->systemFactory = $systemFactory;
         $this->logFile = $logFile;
         $this->tools = new ToolRegistry();
+    }
+
+    /**
+     * Restrict the set of default tools registered by {@see boot()} to the given names.
+     * Useful for per-tier hosts that want anon visitors to see fewer tools than
+     * contributors. Pass null to clear (register all defaults again).
+     *
+     * Tools registered manually via {@see registerTool} are NOT affected by this filter —
+     * the allowlist only gates the defaults from boot().
+     *
+     * @param list<string>|null $names
+     */
+    public function setToolAllowlist(?array $names): self
+    {
+        $this->toolAllowlist = $names === null ? null : array_values($names);
+        return $this;
+    }
+
+    /**
+     * Register a custom tool, or override an existing one with the same name.
+     * Replacement is always silent (the underlying registry keys by name).
+     */
+    public function registerTool(McpToolInterface $tool): self
+    {
+        $this->tools->register($tool);
+        return $this;
+    }
+
+    /**
+     * Fetch a registered tool by name. Returns null when absent.
+     * Primary use: tool decoration — wrap the existing tool while preserving
+     * its public interface, then re-register the wrapper.
+     */
+    public function getTool(string $name): ?McpToolInterface
+    {
+        return $this->tools->get($name);
+    }
+
+    /**
+     * Names of currently registered tools, in registration order.
+     * Useful for debugging custom hosts and per-tier introspection.
+     *
+     * @return list<string>
+     */
+    public function getRegisteredTools(): array
+    {
+        return $this->tools->names();
     }
 
     /**
@@ -247,30 +303,39 @@ INSTRUCTIONS;
         $apiKey = getenv('OPENAI_API_KEY') ?: '';
         $embeddingService = $apiKey !== '' ? new EmbeddingService($system, $apiKey) : null;
 
-        $this->tools->register(new GetSchemaTool($this->factories, $system));
-        $this->tools->register(new ListFactoriesTool($this->factories));
-        $this->tools->register(new DescribeFactoryTool($this->factories, $system));
-        $this->tools->register(new ListEntitiesTool($this->factories, $system));
-        $this->tools->register(new QueryEntitiesTool($this->factories, $system));
-        $this->tools->register(new SearchEntitiesTool($this->factories, $system));
-        $this->tools->register(new GetEntityTool($this->factories, $system));
-        $this->tools->register(new TraverseGraphTool($this->factories, $system));
-        $this->tools->register(new CreateEntityTool($this->factories, $this->factoryMeta, $system, $embeddingService));
-        $this->tools->register(new LinkEntitiesTool($this->factories, $system));
-        $this->tools->register(new UpdateEntityTool($this->factories, $system, $embeddingService));
-        $this->tools->register(new GetTripletsTool($system));
-        $this->tools->register(new GetReferencesTool($system));
-        $this->tools->register(new CreateConceptTool($system));
-        $this->tools->register(new CreateTripletTool($system));
-        $this->tools->register(new CreateFactoryTool($this->factories, $this->factoryMeta, $system));
-        $this->tools->register(new DeleteTripletTool($system));
-        $this->tools->register(new FindConceptTool($system));
-        $this->tools->register(new ListConceptsTool($system));
-        $this->tools->register(new BatchTool($this->factories, $this->factoryMeta, $system, $embeddingService));
+        // Gate every default tool on the allowlist (when set). Custom tools added
+        // later via registerTool() bypass this — the allowlist only filters defaults.
+        $allowlist = $this->toolAllowlist;
+        $register = function (McpToolInterface $tool) use ($allowlist) {
+            if ($allowlist === null || in_array($tool->name(), $allowlist, true)) {
+                $this->tools->register($tool);
+            }
+        };
+
+        $register(new GetSchemaTool($this->factories, $system));
+        $register(new ListFactoriesTool($this->factories));
+        $register(new DescribeFactoryTool($this->factories, $system));
+        $register(new ListEntitiesTool($this->factories, $system));
+        $register(new QueryEntitiesTool($this->factories, $system));
+        $register(new SearchEntitiesTool($this->factories, $system));
+        $register(new GetEntityTool($this->factories, $system));
+        $register(new TraverseGraphTool($this->factories, $system));
+        $register(new CreateEntityTool($this->factories, $this->factoryMeta, $system, $embeddingService));
+        $register(new LinkEntitiesTool($this->factories, $system));
+        $register(new UpdateEntityTool($this->factories, $system, $embeddingService));
+        $register(new GetTripletsTool($system));
+        $register(new GetReferencesTool($system));
+        $register(new CreateConceptTool($system));
+        $register(new CreateTripletTool($system));
+        $register(new CreateFactoryTool($this->factories, $this->factoryMeta, $system));
+        $register(new DeleteTripletTool($system));
+        $register(new FindConceptTool($system));
+        $register(new ListConceptsTool($system));
+        $register(new BatchTool($this->factories, $this->factoryMeta, $system, $embeddingService));
 
         if ($embeddingService !== null) {
-            $this->tools->register(new SemanticSearchTool($this->factories, $system, $embeddingService));
-            $this->tools->register(new EmbedAllTool($this->factories, $system, $embeddingService));
+            $register(new SemanticSearchTool($this->factories, $system, $embeddingService));
+            $register(new EmbedAllTool($this->factories, $system, $embeddingService));
         }
     }
 

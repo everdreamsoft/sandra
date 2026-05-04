@@ -40,4 +40,21 @@ class ToolRegistry
     {
         return isset($this->tools[$name]);
     }
+
+    /**
+     * Fetch a tool by name. Returns null when absent — useful for the
+     * decoration pattern (wrap a base tool while preserving its interface).
+     */
+    public function get(string $name): ?McpToolInterface
+    {
+        return $this->tools[$name] ?? null;
+    }
+
+    /**
+     * @return list<string> Names of all currently registered tools, in insertion order.
+     */
+    public function names(): array
+    {
+        return array_keys($this->tools);
+    }
 }

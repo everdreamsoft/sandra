@@ -36,8 +36,10 @@ class DatabaseAdapter
 
         $pdo = $system->getConnection();
 
+        $opened = false;
         if ($autocommit == false) {
             TransactionManager::begin($pdo);
+            $opened = true;
         }
 
         $targetTable = $system->tableReference;
@@ -69,6 +71,9 @@ class DatabaseAdapter
                 ]);
                 $id = isset($rows[0]['id']) ? (string)$rows[0]['id'] : null;
             }
+            if ($opened) {
+                TransactionManager::commit();
+            }
             return $id;
         }
 
@@ -76,12 +81,17 @@ class DatabaseAdapter
                 (idConcept, linkReferenced, value) VALUES (:conceptId, :tripletId, :value)
                 ON DUPLICATE KEY UPDATE  value = :value2, id=LAST_INSERT_ID(id)";
 
-        return QueryExecutor::insert($pdo, $sql, [
+        $id = QueryExecutor::insert($pdo, $sql, [
             ':conceptId' => [$conceptId, PDO::PARAM_INT],
             ':tripletId' => [$tripletId, PDO::PARAM_INT],
             ':value' => $value,
             ':value2' => $value,
         ]);
+
+        if ($opened) {
+            TransactionManager::commit();
+        }
+        return $id;
     }
 
     /**
@@ -102,8 +112,10 @@ class DatabaseAdapter
 
         $tableLink = $system->linkTable;
 
+        $opened = false;
         if ($autocommit == false) {
             TransactionManager::begin($pdo);
+            $opened = true;
         }
 
         $conceptSubject = (int)$conceptSubject;
@@ -135,9 +147,15 @@ class DatabaseAdapter
                 ]);
 
                 if ($stmt === null) {
+                    if ($opened) {
+                        TransactionManager::commit();
+                    }
                     return;
                 }
 
+                if ($opened) {
+                    TransactionManager::commit();
+                }
                 return $updateID;
             }
         }
@@ -165,6 +183,9 @@ class DatabaseAdapter
             $id = isset($rows[0]['id']) ? (string)$rows[0]['id'] : null;
         }
 
+        if ($opened) {
+            TransactionManager::commit();
+        }
         return $id;
     }
 
@@ -182,8 +203,10 @@ class DatabaseAdapter
         $pdo = $entity->system->getConnection();
         $tableStorage = $entity->system->tableStorage;
 
+        $opened = false;
         if ($autocommit == false) {
             TransactionManager::begin($pdo);
+            $opened = true;
         }
 
         if (self::$driver !== null) {
@@ -205,6 +228,10 @@ class DatabaseAdapter
         }
 
         $stmt = QueryExecutor::execute($pdo, $sql, $params);
+
+        if ($opened) {
+            TransactionManager::commit();
+        }
 
         return $stmt !== null ? $value : null;
     }
@@ -253,8 +280,10 @@ class DatabaseAdapter
         $pdo = $system->getConnection();
         $tableLink = $system->linkTable;
 
+        $opened = false;
         if ($autocommit == false) {
             TransactionManager::begin($pdo);
+            $opened = true;
         }
 
         $sql = "UPDATE $tableLink SET flag = :flagId WHERE id = :entityId";
@@ -263,6 +292,10 @@ class DatabaseAdapter
             ':flagId' => [(int)$flag->idConcept, PDO::PARAM_INT],
             ':entityId' => [(int)$entity->entityId, PDO::PARAM_INT],
         ]);
+
+        if ($opened) {
+            TransactionManager::commit();
+        }
     }
 
     /**
@@ -278,15 +311,24 @@ class DatabaseAdapter
 
         $pdo = $system->getConnection();
         $tableConcept = $system->conceptTable;
+
+        $opened = false;
         if ($autocommit == false) {
             TransactionManager::begin($pdo);
+            $opened = true;
         }
 
         $sql = "INSERT INTO $tableConcept (code) VALUES (:code)";
 
-        return QueryExecutor::insert($pdo, $sql, [
+        $id = QueryExecutor::insert($pdo, $sql, [
             ':code' => $code,
         ]);
+
+        if ($opened) {
+            TransactionManager::commit();
+        }
+
+        return $id;
     }
 
     /**
@@ -786,11 +828,17 @@ class DatabaseAdapter
 
         $pdo = $system ? $system->getConnection() : System::$pdo->get();
 
+        $opened = false;
         if ($autocommit == false) {
             TransactionManager::begin($pdo);
+            $opened = true;
         }
 
         QueryExecutor::execute($pdo, $sql, is_array($bindParamArray) ? $bindParamArray : []);
+
+        if ($opened) {
+            TransactionManager::commit();
+        }
     }
 
     public static function commit()
