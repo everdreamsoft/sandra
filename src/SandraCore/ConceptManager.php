@@ -485,10 +485,13 @@ class ConceptManager
 
             $array = array();
 
-            $resultArray = $pdoResult->fetchAll(PDO::FETCH_ASSOC);
-
+            // Stream rows row-by-row with PDO::fetch() instead of fetchAll(): the previous
+            // version held the full result set AND the rebuilt $array in memory at the same
+            // time (peak ~2× the payload). Tens of thousands of refs × hundreds of bytes
+            // multiplied by PHP's array overhead pushed past 256MB on Echoes prod.
+            // Each fetched row is consumed and dropped, so peak only holds $array.
             if ($byTripletid) {
-                foreach ($resultArray as $key => $result) {
+                while (($result = $pdoResult->fetch(PDO::FETCH_ASSOC)) !== false) {
                     $idConcept = $result[$masterCondition];
                     $value = $result['value'];
                     $array[$idConcept][$result['id']][$result['idConcept']] = $value;
@@ -497,17 +500,15 @@ class ConceptManager
                     $array[$idConcept][$result['id']]['idConceptLink'] = $result['idConceptLink'];
                 }
             } else {
-
-                foreach ($resultArray as $key => $result) {
-
+                while (($result = $pdoResult->fetch(PDO::FETCH_ASSOC)) !== false) {
                     $value = $result['value'];
                     $idConcept = $result[$masterCondition];
                     $array[$idConcept][$result['idConcept']] = $value;
                     $array[$idConcept]['linkId'] = $result['id'];
                     $array[$idConcept]['idConceptTarget'] = $result['idConceptTarget'];
                 }
-
             }
+            $pdoResult->closeCursor();
         }
 
         return $array;
