@@ -58,24 +58,37 @@ $logger->pushHandler(
 return new class($logger) implements McpAuditLogger {
     public function __construct(private LoggerInterface $log) {}
 
-    public function logToolCall(
-        string $sessionId,
+    public function logRequest(
+        int $httpStatus,
+        ?string $rpcMethod,
+        ?string $sessionId,
         ?array $routeInfo,
-        string $toolName,
+        ?string $toolName,
         array $arguments,
-        bool $success,
         float $elapsedMs,
+        ?string $reason,
     ): void {
+        // 5xx = error, 4xx or RPC-level error in 2xx = warning, clean 2xx = info.
+        $level = match (true) {
+            $httpStatus >= 500   => LogLevel::ERROR,
+            $httpStatus >= 400   => LogLevel::WARNING,
+            $reason !== null     => LogLevel::WARNING,
+            default              => LogLevel::INFO,
+        };
+
         $this->log->log(
-            $success ? LogLevel::INFO : LogLevel::WARNING,
-            'mcp.tool {tool} {status} {ms}ms',
+            $level,
+            'mcp.{rpc} {status} {ms}ms{tool_suffix}',
             [
-                'tool'              => $toolName,
-                'status'            => $success ? 'ok' : 'error',
+                'rpc'               => $rpcMethod ?? '-',
+                'status'            => $httpStatus,
                 'ms'                => $elapsedMs,
+                'tool_suffix'       => $toolName !== null ? " tool=$toolName" : '',
+                'tool'              => $toolName,
+                'reason'            => $reason,
                 // Truncate identifiers — full values turn the log file
                 // into a secondary credential store.
-                'session'           => substr($sessionId, 0, 8),
+                'session'           => $sessionId !== null ? substr($sessionId, 0, 8) : null,
                 'token_fp'          => isset($routeInfo['token_hash'])
                     ? substr((string) $routeInfo['token_hash'], 0, 12)
                     : null,
