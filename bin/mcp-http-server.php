@@ -110,7 +110,7 @@ $version = isset($opts['version'])
     ? (int)$opts['version']
     : (int)(getenv('SANDRA_DATAGRAPH_VERSION') ?: SystemRegistry::DEFAULT_VERSION);
 $dbHost = getenv('SANDRA_DB_HOST') ?: '127.0.0.1';
-$db = getenv('SANDRA_DB') ?: getenv('SANDRA_DB_DATABASE') ?: 'sandra';
+$db = getenv('SANDRA_DB') ?: getenv('SANDRA_DB_DATABASE') ?: getenv('SANDRA_DB_NAME') ?: 'sandra';
 $dbUser = getenv('SANDRA_DB_USER') ?: getenv('SANDRA_DB_USERNAME') ?: 'root';
 $dbPass = getenv('SANDRA_DB_PASS') !== false ? getenv('SANDRA_DB_PASS') : (getenv('SANDRA_DB_PASSWORD') !== false ? getenv('SANDRA_DB_PASSWORD') : '');
 $logFile = getenv('SANDRA_MCP_LOG') ?: '/tmp/sandra-mcp-http.log';
@@ -155,7 +155,7 @@ if ($authToken !== null) {
         $tokenEnvRaw = $tokenVars['SANDRA_ENV'] ?? null;
         $tokenEnv    = $tokenEnvRaw ?? 'mcp_';
         $tokenHost   = $tokenVars['SANDRA_DB_HOST'] ?? $dbHost;
-        $tokenDb     = $tokenVars['SANDRA_DB'] ?? $tokenVars['SANDRA_DB_DATABASE'] ?? $db;
+        $tokenDb     = $tokenVars['SANDRA_DB'] ?? $tokenVars['SANDRA_DB_DATABASE'] ?? $tokenVars['SANDRA_DB_NAME'] ?? $db;
         $tokenUser   = $tokenVars['SANDRA_DB_USER'] ?? $tokenVars['SANDRA_DB_USERNAME'] ?? $dbUser;
         $tokenPass   = $tokenVars['SANDRA_DB_PASS'] ?? $tokenVars['SANDRA_DB_PASSWORD'] ?? $dbPass;
         // Token store is always v8 — the schema only exists in the modern datagraph.
@@ -229,7 +229,7 @@ echo "Sandra MCP HTTP server starting on http://$host:$port\n";
 echo "  Endpoints: /mcp, /api/*, /.well-known/*, /authorize, /token\n";
 echo "Datagraph: $dbHost/$db  (v$version" . ($version === SystemRegistry::LEGACY_VERSION ? " legacy" : "") . ", env='" . ($env === '' ? "" : $env) . "')\n";
 if ($authSystem !== null && $tokenVars !== []) {
-    echo "Token store: " . ($tokenVars['SANDRA_DB_HOST'] ?? $dbHost) . "/" . ($tokenVars['SANDRA_DB'] ?? $tokenVars['SANDRA_DB_DATABASE'] ?? $db) . "  (v8, env='" . ($tokenVars['SANDRA_ENV'] ?? 'mcp_') . "')\n";
+    echo "Token store: " . ($tokenVars['SANDRA_DB_HOST'] ?? $dbHost) . "/" . ($tokenVars['SANDRA_DB'] ?? $tokenVars['SANDRA_DB_DATABASE'] ?? $tokenVars['SANDRA_DB_NAME'] ?? $db) . "  (v8, env='" . ($tokenVars['SANDRA_ENV'] ?? 'mcp_') . "')\n";
 } elseif ($authSystem !== null) {
     echo "Token store: (same DB as datagraph)\n";
 }
