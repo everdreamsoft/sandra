@@ -329,22 +329,30 @@ class HttpTransport
         // OAuth endpoints (when auth is enabled)
         if ($this->oauth !== null) {
             $sendResponse = [$this, 'sendResponse'];
-            $handled = match (true) {
+            // Each handler returns {status, reason} so audit can distinguish
+            // a clean discovery (200/null) from invalid_grant_pkce (400/...)
+            // — without parsing the response body.
+            $audit = match (true) {
                 str_starts_with($pathWithoutQuery, '/.well-known/oauth-protected-resource')
-                    => $this->oauth->handleProtectedResourceMetadata($conn, $headers, $sendResponse) ?? true,
+                    => ['rpc' => 'oauth.discovery', 'res' => $this->oauth->handleProtectedResourceMetadata($conn, $headers, $sendResponse)],
                 $pathWithoutQuery === '/.well-known/oauth-authorization-server'
-                    => $this->oauth->handleAuthServerMetadata($conn, $headers, $sendResponse) ?? true,
+                    => ['rpc' => 'oauth.discovery', 'res' => $this->oauth->handleAuthServerMetadata($conn, $headers, $sendResponse)],
                 $pathWithoutQuery === '/register' && $method === 'POST'
-                    => $this->oauth->handleRegister($conn, $body, $sendResponse) ?? true,
+                    => ['rpc' => 'oauth.register', 'res' => $this->oauth->handleRegister($conn, $body, $sendResponse)],
                 $pathWithoutQuery === '/authorize' && $method === 'GET'
-                    => $this->oauth->handleAuthorize($conn, $path, $headers, $sendResponse) ?? true,
+                    => ['rpc' => 'oauth.authorize_get', 'res' => $this->oauth->handleAuthorize($conn, $path, $headers, $sendResponse)],
                 $pathWithoutQuery === '/authorize' && $method === 'POST'
-                    => $this->oauth->handleAuthorizeSubmit($conn, $body, $headers, $sendResponse) ?? true,
+                    => ['rpc' => 'oauth.authorize_post', 'res' => $this->oauth->handleAuthorizeSubmit($conn, $body, $headers, $sendResponse)],
                 $pathWithoutQuery === '/token' && $method === 'POST'
-                    => $this->oauth->handleToken($conn, $body, $sendResponse) ?? true,
-                default => false,
+                    => ['rpc' => 'oauth.token', 'res' => $this->oauth->handleToken($conn, $body, $sendResponse)],
+                default => null,
             };
-            if ($handled !== false) {
+            if ($audit !== null) {
+                $this->audit(
+                    httpStatus: (int) $audit['res']['status'],
+                    rpcMethod:  $audit['rpc'],
+                    reason:     $audit['res']['reason'],
+                );
                 return;
             }
         }
