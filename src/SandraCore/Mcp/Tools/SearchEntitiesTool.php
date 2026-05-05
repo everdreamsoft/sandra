@@ -81,7 +81,9 @@ class SearchEntitiesTool implements McpToolInterface
     {
         $name = $args['factory'] ?? null;
         $query = trim($args['query'] ?? '');
-        $limit = (int)($args['limit'] ?? 50);
+        // Cap limit to prevent runaway result sets from blowing the MCP token
+        // budget or exhausting PHP memory on broad LIKE searches (e.g. q="call").
+        $limit = min((int)($args['limit'] ?? 50), 200);
         $offset = (int)($args['offset'] ?? 0);
         $field = $args['field'] ?? null;
         $fields = $args['fields'] ?? null;

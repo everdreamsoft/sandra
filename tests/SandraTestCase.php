@@ -34,6 +34,17 @@ abstract class SandraTestCase extends TestCase
         $ref->setAccessible(true);
         $ref->setValue(null, null);
         $this->system = new System('phpUnit_', true, $dbHost, $db, $dbUser, $dbPass);
+
+        // Align test MySQL with prod's default strict mode so SQL bugs that
+        // hide under permissive sql_mode (e.g. DISTINCT + ORDER BY on a
+        // non-selected column triggering ONLY_FULL_GROUP_BY) surface in CI.
+        // SQLite (the default driver) has no equivalent — skip silently.
+        if ($this->system->getDriver() === null) {
+            $this->system->getConnection()->exec(
+                "SET SESSION sql_mode='STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,"
+                ."NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'"
+            );
+        }
     }
 
     /**

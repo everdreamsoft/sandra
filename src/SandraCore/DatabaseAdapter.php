@@ -752,8 +752,16 @@ class DatabaseAdapter
         }
 
         // Optional ORDER BY — reuse existing join alias if sort ref is already filtered,
-        // otherwise add a LEFT JOIN so entities without that ref still appear (null last)
+        // otherwise add a LEFT JOIN so entities without that ref still appear (null last).
+        //
+        // MySQL strict mode (ONLY_FULL_GROUP_BY) rejects `SELECT DISTINCT col1
+        // ORDER BY col2` when col2 is not in the SELECT list. We therefore add
+        // the sort expression to the SELECT list under a stable alias and
+        // re-deduplicate on idConceptStart in PHP — DISTINCT now operates on
+        // (idConceptStart, sort_value) which only differs for refs with
+        // multiple values per entity (rare; defensive dedupe handles it).
         $orderSQL = '';
+        $selectExtra = '';
         if ($sort !== null && !empty($sort['ref'])) {
             $sortRef = $sort['ref'];
             $direction = strtoupper($sort['direction'] ?? 'ASC');
@@ -784,7 +792,8 @@ class DatabaseAdapter
                         ? self::$driver->getCastNumericSQL($col)
                         : "CAST($col AS DECIMAL)";
                 }
-                $orderSQL = " ORDER BY $col $direction ";
+                $selectExtra = ", $col AS __sort_value";
+                $orderSQL = " ORDER BY __sort_value $direction ";
             }
         }
 
@@ -796,7 +805,7 @@ class DatabaseAdapter
             }
         }
 
-        $sql = "SELECT DISTINCT $tableLink.idConceptStart FROM $tableLink
+        $sql = "SELECT DISTINCT $tableLink.idConceptStart$selectExtra FROM $tableLink
                 $joinSQL
                 WHERE $tableLink.flag != :deletedFlag
                 $linkConceptSQL $targetConceptSQL
@@ -808,9 +817,17 @@ class DatabaseAdapter
             return null;
         }
 
+        // Defensive dedupe: with sort, DISTINCT operates on (id, sort_value) so
+        // entities with multi-valued sort refs could appear twice. Preserve
+        // first-seen order — that's the SQL ordering we asked for.
+        $seen = [];
         $out = [];
         foreach ($results as $row) {
-            $out[] = (int)$row['idConceptStart'];
+            $cid = (int)$row['idConceptStart'];
+            if (!isset($seen[$cid])) {
+                $seen[$cid] = true;
+                $out[] = $cid;
+            }
         }
         return $out;
     }
