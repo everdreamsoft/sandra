@@ -44,11 +44,11 @@ docker compose --profile tunnel up -d         # public HTTPS via trycloudflare f
 docker compose logs tunnel | grep trycloudflare
 ```
 
-Cursor, Cline, Continue, Zed, OpenAI Agents SDK, custom clients: point your client's MCP server config at `http://127.0.0.1:8090/mcp`. From source (PHP 8+, MySQL, composer): see [`Install Sandra`](https://sandraeds.everdreamsoft.com/getting-started-installation). Set `SANDRA_AUTH_TOKEN` in `.env` before exposing the trycloudflare URL — it is public.
+Cursor, Cline, Continue, Zed, OpenAI Agents SDK, custom clients: point your client's MCP server config at `http://127.0.0.1:8090/mcp`. From source (PHP 8+, MySQL, composer): see [Install Sandra](https://sandraeds.everdreamsoft.com/getting-started-installation). Set `SANDRA_AUTH_TOKEN` in `.env` before exposing the trycloudflare URL — it is public.
 
 </details>
 
-Full setup, OAuth 2.1/PKCE, auth tokens: [`Install Sandra`](https://sandraeds.everdreamsoft.com/getting-started-installation). MCP tool reference: [`mcp overview`](https://sandraeds.everdreamsoft.com/mcp-overview). Live quickstart and demos: [sandraeds.everdreamsoft.com](https://sandraeds.everdreamsoft.com). Questions? [Join the Discord](https://discord.gg/9ptCvXJzy).
+Full setup, OAuth 2.1/PKCE, auth tokens: [Install Sandra](https://sandraeds.everdreamsoft.com/getting-started-installation). MCP tool reference: [mcp overview](https://sandraeds.everdreamsoft.com/mcp-overview). Live quickstart and demos: [sandraeds.everdreamsoft.com](https://sandraeds.everdreamsoft.com). Questions? [Join the Discord](https://discord.gg/9ptCvXJzy).
 
 ## What recall feels like
 
@@ -82,7 +82,7 @@ Memory lives in *your* Sandra instance, not in any model's context window. Switc
 | Classical graph DB    | Neo4j, TigerGraph      | (no provider) | Free-form labels, unreadable for LLMs         |
 | **Sandra + planner**  | this repo              | **0.89**      | Graph + vector + shared LLM-readable lexicon  |
 
-130 deterministic questions, no LLM-judge, raw responses archived. Full design rationale: [`Sandra memory design`](https://sandraeds.everdreamsoft.com/concepts-memory-design).
+130 deterministic questions, no LLM-judge, raw responses archived. Full design rationale: [Sandra memory design](https://sandraeds.everdreamsoft.com/concepts-memory-design).
 
 **Sandra is for you if** you want your agent to remember across sessions and machines, you want to own the data, you build with multiple LLMs, or you need explicit relationships — not fuzzy similarity. **Skip Sandra if** you need a transactional database (use Postgres), pure vector retrieval at massive scale (use a dedicated vector store), or zero infrastructure (use a hosted service).
 
@@ -122,7 +122,7 @@ Concept(user)
 
 This is what philosophers [since Frege](https://en.wikipedia.org/wiki/Sense_and_reference) have called *invariance of reference under variation of sense*. What programmers call polymorphism. What your agents need so they can answer "show me everything we know about this user" without lying, conflating, or losing source attribution.
 
-Building a multi-agent system? Every agent is itself an entity in the same graph it reads from. Pattern + comparison with CrewAI / LangGraph / OpenAI Assistants in [`Guides - multi-agent`](https://sandraeds.everdreamsoft.com/guides-multi-agent).
+Building a multi-agent system? Every agent is itself an entity in the same graph it reads from. Pattern + comparison with CrewAI / LangGraph / OpenAI Assistants in [Guides - multi-agent](https://sandraeds.everdreamsoft.com/guides-multi-agent).
 
 ## Beyond agent memory
 
@@ -160,9 +160,9 @@ Longer walkthrough: [`docs/code-samples/animal-shelter.php`](docs/code-samples/a
 
 | Guide | What it covers |
 |---|---|
-| [`iInstall Sandra`](https://sandraeds.everdreamsoft.com/getting-started-installation) | Sandra + MCP server + your MCP client |
-| [`mcp overview`](https://sandraeds.everdreamsoft.com/mcp-overview) | MCP server reference: tools, configuration, custom tools |
-| [`sdk rest api`](https://sandraeds.everdreamsoft.com/sdk-rest-api) | REST API and PHP SDK |
+| [Install Sandra](https://sandraeds.everdreamsoft.com/getting-started-installation) | Sandra + MCP server + your MCP client |
+| [mcp overview](https://sandraeds.everdreamsoft.com/mcp-overview) | MCP server reference: tools, configuration, custom tools |
+| [sdk rest api](https://sandraeds.everdreamsoft.com/sdk-rest-api) | REST API and PHP SDK |
 | [`agent-memory-design.md`](docs/agent-memory-design.md) | Why Sandra is shaped the way it is |
 | [`concept-deduplication.md`](docs/concept-deduplication.md) | How the vocabulary stays clean at scale |
 | [`system-concept-scaling.md`](docs/system-concept-scaling.md) | Memory and performance profile as concept count grows |
