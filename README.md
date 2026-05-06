@@ -1,18 +1,17 @@
 <p align="center">
-    <img src="resources/images/SandraBanner.png" alt="Sandra: synapses for AI agents">
+    <img src="resources/images/Sandra_hero.png" alt="Sandra — meaning before structure. Le sens d'abord, la structure ensuite. A semantic graph database with a native MCP interface. Concepts, entities, and triplets, ready for AI agents that need memory shaped like a brain. THE UNIT: subject — verb — target.">
 </p>
 
 <p align="center">
-    <strong>Synapses for AI agents.</strong><br>
     Self-hostable graph + vector memory. Native MCP. <strong>0.89</strong> on
     <a href="https://github.com/everdreamsoft/structured-recall-bench">Structured Recall Bench</a>,
     where vector stores cluster between 0.25 and 0.48.
 </p>
 
 <p align="center">
-    <a href="#install"><img src="https://img.shields.io/badge/Install-1--min-2ea44f?style=for-the-badge" alt="Install"></a>
-    <a href="https://sandra.everdreamsoft.com"><img src="https://img.shields.io/badge/Quickstart-sandra.everdreamsoft.com-0a66c2?style=for-the-badge" alt="Quickstart"></a>
-    <a href="https://discord.gg/9ptCvXJzy"><img src="https://img.shields.io/badge/Discord-join-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
+    <a href="#install"><img src="https://img.shields.io/badge/install-1--min-1B3A8C?style=for-the-badge" alt="Install"></a>
+    <a href="https://sandraeds.everdreamsoft.com"><img src="https://img.shields.io/badge/quickstart-sandraeds.everdreamsoft.com-1F2024?style=for-the-badge" alt="Quickstart"></a>
+    <a href="https://discord.gg/9ptCvXJzy"><img src="https://img.shields.io/badge/discord-join-1F2024?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
 <p align="center">
@@ -49,7 +48,7 @@ Cursor, Cline, Continue, Zed, OpenAI Agents SDK, custom clients: point your clie
 
 </details>
 
-Full setup, OAuth 2.1/PKCE, auth tokens: [`docs/installation-guide.md`](docs/installation-guide.md). MCP tool reference: [`docs/mcp-guide.md`](docs/mcp-guide.md). Live quickstart and demos: [sandra.everdreamsoft.com](https://sandra.everdreamsoft.com). Questions? [Join the Discord](https://discord.gg/9ptCvXJzy).
+Full setup, OAuth 2.1/PKCE, auth tokens: [`docs/installation-guide.md`](docs/installation-guide.md). MCP tool reference: [`docs/mcp-guide.md`](docs/mcp-guide.md). Live quickstart and demos: [sandraeds.everdreamsoft.com](https://sandraeds.everdreamsoft.com). Questions? [Join the Discord](https://discord.gg/9ptCvXJzy).
 
 ## What recall feels like
 
@@ -70,6 +69,10 @@ Agent:  [sandra_search → emotion breakdown, weighted by engagement]
 ```
 
 Memory lives in *your* Sandra instance, not in any model's context window. Switch models, switch clients, switch machines: the memory stays.
+
+> *The next generation of software will be written by agents that need memory like ours.*
+>
+> `— SANDRA · WHY NOW`
 
 ## Why Sandra
 
@@ -96,9 +99,13 @@ Four primitives, mapped to what neurons do.
 DB analog: concepts are *words*, entities are *rows*, factories are *tables*, triplets are *sentences*.
 
 ```
-Entity(Alice) ── likes ───────▶ Concept(strawberry)
+─── THE UNIT ─────────────────────────────
+
+   Alice ──── likes ──────▶ strawberry
      │
-     └── works_with ──────────▶ Entity(Bob)
+     └─── works_with ─────▶ Bob
+
+   subject     verb            target
 ```
 
 Encounter `Alice`, Sandra activates that node and follows every synapse outward in one query — *spreading activation* ([Collins & Loftus, 1975](https://doi.org/10.1037/0033-295X.82.6.407)), the mechanism behind associative human recall. Because every concept is a stable, named ID, an LLM can call `sandra_list_concepts` and read the entire vocabulary. No schema file, no documentation needed.
@@ -163,7 +170,7 @@ Longer walkthrough: [`docs/code-samples/animal-shelter.php`](docs/code-samples/a
 
 ## Community & Status
 
-Join the conversation on [Discord](https://discord.gg/9ptCvXJzy). Live quickstart at [sandra.everdreamsoft.com](https://sandra.everdreamsoft.com).
+Join the conversation on [Discord](https://discord.gg/9ptCvXJzy). Live quickstart at [sandraeds.everdreamsoft.com](https://sandraeds.everdreamsoft.com).
 
 Used in production at [EverdreamSoft](https://everdreamsoft.com), notably in [Spells of Genesis](https://spellsofgenesis.com). MCP layer and OAuth 2.1/PKCE auth running in production.
 
