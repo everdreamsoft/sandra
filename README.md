@@ -158,7 +158,6 @@ $bob   = $people->createNew(['name' => 'Bob',   'role' => 'engineer']);
 $alice->setJoinedEntity('works_with', $bob, ['since' => '2024']);
 ```
 
-Longer walkthrough: [`docs/code-samples/animal-shelter.php`](docs/code-samples/animal-shelter.php).
 
 ## Documentation
 
