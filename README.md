@@ -132,10 +132,10 @@ Building a multi-agent system? Every agent is itself an entity in the same graph
 
 Same primitives also handle:
 
-- **Personal knowledge management** — *"Give me my 10 most-engaging emotional tweets; suggest an eleventh."*
-- **Relationship CRM** — *"Which journalists wrote about us this year? Who at TechCrunch?"*
-- **Headless CMS for LLM-driven apps** — *"Change the price of the Geneva listing to 350."*
-- **Lightweight analytics** — *"Which cards got the most attention from European visitors last week?"*
+- **Personal knowledge management**: Stash articles, strategy notes, ideas as typed entities. Ask: "Give me the 10 most-engaging emotional tweets I posted; suggest an eleventh."
+- **Relationship CRM**: Track who covered you, who knows whom, who said what. "Which journalists wrote about us this year? Who at TechCrunch?"
+- **Headless CMS for LLM-driven apps**: Expose Sandra over the REST API + a thin UI; let agents update content from natural language. "Change the price of the Geneva listing to 350."
+- **Lightweight analytics**: Log who-viewed-what as triplets, query later via the same MCP tools. "Which cards got the most attention from European visitors last week?"
 
 Switching frame is a query, not a migration.
 
