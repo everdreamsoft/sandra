@@ -23,6 +23,8 @@
 
 ---
 
+Every AI agent forgets. Vector memory finds similar text but can't enumerate or relate. Classical graph DBs use free-form labels that no LLM can read. SaaS memory ships your data to someone else's servers.
+
 Sandra is a self-hostable graph + vector memory layer where every concept (verb, label, category) has a unique ID and a human-readable name. Your agents read, write, and reason over a *shared lexicon*. Every relationship is an explicit synapse you can trace. Exposed natively via MCP, so any LLM that can call a tool can use it.
 
 ## Install
@@ -74,6 +76,8 @@ Memory lives in *your* Sandra instance, not in any model's context window. Switc
 >
 
 ## Why Sandra
+
+Current market solutions are not able to retrieve all the data correctly, so it is impossible to trust agents with precise tasks. Here is how they compare.
 
 | Approach              | Example                | SRB composite | Trade-off                                     |
 |-----------------------|------------------------|---------------|-----------------------------------------------|
