@@ -168,8 +168,6 @@ Longer walkthrough: [`docs/code-samples/animal-shelter.php`](docs/code-samples/a
 | [mcp overview](https://sandraeds.everdreamsoft.com/mcp-overview) | MCP server reference: tools, configuration, custom tools |
 | [sdk rest api](https://sandraeds.everdreamsoft.com/sdk-rest-api) | REST API and PHP SDK |
 | [`agent-memory-design.md`](docs/agent-memory-design.md) | Why Sandra is shaped the way it is |
-| [`concept-deduplication.md`](docs/concept-deduplication.md) | How the vocabulary stays clean at scale |
-| [`system-concept-scaling.md`](docs/system-concept-scaling.md) | Memory and performance profile as concept count grows |
 
 ## Community & Status
 
