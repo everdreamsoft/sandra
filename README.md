@@ -35,7 +35,7 @@ docker compose up -d                                   # MCP on http://127.0.0.1
 claude mcp add sandra --transport http --url http://127.0.0.1:8090/mcp
 ```
 
-That's it — your agent now has persistent memory across sessions, projects, machines, and clients (Claude, GPT, Gemini, Llama, Mistral...).
+That's it! your agent now has persistent memory across sessions, projects, machines, and clients (Claude, GPT, Gemini, Llama, Mistral...).
 
 <details>
 <summary>Other clients · semantic search · claude.ai web (HTTPS) · from source</summary>
@@ -88,16 +88,16 @@ Current market solutions are not able to retrieve all the data correctly, so it 
 
 130 deterministic questions, no LLM-judge, raw responses archived. Full design rationale: [Sandra memory design](https://sandraeds.everdreamsoft.com/concepts-memory-design).
 
-**Sandra is for you if** you want your agent to remember across sessions and machines, you want to own the data, you build with multiple LLMs, or you need explicit relationships — not fuzzy similarity. **Skip Sandra if** you need a transactional database (use Postgres), pure vector retrieval at massive scale (use a dedicated vector store), or zero infrastructure (use a hosted service).
+**Sandra is for you if** you want your agent to remember across sessions and machines, you want to own the data, you build with multiple LLMs, or you need explicit relationships instead of fuzzy similarity. **Skip Sandra if** you need a transactional database (use Postgres), pure vector retrieval at massive scale (use a dedicated vector store), or zero infrastructure (use a hosted service).
 
 ## How memory works
 
 Four primitives, mapped to what neurons do.
 
-- **Concept** — a stable, named ID; the *neuron* (`likes`, `works_at`, `user`).
-- **Triplet** — a `(subject, verb, target)` link; the *synapse*.
-- **Entity** — a typed cluster of refs grouped by a factory; a *named region*.
-- **Factory** — the schema for an entity cluster (`person`, `product`, `task`).
+- **Concept** - a stable, named ID; the *neuron* (`likes`, `works_at`, `user`).
+- **Triplet** - a `(subject, verb, target)` link; the *synapse*.
+- **Entity** - a typed cluster of refs grouped by a factory; a *named region*.
+- **Factory** - the schema for an entity cluster (`person`, `product`, `task`).
 
 DB analog: concepts are *words*, entities are *rows*, factories are *tables*, triplets are *sentences*.
 
@@ -111,7 +111,7 @@ DB analog: concepts are *words*, entities are *rows*, factories are *tables*, tr
    subject     verb            target
 ```
 
-Encounter `Alice`, Sandra activates that node and follows every synapse outward in one query — *spreading activation* ([Collins & Loftus, 1975](https://doi.org/10.1037/0033-295X.82.6.407)), the mechanism behind associative human recall. Because every concept is a stable, named ID, an LLM can call `sandra_list_concepts` and read the entire vocabulary. No schema file, no documentation needed.
+Encounter `Alice`, Sandra activates that node and follows every synapse outward in one query, *spreading activation* ([Collins & Loftus, 1975](https://doi.org/10.1037/0033-295X.82.6.407)), the mechanism behind associative human recall. Because every concept is a stable, named ID, an LLM can call `sandra_list_concepts` and read the entire vocabulary. No schema file, no documentation needed.
 
 ### One concept, many implementations
 
@@ -141,9 +141,9 @@ Switching frame is a query, not a migration.
 
 ## Building on Sandra
 
-- **PHP SDK** — `composer require everdreamsoft/sandra` [php sdk](https://sandraeds.everdreamsoft.com/sdk-overview)
-- **REST API** — language-agnostic [sdk rest api](https://sandraeds.everdreamsoft.com/sdk-rest-api)
-- **Python and TypeScript SDKs** — coming
+- **PHP SDK**: `composer require everdreamsoft/sandra` [php sdk](https://sandraeds.everdreamsoft.com/sdk-overview)
+- **REST API**: language-agnostic [sdk rest api](https://sandraeds.everdreamsoft.com/sdk-rest-api)
+- **Python and TypeScript SDKs**: coming
 
 ```php
 <?php
@@ -174,4 +174,4 @@ Join the conversation on [Discord](https://discord.gg/9ptCvXJzy). Live quickstar
 
 Used in production at [EverdreamSoft](https://everdreamsoft.com), notably in [Spells of Genesis](https://spellsofgenesis.com). MCP layer and OAuth 2.1/PKCE auth running in production.
 
-MIT license — see [`LICENSE`](LICENSE). Pull requests welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md).
+MIT license: see [`LICENSE`](LICENSE). Pull requests welcome: see [`CONTRIBUTING.md`](CONTRIBUTING.md).
