@@ -46,7 +46,7 @@ docker compose --profile tunnel up -d         # public HTTPS via trycloudflare f
 docker compose logs tunnel | grep trycloudflare
 ```
 
-Cursor, Cline, Continue, Zed, OpenAI Agents SDK, custom clients: point your client's MCP server config at `http://127.0.0.1:8090/mcp`. From source (PHP 8+, MySQL, composer): see [Install Sandra](https://sandraeds.everdreamsoft.com/getting-started-installation). Set `SANDRA_AUTH_TOKEN` in `.env` before exposing the trycloudflare URL — it is public.
+Cursor, Cline, Continue, Zed, OpenAI Agents SDK, custom clients: point your client's MCP server config at `http://127.0.0.1:8090/mcp`. From source (PHP 8+, MySQL, composer): see [Install Sandra](https://sandraeds.everdreamsoft.com/getting-started-installation). Set `SANDRA_AUTH_TOKEN` in `.env` before exposing the trycloudflare URL, it is public.
 
 </details>
 
