@@ -79,7 +79,9 @@ class SemanticSearchTool implements McpToolInterface
         }
 
         $factoryFilter = $args['factory'] ?? null;
-        $limit = (int)($args['limit'] ?? 10);
+        // Cap to bound MCP token budget. searchSimilar oversamples with limit*2,
+        // so a runaway client value would also blow up the embedding scan.
+        $limit = min((int)($args['limit'] ?? 10), 200);
         $threshold = (float)($args['threshold'] ?? 0.2);
         $fields = $args['fields'] ?? null;
         $includeStorage = !empty($args['include_storage']);

@@ -224,4 +224,40 @@ class EntityFactoryRefQueryTest extends SandraTestCase
         );
         $this->assertSame([], $result);
     }
+
+    /**
+     * Regression: a broad LIKE filter must NOT load the entire match set into
+     * memory when the caller provides a limit. Combined with sort+offset, this
+     * is the path that previously OOM'd downstream apps (Echoes log search).
+     *
+     * Also verifies the strict-mode SQL fix: DISTINCT + ORDER BY on a
+     * non-selected column would error under MySQL ONLY_FULL_GROUP_BY before
+     * the sort column was hoisted into the SELECT list.
+     */
+    public function testBroadLikeWithSortAndLimitIsBounded(): void
+    {
+        $factory = $this->seed(25);
+
+        // status='active' alone matches 20 entities. Pair with a LIKE on name
+        // that also matches all 20 to mimic a broad search like q="player".
+        $result = $factory->populateFromRefQuery(
+            filters: [
+                ['ref' => 'status', 'op' => '=', 'value' => 'active'],
+                ['ref' => 'name', 'op' => 'LIKE', 'value' => 'player_%'],
+            ],
+            sort: ['ref' => 'lastLogin', 'direction' => 'DESC', 'numeric' => true],
+            limit: 5,
+            offset: 0
+        );
+
+        $this->assertCount(5, $result,
+            'broad LIKE + sort + limit must return exactly limit entities, '
+            .'not the full match set');
+
+        $logins = array_map(fn ($e) => (int) $e->get('lastLogin'), array_values($result));
+        $sorted = $logins;
+        rsort($sorted, SORT_NUMERIC);
+        $this->assertSame($sorted, $logins,
+            'top-N must be sorted by SQL — caller should not need to re-sort');
+    }
 }

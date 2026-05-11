@@ -65,7 +65,10 @@ class OAuthProvider
     /**
      * GET /.well-known/oauth-protected-resource
      */
-    public function handleProtectedResourceMetadata($conn, array $headers, callable $sendResponse): void
+    /**
+     * @return array{status:int,reason:?string} Audit info for HttpTransport.
+     */
+    public function handleProtectedResourceMetadata($conn, array $headers, callable $sendResponse): array
     {
         $baseUrl = $this->getBaseUrl($headers);
         $this->log("protected-resource metadata requested, baseUrl=$baseUrl");
@@ -76,12 +79,16 @@ class OAuthProvider
         ]);
         $sendResponse($conn, 200, ['Content-Type' => 'application/json'], $body);
         @fclose($conn);
+        return ['status' => 200, 'reason' => null];
     }
 
     /**
      * GET /.well-known/oauth-authorization-server
      */
-    public function handleAuthServerMetadata($conn, array $headers, callable $sendResponse): void
+    /**
+     * @return array{status:int,reason:?string}
+     */
+    public function handleAuthServerMetadata($conn, array $headers, callable $sendResponse): array
     {
         $baseUrl = $this->getBaseUrl($headers);
         $this->log("auth-server metadata requested, baseUrl=$baseUrl");
@@ -99,12 +106,16 @@ class OAuthProvider
         ]);
         $sendResponse($conn, 200, ['Content-Type' => 'application/json'], $body);
         @fclose($conn);
+        return ['status' => 200, 'reason' => null];
     }
 
     /**
      * POST /register — Dynamic Client Registration
      */
-    public function handleRegister($conn, string $body, callable $sendResponse): void
+    /**
+     * @return array{status:int,reason:?string}
+     */
+    public function handleRegister($conn, string $body, callable $sendResponse): array
     {
         $data = json_decode($body, true) ?: [];
         $clientId = bin2hex(random_bytes(16));
@@ -123,12 +134,16 @@ class OAuthProvider
         $response = $this->clients[$clientId];
         $sendResponse($conn, 201, ['Content-Type' => 'application/json'], json_encode($response));
         @fclose($conn);
+        return ['status' => 201, 'reason' => null];
     }
 
     /**
      * GET /authorize — Show authorization page
      */
-    public function handleAuthorize($conn, string $fullPath, array $headers, callable $sendResponse): void
+    /**
+     * @return array{status:int,reason:?string}
+     */
+    public function handleAuthorize($conn, string $fullPath, array $headers, callable $sendResponse): array
     {
         $queryString = parse_url($fullPath, PHP_URL_QUERY) ?? '';
         parse_str($queryString, $params);
@@ -148,18 +163,22 @@ class OAuthProvider
             $sendResponse($conn, 400, ['Content-Type' => 'application/json'],
                 '{"error": "invalid_request", "error_description": "code_challenge required"}');
             @fclose($conn);
-            return;
+            return ['status' => 400, 'reason' => 'invalid_request'];
         }
 
         $html = $this->renderAuthorizePage($clientId, $redirectUri, $codeChallenge, $codeChallengeMethod, $state, $scope);
         $sendResponse($conn, 200, ['Content-Type' => 'text/html; charset=utf-8'], $html);
         @fclose($conn);
+        return ['status' => 200, 'reason' => null];
     }
 
     /**
      * POST /authorize — Process authorization form submission
      */
-    public function handleAuthorizeSubmit($conn, string $body, array $headers, callable $sendResponse): void
+    /**
+     * @return array{status:int,reason:?string}
+     */
+    public function handleAuthorizeSubmit($conn, string $body, array $headers, callable $sendResponse): array
     {
         parse_str($body, $params);
 
@@ -192,7 +211,9 @@ class OAuthProvider
             $html = $this->renderAuthorizePage($clientId, $redirectUri, $codeChallenge, $codeChallengeMethod, $state, $scope, 'Invalid token. Please try again.');
             $sendResponse($conn, 200, ['Content-Type' => 'text/html; charset=utf-8'], $html);
             @fclose($conn);
-            return;
+            // 200 (form re-render) but a real auth failure — surface as reason
+            // so audit can distinguish from a clean GET render.
+            return ['status' => 200, 'reason' => 'invalid_password'];
         }
 
         // Generate authorization code
@@ -217,12 +238,16 @@ class OAuthProvider
 
         $sendResponse($conn, 302, ['Location' => $location], '');
         @fclose($conn);
+        return ['status' => 302, 'reason' => null];
     }
 
     /**
      * POST /token — Exchange authorization code for access token
      */
-    public function handleToken($conn, string $body, callable $sendResponse): void
+    /**
+     * @return array{status:int,reason:?string}
+     */
+    public function handleToken($conn, string $body, callable $sendResponse): array
     {
         // Support both JSON and form-encoded
         $contentType = '';
@@ -244,7 +269,7 @@ class OAuthProvider
             $sendResponse($conn, 400, ['Content-Type' => 'application/json'],
                 json_encode(['error' => 'unsupported_grant_type']));
             @fclose($conn);
-            return;
+            return ['status' => 400, 'reason' => 'unsupported_grant_type'];
         }
 
         // Validate authorization code
@@ -253,7 +278,7 @@ class OAuthProvider
             $sendResponse($conn, 400, ['Content-Type' => 'application/json'],
                 json_encode(['error' => 'invalid_grant', 'error_description' => 'Invalid or expired authorization code']));
             @fclose($conn);
-            return;
+            return ['status' => 400, 'reason' => 'invalid_grant_unknown_code'];
         }
 
         $codeData = $this->authCodes[$code];
@@ -264,7 +289,7 @@ class OAuthProvider
             $sendResponse($conn, 400, ['Content-Type' => 'application/json'],
                 json_encode(['error' => 'invalid_grant', 'error_description' => 'Authorization code expired']));
             @fclose($conn);
-            return;
+            return ['status' => 400, 'reason' => 'invalid_grant_expired'];
         }
 
         // Validate PKCE
@@ -274,7 +299,7 @@ class OAuthProvider
                 $sendResponse($conn, 400, ['Content-Type' => 'application/json'],
                     json_encode(['error' => 'invalid_grant', 'error_description' => 'PKCE verification failed']));
                 @fclose($conn);
-                return;
+                return ['status' => 400, 'reason' => 'invalid_grant_pkce'];
             }
         }
 
@@ -298,6 +323,7 @@ class OAuthProvider
 
         $sendResponse($conn, 200, ['Content-Type' => 'application/json'], json_encode($response));
         @fclose($conn);
+        return ['status' => 200, 'reason' => null];
     }
 
     /**

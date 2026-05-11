@@ -64,7 +64,8 @@ class ListConceptsTool implements McpToolInterface
     public function execute(array $args): mixed
     {
         $query = trim($args['query'] ?? '');
-        $limit = (int)($args['limit'] ?? 50);
+        // Cap to keep MCP token budget in check on large concept tables.
+        $limit = min((int)($args['limit'] ?? 50), 200);
         $offset = (int)($args['offset'] ?? 0);
 
         $pdo = $this->system->getConnection();

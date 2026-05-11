@@ -76,7 +76,7 @@ if (file_exists($envFile)) {
 // ── DB config ───────────────────────────────────────────────────────
 $env = getenv('SANDRA_ENV') ?: 'mcp_';
 $dbHost = getenv('SANDRA_DB_HOST') ?: '127.0.0.1';
-$db = getenv('SANDRA_DB') ?: getenv('SANDRA_DB_DATABASE') ?: 'sandra';
+$db = getenv('SANDRA_DB') ?: getenv('SANDRA_DB_DATABASE') ?: getenv('SANDRA_DB_NAME') ?: 'sandra';
 $dbUser = getenv('SANDRA_DB_USER') ?: getenv('SANDRA_DB_USERNAME') ?: 'root';
 $dbPass = getenv('SANDRA_DB_PASS') !== false ? getenv('SANDRA_DB_PASS') : (getenv('SANDRA_DB_PASSWORD') !== false ? getenv('SANDRA_DB_PASSWORD') : '');
 

@@ -121,13 +121,48 @@ class HttpTransport
     }
 
     /**
-     * Register an optional audit logger called after every tool/call dispatch.
-     * No-op when unset (default). Failures inside the logger are swallowed
-     * so audit never crashes the user-facing response.
+     * Register an optional audit logger called for every terminal /mcp
+     * response (success or error). No-op when unset. Failures inside the
+     * logger are swallowed so audit never crashes the user-facing response.
      */
     public function setAuditLogger(?McpAuditLogger $logger): void
     {
         $this->auditLogger = $logger;
+    }
+
+    /**
+     * Internal helper invoking the registered audit logger with the full
+     * transport-level context. Centralises the try/catch so each call site
+     * stays a single line. Cf. {@see McpAuditLogger::logRequest} for the
+     * contract semantics (incl. the reason vocabulary).
+     */
+    private function audit(
+        int $httpStatus,
+        ?string $rpcMethod = null,
+        ?string $sessionId = null,
+        ?array $routeInfo = null,
+        ?string $toolName = null,
+        array $arguments = [],
+        float $elapsedMs = 0.0,
+        ?string $reason = null,
+    ): void {
+        if ($this->auditLogger === null) {
+            return;
+        }
+        try {
+            $this->auditLogger->logRequest(
+                $httpStatus,
+                $rpcMethod,
+                $sessionId,
+                $routeInfo,
+                $toolName,
+                $arguments,
+                $elapsedMs,
+                $reason,
+            );
+        } catch (\Throwable $e) {
+            $this->log('   audit logger failed: '.$e->getMessage());
+        }
     }
 
     /**
@@ -294,22 +329,30 @@ class HttpTransport
         // OAuth endpoints (when auth is enabled)
         if ($this->oauth !== null) {
             $sendResponse = [$this, 'sendResponse'];
-            $handled = match (true) {
+            // Each handler returns {status, reason} so audit can distinguish
+            // a clean discovery (200/null) from invalid_grant_pkce (400/...)
+            // — without parsing the response body.
+            $audit = match (true) {
                 str_starts_with($pathWithoutQuery, '/.well-known/oauth-protected-resource')
-                    => $this->oauth->handleProtectedResourceMetadata($conn, $headers, $sendResponse) ?? true,
+                    => ['rpc' => 'oauth.discovery', 'res' => $this->oauth->handleProtectedResourceMetadata($conn, $headers, $sendResponse)],
                 $pathWithoutQuery === '/.well-known/oauth-authorization-server'
-                    => $this->oauth->handleAuthServerMetadata($conn, $headers, $sendResponse) ?? true,
+                    => ['rpc' => 'oauth.discovery', 'res' => $this->oauth->handleAuthServerMetadata($conn, $headers, $sendResponse)],
                 $pathWithoutQuery === '/register' && $method === 'POST'
-                    => $this->oauth->handleRegister($conn, $body, $sendResponse) ?? true,
+                    => ['rpc' => 'oauth.register', 'res' => $this->oauth->handleRegister($conn, $body, $sendResponse)],
                 $pathWithoutQuery === '/authorize' && $method === 'GET'
-                    => $this->oauth->handleAuthorize($conn, $path, $headers, $sendResponse) ?? true,
+                    => ['rpc' => 'oauth.authorize_get', 'res' => $this->oauth->handleAuthorize($conn, $path, $headers, $sendResponse)],
                 $pathWithoutQuery === '/authorize' && $method === 'POST'
-                    => $this->oauth->handleAuthorizeSubmit($conn, $body, $headers, $sendResponse) ?? true,
+                    => ['rpc' => 'oauth.authorize_post', 'res' => $this->oauth->handleAuthorizeSubmit($conn, $body, $headers, $sendResponse)],
                 $pathWithoutQuery === '/token' && $method === 'POST'
-                    => $this->oauth->handleToken($conn, $body, $sendResponse) ?? true,
-                default => false,
+                    => ['rpc' => 'oauth.token', 'res' => $this->oauth->handleToken($conn, $body, $sendResponse)],
+                default => null,
             };
-            if ($handled !== false) {
+            if ($audit !== null) {
+                $this->audit(
+                    httpStatus: (int) $audit['res']['status'],
+                    rpcMethod:  $audit['rpc'],
+                    reason:     $audit['res']['reason'],
+                );
                 return;
             }
         }
@@ -320,6 +363,7 @@ class HttpTransport
 
         if (!$isApiRequest && !$isMcpRequest) {
             $this->sendResponse($conn, 404, [], '{"error": "Not found. Use /mcp or /api/* endpoint."}');
+            $this->audit(404, reason: 'endpoint_not_found');
             @fclose($conn);
             return;
         }
@@ -359,6 +403,7 @@ class HttpTransport
                 $this->sendResponse($conn, 401, array_merge($this->corsHeaders(), [
                     'WWW-Authenticate' => $wwwAuth,
                 ]), '{"error": "Unauthorized"}');
+                $this->audit(401, reason: 'missing_token');
                 @fclose($conn);
                 return;
             } else {
@@ -380,6 +425,7 @@ class HttpTransport
                     } else {
                         $this->sendResponse($conn, 401, $this->corsHeaders(), '{"error": "Unauthorized"}');
                     }
+                    $this->audit(401, reason: 'invalid_token');
                     @fclose($conn);
                     return;
                 }
@@ -393,6 +439,7 @@ class HttpTransport
                     $this->log("   AUTH SCOPE REJECTED from $peer (token=$tokenPreview, env={$routeInfo['env']}, needs=$requiredScope, has=" . implode(',', $routeInfo['scopes']) . ")");
                     $this->sendResponse($conn, 403, $this->corsHeaders(),
                         json_encode(['error' => 'insufficient_scope', 'required' => $requiredScope]));
+                    $this->audit(403, routeInfo: $routeInfo, reason: 'insufficient_scope');
                     @fclose($conn);
                     return;
                 }
@@ -405,6 +452,7 @@ class HttpTransport
                         $this->log("   RATE LIMITED from $peer (token=$tokenPreview, env={$routeInfo['env']})");
                         $this->sendResponse($conn, 429, array_merge($this->corsHeaders(), ['Retry-After' => '60']),
                             json_encode(['error' => 'rate_limit_exceeded', 'retry_after_seconds' => 60]));
+                        $this->audit(429, routeInfo: $routeInfo, reason: 'rate_limit_exceeded');
                         @fclose($conn);
                         return;
                     }
@@ -487,6 +535,7 @@ class HttpTransport
     private function handleUnsupported($conn): void
     {
         $this->sendResponse($conn, 405, $this->corsHeaders(), '{"error": "Method not allowed"}');
+        $this->audit(405, reason: 'method_not_allowed');
         @fclose($conn);
     }
 
@@ -496,6 +545,7 @@ class HttpTransport
         if (!is_array($msg)) {
             $this->log("   PARSE ERROR: " . substr($body, 0, 200));
             $this->sendResponse($conn, 400, $this->corsHeaders(), '{"error": "Invalid JSON"}');
+            $this->audit(400, routeInfo: $routeInfo, reason: 'invalid_json');
             @fclose($conn);
             return;
         }
@@ -525,6 +575,7 @@ class HttpTransport
             $clientSessionId = $headers['mcp-session-id'] ?? 'none';
             $this->log("   Unknown session $clientSessionId, rejecting $rpcMethod");
             $this->sendResponse($conn, 404, $this->corsHeaders(), '{"error": "Session not found — send initialize first"}');
+            $this->audit(404, rpcMethod: $rpcMethod, routeInfo: $routeInfo, reason: 'session_not_found');
             @fclose($conn);
             return;
         }
@@ -539,21 +590,19 @@ class HttpTransport
         $response = $session->mcpServer->dispatchMessage($msg);
         $elapsed = round((microtime(true) - $t0) * 1000, 1);
 
-        // Audit hook (no-op if no logger registered; never crashes the response).
-        if ($this->auditLogger !== null && $rpcMethod === 'tools/call') {
-            try {
-                $this->auditLogger->logToolCall(
-                    $session->id,
-                    $session->routeInfo,
-                    $toolName,
-                    is_array($msg['params']['arguments'] ?? null) ? $msg['params']['arguments'] : [],
-                    !isset($response['error']),
-                    (float) $elapsed,
-                );
-            } catch (\Throwable $e) {
-                $this->log('   audit logger failed: '.$e->getMessage());
-            }
-        }
+        // Build common audit args. The status itself depends on whether the
+        // RPC dispatch produced a body (200) or a void result (202).
+        $arguments = ($rpcMethod === 'tools/call' && is_array($msg['params']['arguments'] ?? null))
+            ? $msg['params']['arguments']
+            : [];
+        $auditToolName = $rpcMethod === 'tools/call' ? $toolName : null;
+        // RPC-level errors are still HTTP 200 per the JSON-RPC spec, but we
+        // surface them in the audit reason so consumers can distinguish a
+        // tool that ran cleanly from one that failed inside the dispatcher.
+        $rpcErrorCode = (is_array($response) && isset($response['error']['code']))
+            ? (string) $response['error']['code']
+            : null;
+        $auditReason  = $rpcErrorCode !== null ? "rpc_error_$rpcErrorCode" : null;
 
         $responseHeaders = $this->corsHeaders();
         $responseHeaders['Mcp-Session-Id'] = $session->id;
@@ -561,6 +610,7 @@ class HttpTransport
         if ($response === null) {
             $this->log("   << 202 Accepted ($rpcMethod, {$elapsed}ms)");
             $this->sendResponse($conn, 202, $responseHeaders);
+            $this->audit(202, $rpcMethod, $session->id, $session->routeInfo, $auditToolName, $arguments, (float) $elapsed, $auditReason);
             @fclose($conn);
             return;
         }
@@ -569,6 +619,7 @@ class HttpTransport
         $json = json_encode($response, JSON_UNESCAPED_UNICODE);
         $this->log("   << 200 OK ($rpcMethod, {$elapsed}ms, " . strlen($json) . " bytes)");
         $this->sendResponse($conn, 200, $responseHeaders, $json);
+        $this->audit(200, $rpcMethod, $session->id, $session->routeInfo, $auditToolName, $arguments, (float) $elapsed, $auditReason);
         @fclose($conn);
     }
 
@@ -578,6 +629,7 @@ class HttpTransport
         if ($session === null) {
             $this->log("   SSE rejected: no active session");
             $this->sendResponse($conn, 404, $this->corsHeaders(), '{"error": "Session not found — send initialize first"}');
+            $this->audit(404, reason: 'session_not_found');
             @fclose($conn);
             return;
         }
@@ -627,8 +679,10 @@ class HttpTransport
                 $this->sessionStore->delete($clientSessionId);
             }
             $this->sendResponse($conn, 200, $this->corsHeaders());
+            $this->audit(200, sessionId: $clientSessionId);
         } else {
             $this->sendResponse($conn, 404, $this->corsHeaders(), '{"error": "Session not found"}');
+            $this->audit(404, sessionId: $clientSessionId, reason: 'session_not_found');
         }
         @fclose($conn);
     }
