@@ -441,6 +441,7 @@ class McpServerTest extends SandraTestCase
         $this->assertContains('sandra_create_triplet', $toolNames);
         $this->assertContains('sandra_create_factory', $toolNames);
         $this->assertContains('sandra_delete_triplet', $toolNames);
+        $this->assertContains('sandra_update_triplet', $toolNames);
 
         // Test tools/call
         $response = $this->mcp->dispatchMessage([
@@ -1203,6 +1204,205 @@ class McpServerTest extends SandraTestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('not found');
         $this->mcp->getToolRegistry()->call('sandra_delete_triplet', ['linkId' => 999999]);
+    }
+
+    // --- Triplet storage (long-text payload on a link) ---
+
+    public function testCreateTripletWithStorage(): void
+    {
+        $this->mcp->getToolRegistry()->call('sandra_create_concept', ['name' => 'note_subj']);
+        $this->mcp->getToolRegistry()->call('sandra_create_concept', ['name' => 'note_verb']);
+        $this->mcp->getToolRegistry()->call('sandra_create_concept', ['name' => 'note_tgt']);
+
+        $payload = "This is a triplet-anchored note.\nLine two.";
+        $result = $this->mcp->getToolRegistry()->call('sandra_create_triplet', [
+            'subject' => 'note_subj',
+            'verb' => 'note_verb',
+            'target' => 'note_tgt',
+            'storage' => $payload,
+        ]);
+
+        $this->assertArrayHasKey('linkId', $result);
+        $this->assertTrue($result['storageSet'] ?? false);
+
+        // Read back via get_triplets include_storage=true (outgoing direction).
+        $subjId = $this->system->systemConcept->get('note_subj', null, false);
+        $got = $this->mcp->getToolRegistry()->call('sandra_get_triplets', [
+            'conceptId' => (int)$subjId,
+            'direction' => 'outgoing',
+            'include_storage' => true,
+        ]);
+
+        $match = null;
+        foreach ($got['triplets'] as $t) {
+            if ((int)$t['linkId'] === (int)$result['linkId']) {
+                $match = $t;
+                break;
+            }
+        }
+        $this->assertNotNull($match, 'Created triplet should appear in get_triplets output');
+        $this->assertSame($payload, $match['storage']);
+    }
+
+    public function testGetTripletsWithoutIncludeStorageOmitsField(): void
+    {
+        $this->mcp->getToolRegistry()->call('sandra_create_concept', ['name' => 'plain_subj']);
+        $this->mcp->getToolRegistry()->call('sandra_create_concept', ['name' => 'plain_verb']);
+        $this->mcp->getToolRegistry()->call('sandra_create_concept', ['name' => 'plain_tgt']);
+
+        $this->mcp->getToolRegistry()->call('sandra_create_triplet', [
+            'subject' => 'plain_subj',
+            'verb' => 'plain_verb',
+            'target' => 'plain_tgt',
+            'storage' => 'hidden by default',
+        ]);
+
+        $subjId = $this->system->systemConcept->get('plain_subj', null, false);
+        $got = $this->mcp->getToolRegistry()->call('sandra_get_triplets', [
+            'conceptId' => (int)$subjId,
+            'direction' => 'outgoing',
+        ]);
+
+        $this->assertNotEmpty($got['triplets']);
+        foreach ($got['triplets'] as $t) {
+            $this->assertArrayNotHasKey('storage', $t);
+        }
+    }
+
+    public function testBatchTripletWithStorage(): void
+    {
+        $batch = $this->mcp->getToolRegistry()->call('sandra_batch', [
+            'concepts' => ['batch_a', 'batch_v', 'batch_b'],
+            'triplets' => [[
+                'subject' => '$concept.0',
+                'verb' => '$concept.1',
+                'target' => '$concept.2',
+                'storage' => 'batch-anchored payload',
+            ]],
+        ]);
+
+        $this->assertCount(1, $batch['triplets']);
+        $triplet = $batch['triplets'][0];
+        $this->assertTrue($triplet['storageSet'] ?? false);
+
+        $subjId = $this->system->systemConcept->get('batch_a', null, false);
+        $got = $this->mcp->getToolRegistry()->call('sandra_get_triplets', [
+            'conceptId' => (int)$subjId,
+            'direction' => 'outgoing',
+            'include_storage' => true,
+        ]);
+        $match = null;
+        foreach ($got['triplets'] as $t) {
+            if ((int)$t['linkId'] === (int)$triplet['linkId']) {
+                $match = $t;
+                break;
+            }
+        }
+        $this->assertNotNull($match);
+        $this->assertSame('batch-anchored payload', $match['storage']);
+    }
+
+    public function testUpdateTripletStorageReplaces(): void
+    {
+        $this->mcp->getToolRegistry()->call('sandra_create_concept', ['name' => 'upd_a']);
+        $this->mcp->getToolRegistry()->call('sandra_create_concept', ['name' => 'upd_v']);
+        $this->mcp->getToolRegistry()->call('sandra_create_concept', ['name' => 'upd_b']);
+
+        $triplet = $this->mcp->getToolRegistry()->call('sandra_create_triplet', [
+            'subject' => 'upd_a',
+            'verb' => 'upd_v',
+            'target' => 'upd_b',
+            'storage' => 'v1',
+        ]);
+
+        $upd = $this->mcp->getToolRegistry()->call('sandra_update_triplet', [
+            'linkId' => $triplet['linkId'],
+            'storage' => 'v2 — replaced',
+        ]);
+        $this->assertTrue($upd['storageSet'] ?? false);
+
+        $subjId = $this->system->systemConcept->get('upd_a', null, false);
+        $got = $this->mcp->getToolRegistry()->call('sandra_get_triplets', [
+            'conceptId' => (int)$subjId,
+            'direction' => 'outgoing',
+            'include_storage' => true,
+        ]);
+        $match = null;
+        foreach ($got['triplets'] as $t) {
+            if ((int)$t['linkId'] === (int)$triplet['linkId']) {
+                $match = $t;
+                break;
+            }
+        }
+        $this->assertNotNull($match);
+        $this->assertSame('v2 — replaced', $match['storage']);
+    }
+
+    public function testUpdateTripletStorageClearsWithEmptyString(): void
+    {
+        $this->mcp->getToolRegistry()->call('sandra_create_concept', ['name' => 'clr_a']);
+        $this->mcp->getToolRegistry()->call('sandra_create_concept', ['name' => 'clr_v']);
+        $this->mcp->getToolRegistry()->call('sandra_create_concept', ['name' => 'clr_b']);
+
+        $triplet = $this->mcp->getToolRegistry()->call('sandra_create_triplet', [
+            'subject' => 'clr_a',
+            'verb' => 'clr_v',
+            'target' => 'clr_b',
+            'storage' => 'to be cleared',
+        ]);
+
+        $upd = $this->mcp->getToolRegistry()->call('sandra_update_triplet', [
+            'linkId' => $triplet['linkId'],
+            'storage' => '',
+        ]);
+        $this->assertTrue($upd['storageCleared'] ?? false);
+
+        $subjId = $this->system->systemConcept->get('clr_a', null, false);
+        $got = $this->mcp->getToolRegistry()->call('sandra_get_triplets', [
+            'conceptId' => (int)$subjId,
+            'direction' => 'outgoing',
+            'include_storage' => true,
+        ]);
+        $match = null;
+        foreach ($got['triplets'] as $t) {
+            if ((int)$t['linkId'] === (int)$triplet['linkId']) {
+                $match = $t;
+                break;
+            }
+        }
+        $this->assertNotNull($match);
+        $this->assertNull($match['storage']);
+    }
+
+    public function testUpdateTripletNotFound(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('not found');
+        $this->mcp->getToolRegistry()->call('sandra_update_triplet', [
+            'linkId' => 999999,
+            'storage' => 'x',
+        ]);
+    }
+
+    public function testUpdateTripletRefusesDeletedTriplet(): void
+    {
+        $this->mcp->getToolRegistry()->call('sandra_create_concept', ['name' => 'del_upd_a']);
+        $this->mcp->getToolRegistry()->call('sandra_create_concept', ['name' => 'del_upd_v']);
+        $this->mcp->getToolRegistry()->call('sandra_create_concept', ['name' => 'del_upd_b']);
+
+        $triplet = $this->mcp->getToolRegistry()->call('sandra_create_triplet', [
+            'subject' => 'del_upd_a',
+            'verb' => 'del_upd_v',
+            'target' => 'del_upd_b',
+        ]);
+        $this->mcp->getToolRegistry()->call('sandra_delete_triplet', ['linkId' => $triplet['linkId']]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('soft-deleted');
+        $this->mcp->getToolRegistry()->call('sandra_update_triplet', [
+            'linkId' => $triplet['linkId'],
+            'storage' => 'should be rejected',
+        ]);
     }
 
     // --- Factory Discovery ---

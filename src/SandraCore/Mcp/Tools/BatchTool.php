@@ -95,6 +95,10 @@ class BatchTool implements McpToolInterface
                                 'type' => 'object',
                                 'description' => 'Optional key-value scalar metadata attached to the link (e.g. {"price": 350, "date": "summer 2021", "holiday": "Christmas"}). Keys become reusable concepts; values are stored as strings (truncated to 255 chars).',
                             ],
+                            'storage' => [
+                                'type' => 'string',
+                                'description' => 'Optional long-text payload attached to the triplet (MEDIUMTEXT). Stored separately from refs.',
+                            ],
                         ],
                         'required' => ['subject', 'verb', 'target'],
                     ],
@@ -217,6 +221,13 @@ class BatchTool implements McpToolInterface
             if ($refsAttached > 0) {
                 $tripletResult['refsAttached'] = $refsAttached;
             }
+
+            $storage = $def['storage'] ?? null;
+            if ($storage !== null && $storage !== '') {
+                DatabaseAdapter::rawSetStorage((int)$linkId, (string)$storage, $this->system);
+                $tripletResult['storageSet'] = true;
+            }
+
             $results['triplets'][] = $tripletResult;
         }
 

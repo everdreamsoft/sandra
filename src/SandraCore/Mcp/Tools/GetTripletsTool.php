@@ -53,6 +53,10 @@ class GetTripletsTool implements McpToolInterface
                     'type' => 'boolean',
                     'description' => 'If true, return only counts (no triplet details). Much lighter response for large graphs.',
                 ],
+                'include_storage' => [
+                    'type' => 'boolean',
+                    'description' => 'If true, include the long-text storage payload attached to each triplet (via LEFT JOIN). Default false.',
+                ],
             ],
             'required' => ['conceptId'],
         ];
@@ -63,15 +67,22 @@ class GetTripletsTool implements McpToolInterface
         $conceptId = (int)($args['conceptId'] ?? 0);
         $direction = $args['direction'] ?? 'both';
         $countOnly = (bool)($args['count_only'] ?? false);
+        $includeStorage = (bool)($args['include_storage'] ?? false);
 
         $pdo = $this->system->getConnection();
         $linkTable = $this->system->linkTable;
         $conceptTable = $this->system->conceptTable;
+        $storageTable = $this->system->tableStorage;
         $deletedId = (int)$this->system->deletedUNID;
 
         if ($countOnly) {
             return $this->executeCountOnly($pdo, $linkTable, $conceptId, $deletedId, $direction);
         }
+
+        $storageSelect = $includeStorage ? ', ds.`value` AS storage' : '';
+        $storageJoin = $includeStorage
+            ? "LEFT JOIN `{$storageTable}` ds ON ds.linkReferenced = l.id"
+            : '';
 
         $results = [];
 
@@ -81,11 +92,12 @@ class GetTripletsTool implements McpToolInterface
                            l.idConceptStart, l.idConceptLink, l.idConceptTarget, l.flag,
                            cs.shortname AS startName,
                            cl.shortname AS linkName,
-                           ct.shortname AS targetName
+                           ct.shortname AS targetName{$storageSelect}
                     FROM `{$linkTable}` l
                     LEFT JOIN `{$conceptTable}` cs ON l.idConceptStart = cs.id
                     LEFT JOIN `{$conceptTable}` cl ON l.idConceptLink = cl.id
                     LEFT JOIN `{$conceptTable}` ct ON l.idConceptTarget = ct.id
+                    {$storageJoin}
                     WHERE l.idConceptStart = :conceptId
                       AND l.flag != :deleted
                     LIMIT 100";
@@ -97,7 +109,7 @@ class GetTripletsTool implements McpToolInterface
 
             if ($rows) {
                 foreach ($rows as $row) {
-                    $results[] = [
+                    $entry = [
                         'direction' => 'outgoing',
                         'linkId' => (int)$row['linkId'],
                         'subject' => $row['startName'] ?? (string)$row['idConceptStart'],
@@ -107,6 +119,10 @@ class GetTripletsTool implements McpToolInterface
                         'verbId' => (int)$row['idConceptLink'],
                         'targetId' => (int)$row['idConceptTarget'],
                     ];
+                    if ($includeStorage) {
+                        $entry['storage'] = $row['storage'] ?? null;
+                    }
+                    $results[] = $entry;
                 }
             }
         }
@@ -117,11 +133,12 @@ class GetTripletsTool implements McpToolInterface
                            l.idConceptStart, l.idConceptLink, l.idConceptTarget, l.flag,
                            cs.shortname AS startName,
                            cl.shortname AS linkName,
-                           ct.shortname AS targetName
+                           ct.shortname AS targetName{$storageSelect}
                     FROM `{$linkTable}` l
                     LEFT JOIN `{$conceptTable}` cs ON l.idConceptStart = cs.id
                     LEFT JOIN `{$conceptTable}` cl ON l.idConceptLink = cl.id
                     LEFT JOIN `{$conceptTable}` ct ON l.idConceptTarget = ct.id
+                    {$storageJoin}
                     WHERE l.idConceptTarget = :conceptId
                       AND l.flag != :deleted
                     LIMIT 100";
@@ -133,7 +150,7 @@ class GetTripletsTool implements McpToolInterface
 
             if ($rows) {
                 foreach ($rows as $row) {
-                    $results[] = [
+                    $entry = [
                         'direction' => 'incoming',
                         'linkId' => (int)$row['linkId'],
                         'subject' => $row['startName'] ?? (string)$row['idConceptStart'],
@@ -143,6 +160,10 @@ class GetTripletsTool implements McpToolInterface
                         'verbId' => (int)$row['idConceptLink'],
                         'targetId' => (int)$row['idConceptTarget'],
                     ];
+                    if ($includeStorage) {
+                        $entry['storage'] = $row['storage'] ?? null;
+                    }
+                    $results[] = $entry;
                 }
             }
         }

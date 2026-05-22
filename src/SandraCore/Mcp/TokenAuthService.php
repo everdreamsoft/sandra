@@ -139,6 +139,7 @@ class TokenAuthService
         'sandra_update_entity',
         'sandra_link_entities',
         'sandra_delete_triplet',
+        'sandra_update_triplet',
         'sandra_batch',
         'sandra_embed_all',
     ];
