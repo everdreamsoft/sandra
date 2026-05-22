@@ -931,12 +931,16 @@ class HttpTransport
         foreach ($rows as $row) {
             $name = $row['isa_name'];
             $factory = new \SandraCore\EntityFactory($row['isa_name'], $row['cif_name'], $system);
+            // Open-schema register: no searchable whitelist, no joined whitelist.
+            // The handler accepts ?ref[name]=value filters on any ref, always-on
+            // ?search=… across every string ref, and body.joined: {<verb>: [ids]}
+            // for any verb on POST/PUT. Per-factory restrictions live in the
+            // caller layer if needed.
             $api->register($name, $factory, [
                 'read' => true,
                 'create' => true,
                 'update' => true,
                 'delete' => true,
-                'searchable' => [],
             ]);
         }
 
