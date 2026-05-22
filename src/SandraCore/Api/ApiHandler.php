@@ -3,8 +3,11 @@ declare(strict_types=1);
 
 namespace SandraCore\Api;
 
+use SandraCore\DatabaseAdapter;
 use SandraCore\Entity;
 use SandraCore\EntityFactory;
+use PDO;
+use SandraCore\QueryExecutor;
 use SandraCore\Search\BasicSearch;
 use SandraCore\System;
 use SandraCore\Validation\ValidationException;
@@ -84,6 +87,7 @@ class ApiHandler
         }
 
         $query = $request->getQuery();
+        $includeStorage = $this->parseBoolQuery($query['include_storage'] ?? null);
 
         // Single entity by ID — load only that concept
         if ($id !== null) {
@@ -96,7 +100,7 @@ class ApiHandler
             if (!empty($options['joined'])) {
                 $factory->joinPopulate();
             }
-            return new ApiResponse(200, $this->serializeEntity($entity, $options));
+            return new ApiResponse(200, $this->serializeEntity($entity, $options, $includeStorage));
         }
 
         // Search
@@ -104,7 +108,7 @@ class ApiHandler
             if (!$factory->isPopulated()) {
                 $factory->populateLocal();
             }
-            return $this->handleSearch($factory, $options, $query['search'], $query);
+            return $this->handleSearch($factory, $options, $query['search'], $query, $includeStorage);
         }
 
         // List with pagination
@@ -127,7 +131,13 @@ class ApiHandler
             $factory->joinPopulate();
         }
 
-        $items = array_map(fn(Entity $e) => $this->serializeEntity($e, $options), $slice);
+        // Batch-fetch storage for the visible slice in a single query when requested.
+        $storageByLinkId = $includeStorage ? $this->batchFetchStorage($slice) : [];
+
+        $items = array_map(
+            fn(Entity $e) => $this->serializeEntity($e, $options, $includeStorage, $storageByLinkId),
+            $slice
+        );
 
         return new ApiResponse(200, [
             'items' => $items,
@@ -152,6 +162,9 @@ class ApiHandler
         unset($body['brothers']);
         $joinedData = $body['joined'] ?? [];
         unset($body['joined']);
+        $storageProvided = array_key_exists('storage', $body);
+        $storageValue = $storageProvided ? (string)$body['storage'] : null;
+        unset($body['storage']);
 
         try {
             $entity = $factory->createNew($body);
@@ -159,6 +172,10 @@ class ApiHandler
             return new ApiResponse(422, ['errors' => $e->getErrors()], $e->getFirstError());
         } catch (\Exception $e) {
             return new ApiResponse(422, [], $e->getMessage());
+        }
+
+        if ($storageProvided && $storageValue !== '') {
+            DatabaseAdapter::setStorage($entity, $storageValue);
         }
 
         $allowedBrothers = $options['brothers'] ?? [];
@@ -196,7 +213,7 @@ class ApiHandler
             }
         }
 
-        $result = $this->serializeEntity($entity, $options);
+        $result = $this->serializeEntity($entity, $options, $storageProvided);
         if (!empty($linkedJoined)) {
             $result['joined'] = $this->serializeLinkedJoined($linkedJoined, $options);
         }
@@ -232,8 +249,20 @@ class ApiHandler
         unset($body['brothers']);
         $joinedData = $body['joined'] ?? [];
         unset($body['joined']);
+        $storageProvided = array_key_exists('storage', $body);
+        $storageValue = $storageProvided ? (string)$body['storage'] : null;
+        unset($body['storage']);
 
         $factory->update($entity, $body);
+
+        // Storage semantics: omitted = leave as-is; "" = clear; any other value = upsert.
+        if ($storageProvided) {
+            if ($storageValue === '') {
+                $this->clearStorage((int)$entity->entityId);
+            } else {
+                DatabaseAdapter::setStorage($entity, $storageValue);
+            }
+        }
 
         $allowedBrothers = $options['brothers'] ?? [];
         if (!empty($brothersData) && !empty($allowedBrothers)) {
@@ -270,7 +299,7 @@ class ApiHandler
             }
         }
 
-        $result = $this->serializeEntity($entity, $options);
+        $result = $this->serializeEntity($entity, $options, $storageProvided);
         if (!empty($linkedJoined)) {
             $joined = $result['joined'] ?? [];
             foreach ($this->serializeLinkedJoined($linkedJoined, $options) as $verb => $entries) {
@@ -306,7 +335,7 @@ class ApiHandler
         return new ApiResponse(200, ['deleted' => true, 'id' => (int)$id]);
     }
 
-    private function handleSearch(EntityFactory $factory, array $options, string $searchQuery, array $queryParams): ApiResponse
+    private function handleSearch(EntityFactory $factory, array $options, string $searchQuery, array $queryParams, bool $includeStorage = false): ApiResponse
     {
         $limit = isset($queryParams['limit']) ? (int)$queryParams['limit'] : 50;
 
@@ -322,7 +351,13 @@ class ApiHandler
             }
         }
 
-        $items = array_map(fn(Entity $e) => $this->serializeEntity($e, $options), array_values($results));
+        $resultList = array_values($results);
+        $storageByLinkId = $includeStorage ? $this->batchFetchStorage($resultList) : [];
+
+        $items = array_map(
+            fn(Entity $e) => $this->serializeEntity($e, $options, $includeStorage, $storageByLinkId),
+            $resultList
+        );
         $items = array_slice($items, 0, $limit);
 
         return new ApiResponse(200, [
@@ -331,7 +366,10 @@ class ApiHandler
         ]);
     }
 
-    private function serializeEntity(Entity $entity, array $options = []): array
+    /**
+     * @param array<int,string|null> $storageByLinkId Optional precomputed storage map (link id → value).
+     */
+    private function serializeEntity(Entity $entity, array $options = [], bool $includeStorage = false, array $storageByLinkId = []): array
     {
         $refs = [];
         if (is_array($entity->entityRefs)) {
@@ -345,10 +383,18 @@ class ApiHandler
             }
         }
 
+        $conceptId = (int)$entity->subjectConcept->idConcept;
+        $linkId = (int)$entity->entityId;
         $result = [
-            'id' => (int)$entity->subjectConcept->idConcept,
+            'id' => $conceptId,
             'refs' => $refs,
         ];
+
+        if ($includeStorage) {
+            $result['storage'] = array_key_exists($linkId, $storageByLinkId)
+                ? $storageByLinkId[$linkId]
+                : DatabaseAdapter::rawGetStorage($linkId, $this->system);
+        }
 
         $brotherVerbs = $options['brothers'] ?? [];
         if (!empty($brotherVerbs)) {
@@ -447,5 +493,78 @@ class ApiHandler
             }
         }
         return null;
+    }
+
+    /**
+     * Permissive boolean coercion for query-string flags (`?include_storage=true`,
+     * `1`, `yes`, `on`). Anything else (including absent) is false.
+     */
+    private function parseBoolQuery(mixed $value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+        if (!is_string($value)) {
+            return false;
+        }
+        return in_array(strtolower($value), ['1', 'true', 'yes', 'on'], true);
+    }
+
+    /**
+     * Fetch the long-text storage rows for a batch of entities in a single
+     * SQL query, keyed by link id. Keeps GET-list responses to a fixed
+     * number of round-trips regardless of page size.
+     *
+     * @param Entity[] $entities
+     * @return array<int,string|null>
+     */
+    private function batchFetchStorage(array $entities): array
+    {
+        if (empty($entities)) {
+            return [];
+        }
+
+        $ids = [];
+        foreach ($entities as $entity) {
+            // Storage rows key on the entity's link id (entityId — the row id of
+            // the underlying `<entity> is_a <factory>` triplet), not on the
+            // entity's concept id. setStorage/rawSetStorage use the same key.
+            $ids[] = (int)$entity->entityId;
+        }
+        $ids = array_values(array_unique($ids));
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $pdo = $this->system->getConnection();
+        $tableStorage = $this->system->tableStorage;
+        $sql = "SELECT linkReferenced, `value` FROM $tableStorage WHERE linkReferenced IN ($placeholders)";
+
+        $params = [];
+        foreach ($ids as $i => $id) {
+            $params[$i + 1] = [$id, PDO::PARAM_INT];
+        }
+
+        $rows = QueryExecutor::fetchAll($pdo, $sql, $params);
+        $map = [];
+        if ($rows) {
+            foreach ($rows as $row) {
+                $map[(int)$row['linkReferenced']] = $row['value'];
+            }
+        }
+        return $map;
+    }
+
+    /**
+     * Delete the storage row for an entity (PUT with empty string), keeping
+     * the "no row = no payload" invariant — consistent with sandra_update_triplet.
+     */
+    private function clearStorage(int $linkId): void
+    {
+        $pdo = $this->system->getConnection();
+        $tableStorage = $this->system->tableStorage;
+        QueryExecutor::execute(
+            $pdo,
+            "DELETE FROM $tableStorage WHERE linkReferenced = :linkId",
+            [':linkId' => [$linkId, PDO::PARAM_INT]]
+        );
     }
 }

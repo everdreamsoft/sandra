@@ -192,6 +192,8 @@ class DatabaseAdapter
     /**
      * Store a large data value for an entity (DataStorage table).
      *
+     * Thin wrapper over {@see rawSetStorage} keyed by the entity's link ID.
+     *
      * @param Entity $entity The entity to store data for
      * @param mixed $value The value to store
      * @param bool $autocommit If false, wraps in a transaction
@@ -199,9 +201,25 @@ class DatabaseAdapter
      */
     public static function setStorage(Entity $entity, $value, $autocommit = true)
     {
+        return self::rawSetStorage((int)$entity->entityId, $value, $entity->system, $autocommit);
+    }
 
-        $pdo = $entity->system->getConnection();
-        $tableStorage = $entity->system->tableStorage;
+    /**
+     * Store a long text value keyed by an arbitrary link ID.
+     *
+     * In Sandra, an entity's id is itself a triplet/link id, so the data
+     * storage table can naturally back any triplet — not just entities.
+     *
+     * @param int $linkId The link/triplet id to attach storage to
+     * @param mixed $value The value to store
+     * @param System $system The Sandra system instance
+     * @param bool $autocommit If false, wraps in a transaction
+     * @return mixed|null The stored value, or null on error
+     */
+    public static function rawSetStorage(int $linkId, $value, System $system, $autocommit = true)
+    {
+        $pdo = $system->getConnection();
+        $tableStorage = $system->tableStorage;
 
         $opened = false;
         if ($autocommit == false) {
@@ -213,7 +231,7 @@ class DatabaseAdapter
             $sql = self::$driver->getUpsertStorageSQL($tableStorage);
             $params = [
                 ':storeValue' => $value,
-                ':linkId' => [(int)$entity->entityId, PDO::PARAM_INT],
+                ':linkId' => [$linkId, PDO::PARAM_INT],
             ];
             if (self::$driver->getName() === 'mysql') {
                 $params[':storeValue2'] = $value;
@@ -223,7 +241,7 @@ class DatabaseAdapter
             $params = [
                 ':storeValue' => $value,
                 ':storeValue2' => $value,
-                ':linkId' => [(int)$entity->entityId, PDO::PARAM_INT],
+                ':linkId' => [$linkId, PDO::PARAM_INT],
             ];
         }
 
@@ -244,18 +262,25 @@ class DatabaseAdapter
      */
     public static function getStorage(Entity $entity)
     {
+        return self::rawGetStorage((int)$entity->entityId, $entity->system);
+    }
 
-        $pdo = $entity->system->getConnection();
-        $tableStorage = $entity->system->tableStorage;
+    /**
+     * Retrieve the stored value for an arbitrary link/triplet id.
+     */
+    public static function rawGetStorage(int $linkId, System $system): ?string
+    {
+        $pdo = $system->getConnection();
+        $tableStorage = $system->tableStorage;
 
-        $sql = "SELECT `value` from $tableStorage WHERE linkReferenced = :entityId LIMIT 1";
+        $sql = "SELECT `value` from $tableStorage WHERE linkReferenced = :linkId LIMIT 1";
 
         $results = QueryExecutor::fetchAll($pdo, $sql, [
-            ':entityId' => [(int)$entity->entityId, PDO::PARAM_INT],
+            ':linkId' => [$linkId, PDO::PARAM_INT],
         ]);
 
         if ($results === null) {
-            return;
+            return null;
         }
 
         $value = null;

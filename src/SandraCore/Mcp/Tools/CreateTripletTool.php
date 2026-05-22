@@ -24,7 +24,9 @@ class CreateTripletTool implements McpToolInterface
 
     public function description(): string
     {
-        return 'Create a triplet (subject → verb → target) linking two concepts. Concepts can be specified by ID or shortname. Returns the triplet link ID.';
+        return 'Create a triplet (subject → verb → target) linking two concepts. Concepts can be specified by ID or shortname. '
+            . 'Optionally attach a long-text "storage" payload (MEDIUMTEXT) directly to the triplet — useful for notes, '
+            . 'descriptions, JSON, or markdown anchored on the link rather than on either endpoint. Returns the triplet link ID.';
     }
 
     public function inputSchema(): array
@@ -44,6 +46,10 @@ class CreateTripletTool implements McpToolInterface
                     'type' => ['string', 'integer'],
                     'description' => 'Target concept: ID (integer) or shortname (string)',
                 ],
+                'storage' => [
+                    'type' => 'string',
+                    'description' => 'Optional long-text payload attached to the triplet (article body, JSON, markdown, logs...). Stored separately from refs.',
+                ],
             ],
             'required' => ['subject', 'verb', 'target'],
         ];
@@ -61,12 +67,20 @@ class CreateTripletTool implements McpToolInterface
             throw new \RuntimeException('Failed to create triplet');
         }
 
-        return [
+        $result = [
             'linkId' => (int)$linkId,
             'subjectId' => $subjectId,
             'verbId' => $verbId,
             'targetId' => $targetId,
         ];
+
+        $storage = $args['storage'] ?? null;
+        if ($storage !== null && $storage !== '') {
+            DatabaseAdapter::rawSetStorage((int)$linkId, (string)$storage, $this->system);
+            $result['storageSet'] = true;
+        }
+
+        return $result;
     }
 
     private function resolveConceptId(mixed $value): int
