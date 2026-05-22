@@ -489,6 +489,200 @@ class RestApiTest extends SandraTestCase
         $this->assertEquals(201, $response->getStatus());
     }
 
+    // --- Open-schema filters: ref[] and always-on search ---
+
+    public function testRefExactFilterReturnsOnlyMatching(): void
+    {
+        $response = $this->api->handle(new ApiRequest('GET', '/plats', [
+            'ref' => ['categorie' => 'Salade'],
+        ]));
+        $this->assertEquals(200, $response->getStatus());
+        $items = $response->getData()['items'];
+        $this->assertCount(1, $items);
+        $this->assertSame('Salade Cesar', $items[0]['refs']['nom']);
+    }
+
+    public function testRefAndCombinesFilters(): void
+    {
+        $response = $this->api->handle(new ApiRequest('GET', '/plats', [
+            'ref' => ['categorie' => 'Pizza', 'disponibilite' => 'oui'],
+        ]));
+        $this->assertEquals(200, $response->getStatus());
+        $items = $response->getData()['items'];
+        $this->assertCount(1, $items);
+        $this->assertSame('Pizza Margherita', $items[0]['refs']['nom']);
+    }
+
+    public function testRefNonexistentFieldReturnsEmptySet(): void
+    {
+        $response = $this->api->handle(new ApiRequest('GET', '/plats', [
+            'ref' => ['no_such_field' => 'whatever'],
+        ]));
+        $this->assertEquals(200, $response->getStatus());
+        $this->assertSame(0, $response->getData()['total']);
+        $this->assertSame([], $response->getData()['items']);
+    }
+
+    public function testSearchAlwaysActiveWithoutWhitelist(): void
+    {
+        // Build a handler registered with NO searchable whitelist.
+        $factory = new EntityFactory('plat', 'platsFile', $this->system);
+        $factory->populateLocal();
+        $openApi = new ApiHandler($this->system);
+        $openApi->register('plats', $factory);  // no 'searchable' option
+
+        $response = $openApi->handle(new ApiRequest('GET', '/plats', ['search' => 'cesar']));
+        $this->assertEquals(200, $response->getStatus());
+        $items = $response->getData()['items'];
+        $this->assertCount(1, $items);
+        $this->assertSame('Salade Cesar', $items[0]['refs']['nom']);
+    }
+
+    public function testRefAndSearchCombineAsAnd(): void
+    {
+        $response = $this->api->handle(new ApiRequest('GET', '/plats', [
+            'ref' => ['categorie' => 'Pizza'],
+            'search' => 'margherita',
+        ]));
+        $this->assertEquals(200, $response->getStatus());
+        $items = $response->getData()['items'];
+        $this->assertCount(1, $items);
+        $this->assertSame('Pizza Margherita', $items[0]['refs']['nom']);
+    }
+
+    public function testRefIsUniversalEvenWithSearchableWhitelist(): void
+    {
+        // Sanity: the factory in setUp registered with searchable=['nom','categorie'],
+        // but ref[] is open by design — it should still hit 'disponibilite'.
+        $response = $this->api->handle(new ApiRequest('GET', '/plats', [
+            'ref' => ['disponibilite' => 'non'],
+        ]));
+        $this->assertEquals(200, $response->getStatus());
+        $items = $response->getData()['items'];
+        $this->assertCount(1, $items);
+        $this->assertSame('Pizza Quattro Formaggi', $items[0]['refs']['nom']);
+    }
+
+    // --- Open-schema joined: any verb on POST/PUT ---
+
+    public function testPostOpenJoinedAcceptsArbitraryVerb(): void
+    {
+        // Use a fresh handler without any joined whitelist.
+        $factory = new EntityFactory('plat', 'platsFile', $this->system);
+        $factory->populateLocal();
+        $openApi = new ApiHandler($this->system);
+        $openApi->register('plats', $factory);
+
+        $platEntities = $this->plats->getEntities();
+        $existing = reset($platEntities);
+        $existingId = (int)$existing->subjectConcept->idConcept;
+
+        $response = $openApi->handle(new ApiRequest('POST', '/plats', [], [
+            'nom' => 'Carpaccio', 'prix' => '14.00', 'categorie' => 'Entrée', 'disponibilite' => 'oui',
+            'joined' => [
+                'inspired_by' => [$existingId],
+            ],
+        ]));
+        $this->assertEquals(201, $response->getStatus());
+        $data = $response->getData();
+        $this->assertArrayHasKey('joined', $data);
+        $this->assertSame([$existingId], $data['joined']['inspired_by']);
+
+        // Verify the triplet exists in the link table.
+        $newId = $data['id'];
+        $verbConceptId = (int)$this->system->systemConcept->get('inspired_by', null, false);
+        $this->assertGreaterThan(0, $verbConceptId, 'verb concept must have been auto-created');
+
+        $pdo = $this->system->getConnection();
+        $linkTable = $this->system->linkTable;
+        $rows = \SandraCore\QueryExecutor::fetchAll($pdo,
+            "SELECT 1 FROM `$linkTable` WHERE idConceptStart = :s AND idConceptLink = :v AND idConceptTarget = :t LIMIT 1",
+            [
+                ':s' => [$newId, \PDO::PARAM_INT],
+                ':v' => [$verbConceptId, \PDO::PARAM_INT],
+                ':t' => [$existingId, \PDO::PARAM_INT],
+            ]
+        );
+        $this->assertNotEmpty($rows, 'open-joined triplet must be persisted');
+    }
+
+    public function testPostOpenJoinedRejectsInvalidTargetWith422(): void
+    {
+        $factory = new EntityFactory('plat', 'platsFile', $this->system);
+        $factory->populateLocal();
+        $openApi = new ApiHandler($this->system);
+        $openApi->register('plats', $factory);
+
+        $response = $openApi->handle(new ApiRequest('POST', '/plats', [], [
+            'nom' => 'Vitello', 'prix' => '16.00', 'categorie' => 'Plat', 'disponibilite' => 'oui',
+            'joined' => [
+                'pairs_with' => [999999],
+            ],
+        ]));
+        $this->assertEquals(422, $response->getStatus());
+        $this->assertArrayHasKey('invalidJoinedIds', $response->getData());
+        $this->assertContains(999999, $response->getData()['invalidJoinedIds']);
+    }
+
+    public function testPostOpenJoinedDoesNotOrphanEntityOnInvalidTarget(): void
+    {
+        $factory = new EntityFactory('plat', 'platsFile', $this->system);
+        $factory->populateLocal();
+        $openApi = new ApiHandler($this->system);
+        $openApi->register('plats', $factory);
+
+        // Count entities before
+        $before = $openApi->handle(new ApiRequest('GET', '/plats'))->getData()['total'];
+
+        $openApi->handle(new ApiRequest('POST', '/plats', [], [
+            'nom' => 'Risotto Milanese', 'prix' => '15.00', 'categorie' => 'Pasta', 'disponibilite' => 'oui',
+            'joined' => ['needs' => [999999]],
+        ]));
+
+        $fresh = new EntityFactory('plat', 'platsFile', $this->system);
+        $fresh->populateLocal();
+        $api2 = new ApiHandler($this->system);
+        $api2->register('plats', $fresh);
+        $after = $api2->handle(new ApiRequest('GET', '/plats'))->getData()['total'];
+
+        $this->assertSame($before, $after, '422 on invalid joined must NOT create the parent entity');
+    }
+
+    public function testPutOpenJoinedAcceptsArbitraryVerb(): void
+    {
+        $factory = new EntityFactory('plat', 'platsFile', $this->system);
+        $factory->populateLocal();
+        $openApi = new ApiHandler($this->system);
+        $openApi->register('plats', $factory);
+
+        $entities = array_values($factory->getEntities());
+        $a = (int)$entities[0]->subjectConcept->idConcept;
+        $b = (int)$entities[1]->subjectConcept->idConcept;
+
+        $response = $openApi->handle(new ApiRequest('PUT', "/plats/$a", [], [
+            'joined' => ['replaced_by' => [$b]],
+        ]));
+        $this->assertEquals(200, $response->getStatus());
+        $this->assertSame([$b], $response->getData()['joined']['replaced_by']);
+    }
+
+    public function testPutOpenJoinedRejectsInvalidTargetWith422(): void
+    {
+        $factory = new EntityFactory('plat', 'platsFile', $this->system);
+        $factory->populateLocal();
+        $openApi = new ApiHandler($this->system);
+        $openApi->register('plats', $factory);
+
+        $allEntities = $factory->getEntities();
+        $first = reset($allEntities);
+        $a = (int)$first->subjectConcept->idConcept;
+
+        $response = $openApi->handle(new ApiRequest('PUT', "/plats/$a", [], [
+            'joined' => ['linked_to' => [999999]],
+        ]));
+        $this->assertEquals(422, $response->getStatus());
+    }
+
     public function testSearchPlats(): void
     {
         $request = new ApiRequest('GET', '/plats', ['search' => 'pizza']);

@@ -112,17 +112,49 @@ class ApiHandler
             return new ApiResponse(200, $this->serializeEntity($entity, $options, $includeStorage));
         }
 
-        // Search
-        if (isset($query['search']) && !empty($options['searchable'])) {
-            if (!$factory->isPopulated()) {
-                $factory->populateLocal();
-            }
-            return $this->handleSearch($factory, $options, $query['search'], $query, $includeStorage);
-        }
+        // Exact ref filters (?ref[name]=value) — open-schema: any ref name is accepted.
+        // Multiple ref[…] entries combine with AND. Unknown ref names yield an empty set
+        // (a filter you can't match is still a well-formed filter).
+        $refFilters = $this->parseRefFilters($query['ref'] ?? null);
+        $searchTerm = isset($query['search']) ? (string)$query['search'] : null;
+        $hasFilter = ($refFilters !== [] || ($searchTerm !== null && $searchTerm !== ''));
 
         // List with pagination
         $limit = isset($query['limit']) ? (int)$query['limit'] : 50;
         $offset = isset($query['offset']) ? (int)$query['offset'] : 0;
+
+        // Filtered listing (ref[] and/or always-on search) — load all entities then
+        // filter in memory. Pagination applies after filtering.
+        if ($hasFilter) {
+            if (!$factory->isPopulated()) {
+                $factory->populateLocal();
+            }
+            if (!empty($options['joined'])) {
+                $factory->joinPopulate();
+            }
+            $matched = $this->filterEntities(
+                array_values($factory->getEntities()),
+                $refFilters,
+                $searchTerm,
+                $factory,
+                $options
+            );
+            $total = count($matched);
+            $slice = array_slice($matched, $offset, $limit);
+
+            $storageByLinkId = $includeStorage ? $this->batchFetchStorage($slice) : [];
+            $items = array_map(
+                fn(Entity $e) => $this->serializeEntity($e, $options, $includeStorage, $storageByLinkId),
+                $slice
+            );
+
+            return new ApiResponse(200, [
+                'items' => $items,
+                'total' => $total,
+                'limit' => $limit,
+                'offset' => $offset,
+            ]);
+        }
 
         if ($factory->isPopulated()) {
             // Factory already populated (e.g. by caller) — slice in memory
@@ -177,6 +209,17 @@ class ApiHandler
         $embedRequested = !empty($body['embed']);
         unset($body['embed']);
 
+        // Open-schema joined pre-validation: when no whitelist is configured and
+        // the body carries joined data, every target concept must already be an
+        // entity. Reject upfront with 422 so we don't orphan a half-created row.
+        $allowedJoined = $options['joined'] ?? [];
+        if (empty($allowedJoined) && !empty($joinedData)) {
+            $invalid = $this->collectInvalidJoinedIds($joinedData);
+            if ($invalid !== []) {
+                return new ApiResponse(422, ['invalidJoinedIds' => $invalid], 'One or more joined target IDs do not refer to existing entities');
+            }
+        }
+
         try {
             $entity = $factory->createNew($body);
         } catch (ValidationException $e) {
@@ -209,8 +252,11 @@ class ApiHandler
         }
 
         $linkedJoined = [];
-        $allowedJoined = $options['joined'] ?? [];
+        $openJoinedPosted = [];
         if (!empty($joinedData) && !empty($allowedJoined)) {
+            // Backward-compatible whitelist path: factory was registered with a
+            // joined => [verb => factory] map; only those verbs route here, and
+            // the target must live in the declared factory.
             foreach ($joinedData as $verb => $ids) {
                 if (isset($allowedJoined[$verb])) {
                     $joinedFactory = $allowedJoined[$verb];
@@ -226,11 +272,17 @@ class ApiHandler
                     }
                 }
             }
+        } elseif (!empty($joinedData)) {
+            // Open-schema path: any verb, any target factory. Pre-validated above.
+            [, $openJoinedPosted, ] = $this->applyOpenJoined($entity, $joinedData);
         }
 
         $result = $this->serializeEntity($entity, $options, $storageProvided);
         if (!empty($linkedJoined)) {
             $result['joined'] = $this->serializeLinkedJoined($linkedJoined, $options);
+        }
+        if (!empty($openJoinedPosted)) {
+            $result['joined'] = ($result['joined'] ?? []) + $openJoinedPosted;
         }
 
         return new ApiResponse(201, $result);
@@ -270,6 +322,15 @@ class ApiHandler
         $embedRequested = !empty($body['embed']);
         unset($body['embed']);
 
+        // Open-schema joined pre-validation (mirrors POST).
+        $allowedJoined = $options['joined'] ?? [];
+        if (empty($allowedJoined) && !empty($joinedData)) {
+            $invalid = $this->collectInvalidJoinedIds($joinedData);
+            if ($invalid !== []) {
+                return new ApiResponse(422, ['invalidJoinedIds' => $invalid], 'One or more joined target IDs do not refer to existing entities');
+            }
+        }
+
         $factory->update($entity, $body);
 
         // Storage semantics: omitted = leave as-is; "" = clear; any other value = upsert.
@@ -301,7 +362,7 @@ class ApiHandler
         }
 
         $linkedJoined = [];
-        $allowedJoined = $options['joined'] ?? [];
+        $openJoinedPosted = [];
         if (!empty($joinedData) && !empty($allowedJoined)) {
             foreach ($joinedData as $verb => $ids) {
                 if (isset($allowedJoined[$verb])) {
@@ -318,6 +379,8 @@ class ApiHandler
                     }
                 }
             }
+        } elseif (!empty($joinedData)) {
+            [, $openJoinedPosted, ] = $this->applyOpenJoined($entity, $joinedData);
         }
 
         $result = $this->serializeEntity($entity, $options, $storageProvided);
@@ -325,6 +388,13 @@ class ApiHandler
             $joined = $result['joined'] ?? [];
             foreach ($this->serializeLinkedJoined($linkedJoined, $options) as $verb => $entries) {
                 $joined[$verb] = array_merge($joined[$verb] ?? [], $entries);
+            }
+            $result['joined'] = $joined;
+        }
+        if (!empty($openJoinedPosted)) {
+            $joined = $result['joined'] ?? [];
+            foreach ($openJoinedPosted as $verb => $ids) {
+                $joined[$verb] = array_merge($joined[$verb] ?? [], $ids);
             }
             $result['joined'] = $joined;
         }
@@ -514,6 +584,229 @@ class ApiHandler
             }
         }
         return null;
+    }
+
+    /**
+     * Normalize the `ref[…]` query parameter into a `[refName => stringValue]` map.
+     * Accepts array form (`?ref[name]=foo&ref[type]=bar`) — anything else is dropped
+     * silently. Values are coerced to string; non-scalar values are skipped.
+     *
+     * @return array<string,string>
+     */
+    private function parseRefFilters(mixed $raw): array
+    {
+        if (!is_array($raw)) {
+            return [];
+        }
+        $filters = [];
+        foreach ($raw as $key => $value) {
+            if (!is_string($key) || $key === '') {
+                continue;
+            }
+            if (!is_scalar($value)) {
+                continue;
+            }
+            $filters[$key] = (string)$value;
+        }
+        return $filters;
+    }
+
+    /**
+     * Apply ref-exact filters + optional fuzzy search to a populated entity set.
+     * Open-schema: any ref name is accepted on ref[]; missing names produce no match.
+     * Search uses the factory's `searchable` whitelist when configured; otherwise
+     * falls back to every string ref the matched entity carries.
+     *
+     * Filtering is in-memory after populateLocal. Acceptable for factories of
+     * reasonable size; very large factories should consider pushing filters
+     * to SQL — flagged as a known limit in the REST API doc.
+     *
+     * @param Entity[] $entities
+     * @param array<string,string> $refFilters
+     * @return Entity[]
+     */
+    private function filterEntities(array $entities, array $refFilters, ?string $searchTerm, EntityFactory $factory, array $options): array
+    {
+        // Phase 1 — exact ref equality (AND).
+        if ($refFilters !== []) {
+            $entities = array_values(array_filter(
+                $entities,
+                fn(Entity $e) => $this->entityMatchesRefFilters($e, $refFilters)
+            ));
+        }
+
+        // Phase 2 — fuzzy search (whitelisted if configured, open otherwise).
+        if ($searchTerm === null || $searchTerm === '') {
+            return $entities;
+        }
+        $needle = mb_strtolower($searchTerm);
+        $whitelist = $options['searchable'] ?? [];
+        return array_values(array_filter(
+            $entities,
+            fn(Entity $e) => $this->entityMatchesSearch($e, $needle, $whitelist)
+        ));
+    }
+
+    /**
+     * True iff every (refName => value) pair in $filters is present on the entity
+     * with an exact-string match.
+     *
+     * @param array<string,string> $filters
+     */
+    private function entityMatchesRefFilters(Entity $entity, array $filters): bool
+    {
+        if (!is_array($entity->entityRefs)) {
+            return false;
+        }
+        $remaining = $filters;
+        foreach ($entity->entityRefs as $ref) {
+            if (!($ref instanceof \SandraCore\Reference)) {
+                continue;
+            }
+            $name = $ref->refConcept->getDisplayName();
+            if ($name === null) {
+                continue;
+            }
+            if (array_key_exists($name, $remaining) && (string)$ref->refValue === $remaining[$name]) {
+                unset($remaining[$name]);
+                if ($remaining === []) {
+                    return true;
+                }
+            }
+        }
+        return $remaining === [];
+    }
+
+    /**
+     * Case-insensitive substring search across an entity's refs. When the factory
+     * has a `searchable` whitelist, only those fields are scanned; otherwise any
+     * string ref counts (open-schema fallback so ?search= never silently no-ops).
+     *
+     * @param string[] $whitelist
+     */
+    private function entityMatchesSearch(Entity $entity, string $needle, array $whitelist): bool
+    {
+        if (!is_array($entity->entityRefs)) {
+            return false;
+        }
+        $restrict = !empty($whitelist);
+        foreach ($entity->entityRefs as $ref) {
+            if (!($ref instanceof \SandraCore\Reference)) {
+                continue;
+            }
+            $name = $ref->refConcept->getDisplayName();
+            if ($name === null || $name === 'creationTimestamp') {
+                continue;
+            }
+            if ($restrict && !in_array($name, $whitelist, true)) {
+                continue;
+            }
+            $value = $ref->refValue;
+            if (!is_string($value) && !is_numeric($value)) {
+                continue;
+            }
+            if (mb_stripos((string)$value, $needle) !== false) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Scan a joined payload (verb => [ids…]) and return every id that does
+     * not refer to an existing entity. Used to pre-validate before any write
+     * so we don't half-create / half-link.
+     *
+     * @return array<int|string>
+     */
+    private function collectInvalidJoinedIds(array $joinedData): array
+    {
+        $invalid = [];
+        foreach ($joinedData as $verb => $ids) {
+            if (!is_string($verb) || $verb === '' || !is_array($ids)) {
+                continue;
+            }
+            foreach ($ids as $rawId) {
+                if (!is_numeric($rawId)) {
+                    $invalid[] = $rawId;
+                    continue;
+                }
+                $cid = (int)$rawId;
+                if (!$this->conceptIsEntity($cid)) {
+                    $invalid[] = $cid;
+                }
+            }
+        }
+        return $invalid;
+    }
+
+    /**
+     * Verify a concept id refers to an existing entity (any factory) by
+     * looking up at least one outgoing `is_a` triplet. Returns true when found.
+     */
+    private function conceptIsEntity(int $conceptId): bool
+    {
+        $isaId = (int)$this->system->systemConcept->get('is_a');
+        if ($isaId <= 0) {
+            return false;
+        }
+        $pdo = $this->system->getConnection();
+        $linkTable = $this->system->linkTable;
+        $sql = "SELECT 1 FROM `{$linkTable}` WHERE idConceptStart = :id AND idConceptLink = :isaId LIMIT 1";
+        $rows = QueryExecutor::fetchAll($pdo, $sql, [
+            ':id' => [$conceptId, PDO::PARAM_INT],
+            ':isaId' => [$isaId, PDO::PARAM_INT],
+        ]);
+        return !empty($rows);
+    }
+
+    /**
+     * Open-schema joined linking: accept any verb in body.joined and create
+     * `entity --verb--> targetConceptId` triplets after validating each target
+     * concept is an existing entity (any factory).
+     *
+     * @param array<string,int[]> $joinedData verb → array of concept ids
+     * @return array{0:bool,1:array,2:int[]} [allValid, postedTriplets, invalidIds]
+     */
+    private function applyOpenJoined(Entity $entity, array $joinedData): array
+    {
+        $invalidIds = [];
+        // First pass: validate every id; bail out early if anything is missing.
+        foreach ($joinedData as $verb => $ids) {
+            if (!is_string($verb) || $verb === '' || !is_array($ids)) {
+                continue;
+            }
+            foreach ($ids as $rawId) {
+                if (!is_numeric($rawId)) {
+                    $invalidIds[] = $rawId;
+                    continue;
+                }
+                $cid = (int)$rawId;
+                if (!$this->conceptIsEntity($cid)) {
+                    $invalidIds[] = $cid;
+                }
+            }
+        }
+        if ($invalidIds !== []) {
+            return [false, [], $invalidIds];
+        }
+
+        // Second pass: create triplets. Verbs are auto-created concepts (true =
+        // create-if-missing), matching the rest of Sandra's open vocabulary.
+        $posted = [];
+        $entityConceptId = (int)$entity->subjectConcept->idConcept;
+        foreach ($joinedData as $verb => $ids) {
+            if (!is_string($verb) || $verb === '' || !is_array($ids)) {
+                continue;
+            }
+            $verbConceptId = (int)$this->system->systemConcept->get($verb, null, true);
+            foreach ($ids as $rawId) {
+                $cid = (int)$rawId;
+                DatabaseAdapter::rawCreateTriplet($entityConceptId, $verbConceptId, $cid, $this->system);
+                $posted[$verb][] = $cid;
+            }
+        }
+        return [true, $posted, []];
     }
 
     /**
