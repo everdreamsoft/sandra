@@ -894,7 +894,12 @@ class HttpTransport
      */
     private function buildApiHandler(\SandraCore\System $system): \SandraCore\Api\ApiHandler
     {
-        $api = new \SandraCore\Api\ApiHandler($system);
+        // Mirror McpServer: if an OpenAI key is configured, share the same
+        // semantic-search indexing pipeline so REST writes are discoverable too.
+        $apiKey = getenv('OPENAI_API_KEY') ?: '';
+        $embeddingService = $apiKey !== '' ? new \SandraCore\Mcp\EmbeddingService($system, $apiKey) : null;
+
+        $api = new \SandraCore\Api\ApiHandler($system, $embeddingService);
 
         // Reuse FactoryDiscovery logic: scan triplets for (is_a, contained_in_file) pairs
         $pdo = $system->getConnection();

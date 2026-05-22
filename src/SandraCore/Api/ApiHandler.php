@@ -7,6 +7,7 @@ use SandraCore\DatabaseAdapter;
 use SandraCore\Entity;
 use SandraCore\EntityFactory;
 use PDO;
+use SandraCore\Mcp\EmbeddingService;
 use SandraCore\QueryExecutor;
 use SandraCore\Search\BasicSearch;
 use SandraCore\System;
@@ -15,6 +16,7 @@ use SandraCore\Validation\ValidationException;
 class ApiHandler
 {
     private System $system;
+    private ?EmbeddingService $embeddingService;
 
     /** @var array<string, array{factory: EntityFactory, options: array}> */
     private array $routes = [];
@@ -29,9 +31,16 @@ class ApiHandler
         'joined' => [],
     ];
 
-    public function __construct(System $system)
+    /**
+     * @param EmbeddingService|null $embeddingService Optional — when provided
+     *   (and available), entities created or updated through this handler are
+     *   automatically indexed in the semantic search store, mirroring the
+     *   MCP create/update path.
+     */
+    public function __construct(System $system, ?EmbeddingService $embeddingService = null)
     {
         $this->system = $system;
+        $this->embeddingService = $embeddingService;
     }
 
     public function register(string $name, EntityFactory $factory, array $options = []): self
@@ -178,6 +187,8 @@ class ApiHandler
             DatabaseAdapter::setStorage($entity, $storageValue);
         }
 
+        $this->maybeEmbed($entity);
+
         $allowedBrothers = $options['brothers'] ?? [];
         if (!empty($brothersData) && !empty($allowedBrothers)) {
             foreach ($brothersData as $verb => $entries) {
@@ -263,6 +274,8 @@ class ApiHandler
                 DatabaseAdapter::setStorage($entity, $storageValue);
             }
         }
+
+        $this->maybeEmbed($entity);
 
         $allowedBrothers = $options['brothers'] ?? [];
         if (!empty($brothersData) && !empty($allowedBrothers)) {
@@ -493,6 +506,23 @@ class ApiHandler
             }
         }
         return null;
+    }
+
+    /**
+     * Index the entity in the semantic search store, mirroring the MCP
+     * create/update path. No-op when no service is configured or available.
+     * Embedding failures are swallowed — they must never block a write.
+     */
+    private function maybeEmbed(Entity $entity): void
+    {
+        if ($this->embeddingService === null || !$this->embeddingService->isAvailable()) {
+            return;
+        }
+        try {
+            $this->embeddingService->embedEntity($entity);
+        } catch (\Throwable $e) {
+            // Non-fatal: embedding failure should not block the API write.
+        }
     }
 
     /**
