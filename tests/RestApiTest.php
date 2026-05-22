@@ -335,9 +335,26 @@ class RestApiTest extends SandraTestCase
         $this->assertSame('preserved through partial update', $got->getData()['storage']);
     }
 
-    // --- Auto-embedding on REST writes ---
+    // --- Opt-in embedding on REST writes ---
 
-    public function testPostTriggersEmbedWhenServiceAvailable(): void
+    public function testPostDoesNotEmbedByDefault(): void
+    {
+        $spy = $this->createMock(EmbeddingService::class);
+        $spy->method('isAvailable')->willReturn(true);
+        $spy->expects($this->never())->method('embedEntity');
+
+        $factory = new EntityFactory('plat', 'platsFile', $this->system);
+        $api = new ApiHandler($this->system, $spy);
+        $api->register('plats', $factory);
+
+        $response = $api->handle(new ApiRequest('POST', '/plats', [], [
+            'nom' => 'Bruschetta', 'prix' => '6.00', 'categorie' => 'Entrée', 'disponibilite' => 'oui',
+            'storage' => 'long description that the client is choosing NOT to index',
+        ]));
+        $this->assertEquals(201, $response->getStatus());
+    }
+
+    public function testPostEmbedsWhenEmbedTrue(): void
     {
         $spy = $this->createMock(EmbeddingService::class);
         $spy->method('isAvailable')->willReturn(true);
@@ -351,12 +368,37 @@ class RestApiTest extends SandraTestCase
 
         $response = $api->handle(new ApiRequest('POST', '/plats', [], [
             'nom' => 'Bruschetta', 'prix' => '6.00', 'categorie' => 'Entrée', 'disponibilite' => 'oui',
-            'storage' => 'long description that should land in the embedding input',
+            'storage' => 'long description we want indexed',
+            'embed' => true,
         ]));
         $this->assertEquals(201, $response->getStatus());
+        // The `embed` flag must not leak into refs.
+        $this->assertArrayNotHasKey('embed', $response->getData()['refs']);
     }
 
-    public function testPutTriggersEmbedWhenServiceAvailable(): void
+    public function testPutDoesNotEmbedByDefault(): void
+    {
+        $factory = new EntityFactory('plat', 'platsFile', $this->system);
+        $created = $factory->createNew([
+            'nom' => 'Pana Cotta', 'prix' => '6.50', 'categorie' => 'Dessert', 'disponibilite' => 'oui',
+        ]);
+        $factory = new EntityFactory('plat', 'platsFile', $this->system);
+        $factory->populateLocal();
+
+        $spy = $this->createMock(EmbeddingService::class);
+        $spy->method('isAvailable')->willReturn(true);
+        $spy->expects($this->never())->method('embedEntity');
+
+        $api = new ApiHandler($this->system, $spy);
+        $api->register('plats', $factory);
+
+        $response = $api->handle(new ApiRequest('PUT', "/plats/{$created->subjectConcept->idConcept}", [], [
+            'storage' => 'new long body, but client is not opting into reindex',
+        ]));
+        $this->assertEquals(200, $response->getStatus());
+    }
+
+    public function testPutEmbedsWhenEmbedTrue(): void
     {
         $factory = new EntityFactory('plat', 'platsFile', $this->system);
         $created = $factory->createNew([
@@ -374,11 +416,12 @@ class RestApiTest extends SandraTestCase
 
         $response = $api->handle(new ApiRequest('PUT', "/plats/{$created->subjectConcept->idConcept}", [], [
             'storage' => 'new long body to re-embed',
+            'embed' => true,
         ]));
         $this->assertEquals(200, $response->getStatus());
     }
 
-    public function testEmbedNotCalledWhenServiceUnavailable(): void
+    public function testEmbedRequestedButServiceUnavailableIsNoOp(): void
     {
         $spy = $this->createMock(EmbeddingService::class);
         $spy->method('isAvailable')->willReturn(false);
@@ -388,21 +431,24 @@ class RestApiTest extends SandraTestCase
         $api = new ApiHandler($this->system, $spy);
         $api->register('plats', $factory);
 
-        $api->handle(new ApiRequest('POST', '/plats', [], [
+        $response = $api->handle(new ApiRequest('POST', '/plats', [], [
             'nom' => 'Fritto Misto', 'prix' => '12.00', 'categorie' => 'Entrée', 'disponibilite' => 'oui',
+            'embed' => true,
         ]));
+        $this->assertEquals(201, $response->getStatus());
     }
 
-    public function testEmbedNotCalledWhenServiceAbsent(): void
+    public function testEmbedRequestedButServiceAbsentIsNoOp(): void
     {
-        // No EmbeddingService at all (legacy callers / no OPENAI_API_KEY).
-        // Just verifying no fatal — the handler must tolerate $this->embeddingService === null.
+        // No EmbeddingService at all (no OPENAI_API_KEY wired in).
+        // Client asks for embed but the handler tolerates the absent service.
         $factory = new EntityFactory('plat', 'platsFile', $this->system);
         $api = new ApiHandler($this->system);
         $api->register('plats', $factory);
 
         $response = $api->handle(new ApiRequest('POST', '/plats', [], [
             'nom' => 'Caprese', 'prix' => '8.00', 'categorie' => 'Entrée', 'disponibilite' => 'oui',
+            'embed' => true,
         ]));
         $this->assertEquals(201, $response->getStatus());
     }
@@ -419,10 +465,28 @@ class RestApiTest extends SandraTestCase
 
         $response = $api->handle(new ApiRequest('POST', '/plats', [], [
             'nom' => 'Affogato', 'prix' => '7.00', 'categorie' => 'Dessert', 'disponibilite' => 'oui',
+            'embed' => true,
         ]));
         // Write must succeed even if the embed pipeline blows up.
         $this->assertEquals(201, $response->getStatus());
         $this->assertSame('Affogato', $response->getData()['refs']['nom']);
+    }
+
+    public function testEmbedFalseExplicitlyDoesNotEmbed(): void
+    {
+        $spy = $this->createMock(EmbeddingService::class);
+        $spy->method('isAvailable')->willReturn(true);
+        $spy->expects($this->never())->method('embedEntity');
+
+        $factory = new EntityFactory('plat', 'platsFile', $this->system);
+        $api = new ApiHandler($this->system, $spy);
+        $api->register('plats', $factory);
+
+        $response = $api->handle(new ApiRequest('POST', '/plats', [], [
+            'nom' => 'Insalata', 'prix' => '7.50', 'categorie' => 'Entrée', 'disponibilite' => 'oui',
+            'embed' => false,
+        ]));
+        $this->assertEquals(201, $response->getStatus());
     }
 
     public function testSearchPlats(): void
