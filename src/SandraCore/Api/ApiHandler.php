@@ -174,6 +174,8 @@ class ApiHandler
         $storageProvided = array_key_exists('storage', $body);
         $storageValue = $storageProvided ? (string)$body['storage'] : null;
         unset($body['storage']);
+        $embedRequested = !empty($body['embed']);
+        unset($body['embed']);
 
         try {
             $entity = $factory->createNew($body);
@@ -187,7 +189,9 @@ class ApiHandler
             DatabaseAdapter::setStorage($entity, $storageValue);
         }
 
-        $this->maybeEmbed($entity);
+        if ($embedRequested) {
+            $this->maybeEmbed($entity);
+        }
 
         $allowedBrothers = $options['brothers'] ?? [];
         if (!empty($brothersData) && !empty($allowedBrothers)) {
@@ -263,6 +267,8 @@ class ApiHandler
         $storageProvided = array_key_exists('storage', $body);
         $storageValue = $storageProvided ? (string)$body['storage'] : null;
         unset($body['storage']);
+        $embedRequested = !empty($body['embed']);
+        unset($body['embed']);
 
         $factory->update($entity, $body);
 
@@ -275,7 +281,9 @@ class ApiHandler
             }
         }
 
-        $this->maybeEmbed($entity);
+        if ($embedRequested) {
+            $this->maybeEmbed($entity);
+        }
 
         $allowedBrothers = $options['brothers'] ?? [];
         if (!empty($brothersData) && !empty($allowedBrothers)) {
@@ -509,9 +517,12 @@ class ApiHandler
     }
 
     /**
-     * Index the entity in the semantic search store, mirroring the MCP
-     * create/update path. No-op when no service is configured or available.
-     * Embedding failures are swallowed — they must never block a write.
+     * Index the entity in the semantic search store. Only called when the
+     * client opts in via `"embed": true` in the request body — the REST
+     * surface keeps embedding strictly opt-in so high-frequency writes
+     * (logs, pings, audit trails) don't silently rack up OpenAI calls.
+     * No-op when no service is configured or available. Embedding failures
+     * are swallowed — they must never block a write.
      */
     private function maybeEmbed(Entity $entity): void
     {
