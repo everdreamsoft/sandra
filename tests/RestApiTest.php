@@ -180,6 +180,160 @@ class RestApiTest extends SandraTestCase
         $this->assertEquals((int)$conceptId, $data['id']);
     }
 
+    // --- Storage on entities (long-text payload) ---
+
+    public function testPostCreatePlatWithStorage(): void
+    {
+        $longText = "Recette détaillée:\n- pâte fine\n- tomate San Marzano\n- mozza di bufala";
+        $request = new ApiRequest('POST', '/plats', [], [
+            'nom' => 'Pizza Napoletana',
+            'prix' => '13.50',
+            'categorie' => 'Pizza',
+            'disponibilite' => 'oui',
+            'storage' => $longText,
+        ]);
+        $response = $this->api->handle($request);
+
+        $this->assertEquals(201, $response->getStatus());
+        $data = $response->getData();
+        $this->assertArrayHasKey('storage', $data, 'Response should echo storage when provided');
+        $this->assertSame($longText, $data['storage']);
+        $this->assertArrayNotHasKey('storage', $data['refs'], 'storage must NOT leak into refs');
+    }
+
+    public function testPostWithoutStorageOmitsField(): void
+    {
+        $request = new ApiRequest('POST', '/plats', [], [
+            'nom' => 'Penne Arrabbiata',
+            'prix' => '11.00',
+            'categorie' => 'Pasta',
+            'disponibilite' => 'oui',
+        ]);
+        $response = $this->api->handle($request);
+
+        $this->assertEquals(201, $response->getStatus());
+        $this->assertArrayNotHasKey('storage', $response->getData());
+    }
+
+    public function testGetByIdWithIncludeStorageReturnsPayload(): void
+    {
+        // Seed an entity with storage
+        $created = $this->api->handle(new ApiRequest('POST', '/plats', [], [
+            'nom' => 'Risotto',
+            'prix' => '13.00',
+            'categorie' => 'Pasta',
+            'disponibilite' => 'oui',
+            'storage' => 'long recipe text',
+        ]));
+        $id = $created->getData()['id'];
+
+        // Fresh handler (mimics a new request, factory not yet populated for this id)
+        $freshFactory = new EntityFactory('plat', 'platsFile', $this->system);
+        $freshApi = new ApiHandler($this->system);
+        $freshApi->register('plats', $freshFactory);
+
+        $with = $freshApi->handle(new ApiRequest('GET', "/plats/$id", ['include_storage' => 'true']));
+        $this->assertEquals(200, $with->getStatus());
+        $this->assertSame('long recipe text', $with->getData()['storage']);
+
+        $without = $freshApi->handle(new ApiRequest('GET', "/plats/$id"));
+        $this->assertArrayNotHasKey('storage', $without->getData(), 'storage is opt-in via ?include_storage=true');
+    }
+
+    public function testGetListWithIncludeStorageBatchFetches(): void
+    {
+        // Two entities, only one with storage
+        $a = $this->api->handle(new ApiRequest('POST', '/plats', [], [
+            'nom' => 'Tagliatelle', 'prix' => '12.00', 'categorie' => 'Pasta', 'disponibilite' => 'oui',
+            'storage' => 'with storage',
+        ]));
+        $b = $this->api->handle(new ApiRequest('POST', '/plats', [], [
+            'nom' => 'Gnocchi', 'prix' => '11.50', 'categorie' => 'Pasta', 'disponibilite' => 'oui',
+        ]));
+        $idA = $a->getData()['id'];
+        $idB = $b->getData()['id'];
+
+        $freshFactory = new EntityFactory('plat', 'platsFile', $this->system);
+        $freshApi = new ApiHandler($this->system);
+        $freshApi->register('plats', $freshFactory);
+
+        $list = $freshApi->handle(new ApiRequest('GET', '/plats', ['include_storage' => 'true']));
+        $this->assertEquals(200, $list->getStatus());
+
+        $byId = [];
+        foreach ($list->getData()['items'] as $item) {
+            $byId[$item['id']] = $item;
+        }
+
+        $this->assertArrayHasKey('storage', $byId[$idA]);
+        $this->assertSame('with storage', $byId[$idA]['storage']);
+        $this->assertArrayHasKey('storage', $byId[$idB]);
+        $this->assertNull($byId[$idB]['storage'], 'Entity without storage row should serialize as null');
+    }
+
+    public function testPutReplaceStorage(): void
+    {
+        $created = $this->api->handle(new ApiRequest('POST', '/plats', [], [
+            'nom' => 'Carbonara', 'prix' => '12.00', 'categorie' => 'Pasta', 'disponibilite' => 'oui',
+            'storage' => 'v1',
+        ]));
+        $id = $created->getData()['id'];
+
+        $put = $this->api->handle(new ApiRequest('PUT', "/plats/$id", [], [
+            'storage' => 'v2 — replaced',
+        ]));
+        $this->assertEquals(200, $put->getStatus());
+        $this->assertSame('v2 — replaced', $put->getData()['storage']);
+
+        // Verify persisted
+        $freshFactory = new EntityFactory('plat', 'platsFile', $this->system);
+        $freshApi = new ApiHandler($this->system);
+        $freshApi->register('plats', $freshFactory);
+        $got = $freshApi->handle(new ApiRequest('GET', "/plats/$id", ['include_storage' => '1']));
+        $this->assertSame('v2 — replaced', $got->getData()['storage']);
+    }
+
+    public function testPutClearStorageWithEmptyString(): void
+    {
+        $created = $this->api->handle(new ApiRequest('POST', '/plats', [], [
+            'nom' => 'Lasagne', 'prix' => '14.00', 'categorie' => 'Pasta', 'disponibilite' => 'oui',
+            'storage' => 'to be cleared',
+        ]));
+        $id = $created->getData()['id'];
+
+        $put = $this->api->handle(new ApiRequest('PUT', "/plats/$id", [], [
+            'storage' => '',
+        ]));
+        $this->assertEquals(200, $put->getStatus());
+        $this->assertNull($put->getData()['storage'], 'Empty string clears storage; response reflects null');
+
+        // Verify the row is gone (not just blank)
+        $freshFactory = new EntityFactory('plat', 'platsFile', $this->system);
+        $freshApi = new ApiHandler($this->system);
+        $freshApi->register('plats', $freshFactory);
+        $got = $freshApi->handle(new ApiRequest('GET', "/plats/$id", ['include_storage' => 'yes']));
+        $this->assertNull($got->getData()['storage']);
+    }
+
+    public function testPutWithoutStorageDoesNotTouchExisting(): void
+    {
+        $created = $this->api->handle(new ApiRequest('POST', '/plats', [], [
+            'nom' => 'Ossobuco', 'prix' => '18.00', 'categorie' => 'Plat', 'disponibilite' => 'oui',
+            'storage' => 'preserved through partial update',
+        ]));
+        $id = $created->getData()['id'];
+
+        $this->api->handle(new ApiRequest('PUT', "/plats/$id", [], [
+            'prix' => '19.00',
+        ]));
+
+        $freshFactory = new EntityFactory('plat', 'platsFile', $this->system);
+        $freshApi = new ApiHandler($this->system);
+        $freshApi->register('plats', $freshFactory);
+        $got = $freshApi->handle(new ApiRequest('GET', "/plats/$id", ['include_storage' => 'true']));
+        $this->assertSame('preserved through partial update', $got->getData()['storage']);
+    }
+
     public function testSearchPlats(): void
     {
         $request = new ApiRequest('GET', '/plats', ['search' => 'pizza']);
