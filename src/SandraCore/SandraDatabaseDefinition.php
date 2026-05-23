@@ -66,7 +66,7 @@ class SandraDatabaseDefinition
                   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
                   `idConcept` int(10) UNSIGNED NOT NULL,
                   `linkReferenced` int(10) UNSIGNED NOT NULL,
-                  `value` varchar(255) CHARACTER SET utf8 NOT NULL DEFAULT '',
+                  `value` varchar(255) CHARACTER SET utf8mb4 NOT NULL DEFAULT '',
                 PRIMARY KEY (`id`),
                 UNIQUE KEY `unique_ref` (`idConcept`,`linkReferenced`),
                 KEY `linkReferenced` (`linkReferenced`),
@@ -100,7 +100,8 @@ class SandraDatabaseDefinition
                 PRIMARY KEY (`id`)
                 )
                 ENGINE=InnoDB
-                DEFAULT CHARSET=utf8;";
+                DEFAULT CHARSET=utf8mb4
+                COLLATE=utf8mb4_unicode_ci;";
 
         System::$pdo->get()->query($sql);
 
