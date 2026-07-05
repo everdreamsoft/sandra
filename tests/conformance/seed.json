@@ -1,0 +1,56 @@
+{
+  "description": "Declarative dataset seeded by both the JS and PHP conformance runners. Expectations in queries.json refer to ref values, never to ids.",
+  "factories": [
+    { "isa": "person", "file": "person_file" },
+    { "isa": "team", "file": "team_file" }
+  ],
+  "entities": [
+    {
+      "key": "alice",
+      "factory": "person",
+      "refs": { "name": "Alice", "age": "30", "city": "Geneva", "tier": "gold" },
+      "storage": "Alice's long biography text.",
+      "brothers": [
+        { "verb": "likes", "target": "coffee" },
+        { "verb": "member_of", "target": "team_red" }
+      ]
+    },
+    {
+      "key": "bob",
+      "factory": "person",
+      "refs": { "name": "Bob", "age": "9", "city": "Lausanne", "tier": "silver" },
+      "brothers": [
+        { "verb": "likes", "target": "tea" },
+        { "verb": "member_of", "target": "team_red" }
+      ]
+    },
+    {
+      "key": "carol",
+      "factory": "person",
+      "refs": { "name": "Carol", "age": "41", "city": "Geneva", "tier": "platinum" },
+      "brothers": [
+        { "verb": "likes", "target": "coffee" },
+        { "verb": "status", "target": "banned" }
+      ]
+    },
+    {
+      "key": "dave",
+      "factory": "person",
+      "refs": { "name": "Dave", "age": "25", "city": "Zurich", "tier": "gold" }
+    },
+    {
+      "key": "eve_deleted",
+      "factory": "person",
+      "refs": { "name": "Eve", "age": "50", "city": "Geneva", "tier": "gold" },
+      "deleted": true
+    },
+    {
+      "key": "team_alpha",
+      "factory": "team",
+      "refs": { "name": "Alpha", "size": "3" }
+    }
+  ],
+  "joined": [
+    { "from": "alice", "verb": "works_with", "to": "bob", "refs": { "since": "2024" } }
+  ]
+}

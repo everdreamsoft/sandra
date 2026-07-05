@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://everdreamsoft.com/sandraql/1.0/schema.json",
+  "title": "SandraQL query AST v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sandraql", "type", "match"],
+  "properties": {
+    "sandraql": { "const": "1.0" },
+    "type": { "const": "query" },
+    "match": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["isa"],
+      "properties": {
+        "isa": { "$ref": "#/$defs/ident" },
+        "file": { "$ref": "#/$defs/ident" }
+      }
+    },
+    "where": { "$ref": "#/$defs/whereNode" },
+    "order": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ref"],
+        "properties": {
+          "ref": { "$ref": "#/$defs/ident" },
+          "direction": { "enum": ["ASC", "DESC"] },
+          "numeric": { "type": "boolean" }
+        }
+      }
+    },
+    "limit": { "type": "integer", "minimum": 0 },
+    "offset": { "type": "integer", "minimum": 0 },
+    "select": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fields": { "type": "array", "items": { "type": "string" } },
+        "storage": { "type": "boolean" }
+      }
+    }
+  },
+  "$defs": {
+    "ident": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "scalar": { "type": ["string", "number", "boolean", "null"] },
+    "conceptRef": { "type": ["string", "number"] },
+    "whereNode": {
+      "oneOf": [
+        { "$ref": "#/$defs/andNode" },
+        { "$ref": "#/$defs/orNode" },
+        { "$ref": "#/$defs/notNode" },
+        { "$ref": "#/$defs/refLeaf" },
+        { "$ref": "#/$defs/hasLeaf" }
+      ]
+    },
+    "andNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["and"],
+      "properties": {
+        "and": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/whereNode" } }
+      }
+    },
+    "orNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["or"],
+      "properties": {
+        "or": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/whereNode" } }
+      }
+    },
+    "notNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["not"],
+      "properties": {
+        "not": { "$ref": "#/$defs/whereNode" }
+      }
+    },
+    "refLeaf": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "op", "value"],
+      "properties": {
+        "ref": { "$ref": "#/$defs/ident" },
+        "op": { "enum": ["=", "!=", ">", ">=", "<", "<=", "LIKE", "IN"] },
+        "value": {
+          "oneOf": [
+            { "$ref": "#/$defs/scalar" },
+            { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/scalar" } }
+          ]
+        }
+      }
+    },
+    "hasLeaf": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["has"],
+      "properties": {
+        "has": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "verb": { "$ref": "#/$defs/conceptRef" },
+            "target": { "$ref": "#/$defs/conceptRef" }
+          }
+        }
+      }
+    }
+  }
+}

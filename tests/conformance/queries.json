@@ -1,0 +1,170 @@
+[
+  {
+    "name": "all persons (soft-deleted excluded)",
+    "sandraql": "MATCH person ORDER BY name",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "order": [ { "ref": "name" } ]
+    },
+    "expect": { "order": "strict", "rows": [ { "name": "Alice" }, { "name": "Bob" }, { "name": "Carol" }, { "name": "Dave" } ] }
+  },
+  {
+    "name": "ref equality",
+    "sandraql": "MATCH person WHERE city = \"Geneva\" ORDER BY name",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": { "ref": "city", "op": "=", "value": "Geneva" },
+      "order": [ { "ref": "name" } ]
+    },
+    "expect": { "order": "strict", "rows": [ { "name": "Alice" }, { "name": "Carol" } ] }
+  },
+  {
+    "name": "numeric greater-than (string '9' must NOT match > 10 numerically... it is below)",
+    "sandraql": "MATCH person WHERE age > 26 ORDER BY name",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": { "ref": "age", "op": ">", "value": 26 },
+      "order": [ { "ref": "name" } ]
+    },
+    "expect": { "order": "strict", "rows": [ { "name": "Alice" }, { "name": "Carol" } ] }
+  },
+  {
+    "name": "numeric sort DESC (proves CAST: 9 < 25 < 30 < 41)",
+    "sandraql": "MATCH person ORDER BY age DESC NUMERIC",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "order": [ { "ref": "age", "direction": "DESC", "numeric": true } ]
+    },
+    "expect": { "order": "strict", "rows": [ { "name": "Carol" }, { "name": "Alice" }, { "name": "Dave" }, { "name": "Bob" } ] }
+  },
+  {
+    "name": "LIKE prefix",
+    "sandraql": "MATCH person WHERE name LIKE \"Al%\"",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": { "ref": "name", "op": "LIKE", "value": "Al%" }
+    },
+    "expect": { "order": "set", "rows": [ { "name": "Alice" } ] }
+  },
+  {
+    "name": "IN list",
+    "sandraql": "MATCH person WHERE tier IN (\"gold\", \"platinum\") ORDER BY name",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": { "ref": "tier", "op": "IN", "value": ["gold", "platinum"] },
+      "order": [ { "ref": "name" } ]
+    },
+    "expect": { "order": "strict", "rows": [ { "name": "Alice" }, { "name": "Carol" }, { "name": "Dave" } ] }
+  },
+  {
+    "name": "brother filter (HAS verb -> target)",
+    "sandraql": "MATCH person WHERE HAS likes -> coffee ORDER BY name",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": { "has": { "verb": "likes", "target": "coffee" } },
+      "order": [ { "ref": "name" } ]
+    },
+    "expect": { "order": "strict", "rows": [ { "name": "Alice" }, { "name": "Carol" } ] }
+  },
+  {
+    "name": "verb-only HAS",
+    "sandraql": "MATCH person WHERE HAS member_of ORDER BY name",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": { "has": { "verb": "member_of" } },
+      "order": [ { "ref": "name" } ]
+    },
+    "expect": { "order": "strict", "rows": [ { "name": "Alice" }, { "name": "Bob" } ] }
+  },
+  {
+    "name": "NOT HAS exclusion",
+    "sandraql": "MATCH person WHERE NOT HAS status -> banned ORDER BY name",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": { "not": { "has": { "verb": "status", "target": "banned" } } },
+      "order": [ { "ref": "name" } ]
+    },
+    "expect": { "order": "strict", "rows": [ { "name": "Alice" }, { "name": "Bob" }, { "name": "Dave" } ] }
+  },
+  {
+    "name": "combined ref + brother in one query (the PHP in-memory-intersect fix)",
+    "sandraql": "MATCH person WHERE city = \"Geneva\" AND HAS likes -> coffee AND NOT HAS status -> banned",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": {
+        "and": [
+          { "ref": "city", "op": "=", "value": "Geneva" },
+          { "has": { "verb": "likes", "target": "coffee" } },
+          { "not": { "has": { "verb": "status", "target": "banned" } } }
+        ]
+      }
+    },
+    "expect": { "order": "set", "rows": [ { "name": "Alice" } ] }
+  },
+  {
+    "name": "OR across refs",
+    "requires": ["or"],
+    "sandraql": "MATCH person WHERE city = \"Zurich\" OR tier = \"platinum\" ORDER BY name",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": {
+        "or": [
+          { "ref": "city", "op": "=", "value": "Zurich" },
+          { "ref": "tier", "op": "=", "value": "platinum" }
+        ]
+      },
+      "order": [ { "ref": "name" } ]
+    },
+    "expect": { "order": "strict", "rows": [ { "name": "Carol" }, { "name": "Dave" } ] }
+  },
+  {
+    "name": "OR mixing ref and HAS with NOT group",
+    "requires": ["or"],
+    "sandraql": "MATCH person WHERE (HAS likes -> tea OR city = \"Zurich\") AND NOT (tier = \"platinum\") ORDER BY name",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": {
+        "and": [
+          {
+            "or": [
+              { "has": { "verb": "likes", "target": "tea" } },
+              { "ref": "city", "op": "=", "value": "Zurich" }
+            ]
+          },
+          { "not": { "ref": "tier", "op": "=", "value": "platinum" } }
+        ]
+      },
+      "order": [ { "ref": "name" } ]
+    },
+    "expect": { "order": "strict", "rows": [ { "name": "Bob" }, { "name": "Dave" } ] }
+  },
+  {
+    "name": "limit + offset pagination",
+    "sandraql": "MATCH person ORDER BY name LIMIT 2 OFFSET 1",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "order": [ { "ref": "name" } ],
+      "limit": 2, "offset": 1
+    },
+    "expect": { "order": "strict", "rows": [ { "name": "Bob" }, { "name": "Carol" } ] }
+  },
+  {
+    "name": "unknown ref concept matches nothing",
+    "sandraql": "MATCH person WHERE nonexistent_ref_xyz = \"x\"",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": { "ref": "nonexistent_ref_xyz", "op": "=", "value": "x" }
+    },
+    "expect": { "order": "set", "rows": [] }
+  },
+  {
+    "name": "projection keeps only selected fields",
+    "sandraql": "MATCH person WHERE name = \"Alice\" SELECT city",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": { "ref": "name", "op": "=", "value": "Alice" },
+      "select": { "fields": ["city"] }
+    },
+    "expect": { "order": "set", "rows": [ { "city": "Geneva" } ], "exactFields": true }
+  }
+]

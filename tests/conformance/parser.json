@@ -1,0 +1,108 @@
+[
+  {
+    "name": "minimal match",
+    "sandraql": "MATCH person",
+    "ast": { "sandraql": "1.0", "type": "query", "match": { "isa": "person" } }
+  },
+  {
+    "name": "match with explicit file",
+    "sandraql": "MATCH cat IN AnimalFile",
+    "ast": { "sandraql": "1.0", "type": "query", "match": { "isa": "cat", "file": "AnimalFile" } }
+  },
+  {
+    "name": "single ref equality",
+    "sandraql": "MATCH person WHERE name = \"Alice\"",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": { "ref": "name", "op": "=", "value": "Alice" }
+    }
+  },
+  {
+    "name": "numeric comparison and limit",
+    "sandraql": "MATCH person WHERE age > 30 LIMIT 20",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": { "ref": "age", "op": ">", "value": 30 },
+      "limit": 20
+    }
+  },
+  {
+    "name": "and of ref and has",
+    "sandraql": "MATCH person WHERE age >= 18 AND HAS member_of -> team42",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": {
+        "and": [
+          { "ref": "age", "op": ">=", "value": 18 },
+          { "has": { "verb": "member_of", "target": "team42" } }
+        ]
+      }
+    }
+  },
+  {
+    "name": "or group with parentheses",
+    "sandraql": "MATCH person WHERE (city = \"Geneva\" OR city = \"Lausanne\") AND age < 65",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": {
+        "and": [
+          {
+            "or": [
+              { "ref": "city", "op": "=", "value": "Geneva" },
+              { "ref": "city", "op": "=", "value": "Lausanne" }
+            ]
+          },
+          { "ref": "age", "op": "<", "value": 65 }
+        ]
+      }
+    }
+  },
+  {
+    "name": "not has",
+    "sandraql": "MATCH person WHERE NOT HAS status -> banned",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": { "not": { "has": { "verb": "status", "target": "banned" } } }
+    }
+  },
+  {
+    "name": "in list and like",
+    "sandraql": "MATCH person WHERE tier IN (\"gold\", \"platinum\") AND name LIKE \"al%\"",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": {
+        "and": [
+          { "ref": "tier", "op": "IN", "value": ["gold", "platinum"] },
+          { "ref": "name", "op": "LIKE", "value": "al%" }
+        ]
+      }
+    }
+  },
+  {
+    "name": "order numeric desc with offset and select",
+    "sandraql": "MATCH person WHERE age > 0 ORDER BY age DESC NUMERIC LIMIT 10 OFFSET 5 SELECT name, age WITH STORAGE",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": { "ref": "age", "op": ">", "value": 0 },
+      "order": [ { "ref": "age", "direction": "DESC", "numeric": true } ],
+      "limit": 10, "offset": 5,
+      "select": { "fields": ["name", "age"], "storage": true }
+    }
+  },
+  {
+    "name": "has by target concept id",
+    "sandraql": "MATCH person WHERE HAS -> 195",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": { "has": { "target": 195 } }
+    }
+  },
+  {
+    "name": "verb-only has",
+    "sandraql": "MATCH person WHERE HAS friend",
+    "ast": {
+      "sandraql": "1.0", "type": "query", "match": { "isa": "person" },
+      "where": { "has": { "verb": "friend" } }
+    }
+  }
+]
