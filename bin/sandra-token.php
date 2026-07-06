@@ -116,6 +116,12 @@ function cmdCreate(PDO $pdo, string $table, array $opts, array $dbConfig): void
     $dbName = $opts['db-name'] ?? null;
     $skipBootstrap = !empty($opts['no-bootstrap']);
     $version = isset($opts['version']) ? (int)$opts['version'] : 8;
+    $principal = isset($opts['principal']) ? (int)$opts['principal'] : null;
+
+    if ($principal !== null && $principal <= 0) {
+        fwrite(STDERR, "Error: --principal must be a positive concept id\n");
+        exit(1);
+    }
 
     if ($name === null || $env === null) {
         fwrite(STDERR, "Error: --name and --env are required\n\n");
@@ -155,8 +161,8 @@ function cmdCreate(PDO $pdo, string $table, array $opts, array $dbConfig): void
     }
 
     try {
-        $sql = "INSERT INTO `{$table}` (token_hash, name, env, scopes, db_host, db_name, datagraph_version, expires_at)
-                VALUES (:hash, :name, :env, :scopes, :db_host, :db_name, :version, :expires_at)";
+        $sql = "INSERT INTO `{$table}` (token_hash, name, env, scopes, db_host, db_name, datagraph_version, principal_concept_id, expires_at)
+                VALUES (:hash, :name, :env, :scopes, :db_host, :db_name, :version, :principal, :expires_at)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             ':hash' => $hash,
@@ -166,6 +172,7 @@ function cmdCreate(PDO $pdo, string $table, array $opts, array $dbConfig): void
             ':db_host' => $dbHost,
             ':db_name' => $dbName,
             ':version' => $version,
+            ':principal' => $principal,
             ':expires_at' => $expiresAt,
         ]);
         $id = (int)$pdo->lastInsertId();
@@ -243,7 +250,7 @@ function bootstrapEnv(string $env, string $userName, array $dbConfig, ?string $o
 function cmdList(PDO $pdo, string $table): void
 {
     try {
-        $sql = "SELECT id, name, env, scopes, datagraph_version, created_at, last_used_at, expires_at, disabled_at
+        $sql = "SELECT id, name, env, scopes, datagraph_version, principal_concept_id, created_at, last_used_at, expires_at, disabled_at
                 FROM `{$table}` ORDER BY created_at DESC";
         $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
@@ -362,6 +369,8 @@ function cmdHelp(?string $command = null): void
         echo "  --name=NAME            Human-readable label (required)\n";
         echo "  --env=ENV              SANDRA_ENV / table prefix (required)\n";
         echo "  --scopes=SCOPES        CSV: mcp:r,mcp:w,api:r,api:w (default: all)\n";
+        echo "  --principal=CONCEPT_ID Act as this concept (graph ACL): the token only sees\n";
+        echo "                         files granted via sandra_allow_access to that principal\n";
         echo "  --expires-days=N       Expire after N days (default: never)\n";
         echo "  --db-host=HOST         Override DB host for this token (advanced)\n";
         echo "  --db-name=NAME         Override DB name for this token (advanced)\n";

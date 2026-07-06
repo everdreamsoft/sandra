@@ -5,11 +5,31 @@ namespace SandraCore\Mcp\Tools;
 
 use SandraCore\EntityFactory;
 use SandraCore\Mcp\EntitySerializer;
+use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\AclResolver;
+use SandraCore\Mcp\AclAwareToolInterface;
 use SandraCore\Mcp\McpToolInterface;
 use SandraCore\System;
 
-class GetSchemaTool implements McpToolInterface
+class GetSchemaTool implements McpToolInterface, AclAwareToolInterface
 {
+    private ?AccessContext $access = null;
+
+    public function setAccess(?AccessContext $access): void
+    {
+        $this->access = $access;
+    }
+
+    private function factoryReadable(string $name): bool
+    {
+        if ($this->access === null) {
+            return true;
+        }
+        $factory = $this->factories[$name]['factory'] ?? null;
+        return $factory !== null
+            && AclResolver::fileReadable($this->system, $this->access, (string)$factory->entityContainedIn);
+    }
+
     /** @var array<string, array{factory: EntityFactory, options: array}> */
     private array $factories;
     private System $system;
@@ -54,7 +74,7 @@ class GetSchemaTool implements McpToolInterface
         $includeSamples = $args['include_samples'] ?? true;
 
         if ($targetFactory !== null) {
-            if (!isset($this->factories[$targetFactory])) {
+            if (!isset($this->factories[$targetFactory]) || !$this->factoryReadable($targetFactory)) {
                 throw new \InvalidArgumentException("Unknown factory: $targetFactory. Use sandra_list_factories to see available factories.");
             }
             return [
@@ -66,6 +86,9 @@ class GetSchemaTool implements McpToolInterface
 
         $schemas = [];
         foreach ($this->factories as $name => $entry) {
+            if (!$this->factoryReadable($name)) {
+                continue; // graph ACL: hidden file
+            }
             $schemas[$name] = $this->describeFactory($name, $entry['factory'], $includeSamples);
         }
 

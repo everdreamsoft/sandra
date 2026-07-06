@@ -15,6 +15,8 @@ use SandraCore\Mcp\Tools\UpdateEntityTool;
 use SandraCore\Mcp\Tools\GetTripletsTool;
 use SandraCore\Mcp\Tools\GetReferencesTool;
 use SandraCore\Mcp\Tools\ListEntitiesTool;
+use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\AclResolver;
 use SandraCore\Mcp\Tools\QueryEntitiesTool;
 use SandraCore\Mcp\Tools\SandraQlTool;
 use SandraCore\Mcp\Tools\GetSchemaTool;
@@ -315,7 +317,7 @@ INSTRUCTIONS;
         };
 
         $register(new GetSchemaTool($this->factories, $system));
-        $register(new ListFactoriesTool($this->factories));
+        $register(new ListFactoriesTool($this->factories, $system));
         $register(new DescribeFactoryTool($this->factories, $system));
         $register(new ListEntitiesTool($this->factories, $system));
         $register(new QueryEntitiesTool($this->factories, $system));
@@ -493,6 +495,48 @@ INSTRUCTIONS;
         return $this->buildResult($id, ['tools' => $this->tools->listDefinitions()]);
     }
 
+    /** Principal (concept id) the current request acts as; null = unrestricted. */
+    private ?int $requestPrincipal = null;
+
+    /** @var array<int, array{ctx: AccessContext, at: int}> short-lived per-principal cache */
+    private array $accessCache = [];
+
+    private const ACCESS_CACHE_TTL = 30; // seconds — grants changes propagate quickly
+
+    /**
+     * Tools that enforce the graph-native ACL (AclAwareToolInterface). Any
+     * other tool is refused for principal-scoped requests — default-deny.
+     */
+    public const ACL_AWARE_TOOLS = [
+        'sandra_ql',
+        'sandra_query_entities',
+        'sandra_list_factories',
+        'sandra_describe_factory',
+        'sandra_get_schema',
+    ];
+
+    /**
+     * Scope the NEXT dispatches to a principal (token principal_concept_id).
+     * Set per request by the transport and reset in its finally block —
+     * the server instance is cached per env and shared between tokens.
+     */
+    public function setRequestPrincipal(?int $principalConceptId): void
+    {
+        $this->requestPrincipal = $principalConceptId;
+    }
+
+    private function resolveRequestAccess(): AccessContext
+    {
+        $principal = (int)$this->requestPrincipal;
+        $cached = $this->accessCache[$principal] ?? null;
+        if ($cached !== null && (time() - $cached['at']) < self::ACCESS_CACHE_TTL) {
+            return $cached['ctx'];
+        }
+        $ctx = AclResolver::resolve($this->getSystem(), $principal);
+        $this->accessCache[$principal] = ['ctx' => $ctx, 'at' => time()];
+        return $ctx;
+    }
+
     private function buildToolsCallResult($id, array $params): array
     {
         $name = $params['name'] ?? '';
@@ -515,6 +559,26 @@ INSTRUCTIONS;
         $this->callsSinceBoot++;
 
         $t0 = microtime(true);
+
+        // Graph-native ACL: principal-scoped requests may only use ACL-aware
+        // tools, and those run with the principal's AccessContext injected.
+        $aclTool = null;
+        if ($this->requestPrincipal !== null) {
+            if (!in_array($name, self::ACL_AWARE_TOOLS, true)) {
+                $this->log("   tool=$name BLOCKED for principal {$this->requestPrincipal} (not ACL-aware)");
+                return $this->buildResult($id, [
+                    'content' => [['type' => 'text', 'text' => 'Error: this token acts as a principal (graph ACL) and tool "'
+                        . $name . '" is not ACL-aware yet. Available tools: ' . implode(', ', self::ACL_AWARE_TOOLS) . '.']],
+                    'isError' => true,
+                ]);
+            }
+            $candidate = $this->tools->get($name);
+            if ($candidate instanceof AclAwareToolInterface) {
+                $aclTool = $candidate;
+                $aclTool->setAccess($this->resolveRequestAccess());
+            }
+        }
+
         try {
             $result = $this->tools->call($name, $arguments);
             $elapsed = round((microtime(true) - $t0) * 1000);
@@ -530,6 +594,9 @@ INSTRUCTIONS;
                 'isError' => true,
             ]);
         } finally {
+            if ($aclTool !== null) {
+                $aclTool->setAccess(null);
+            }
             gc_collect_cycles();
         }
     }

@@ -132,6 +132,7 @@ class SandraDatabaseDefinition
                         `db_host` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
                         `db_name` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
                         `datagraph_version` tinyint(3) unsigned NOT NULL DEFAULT 8,
+                        `principal_concept_id` int(10) unsigned DEFAULT NULL,
                         `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         `expires_at` timestamp NULL DEFAULT NULL,
                         `disabled_at` timestamp NULL DEFAULT NULL,
@@ -165,6 +166,25 @@ class SandraDatabaseDefinition
                     );
                 }
             }
+
+            // Migration: add principal_concept_id (graph-native ACL — the concept
+            // this token acts as; NULL = unrestricted root token).
+            try {
+                System::$pdo->get()->exec(
+                    "ALTER TABLE `$sharedTokenTable`
+                     ADD COLUMN IF NOT EXISTS `principal_concept_id` int(10) unsigned DEFAULT NULL"
+                );
+            } catch (\Throwable $e) {
+                $check = System::$pdo->get()->query(
+                    "SHOW COLUMNS FROM `$sharedTokenTable` LIKE 'principal_concept_id'"
+                );
+                if ($check !== false && $check->fetch() === false) {
+                    System::$pdo->get()->exec(
+                        "ALTER TABLE `$sharedTokenTable`
+                         ADD COLUMN `principal_concept_id` int(10) unsigned DEFAULT NULL"
+                    );
+                }
+            }
         }
 
         // Per-token rate limit buckets — one row per (token, minute). Used by
@@ -191,6 +211,7 @@ class SandraDatabaseDefinition
                 `db_host` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
                 `db_name` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
                 `datagraph_version` tinyint(3) unsigned NOT NULL DEFAULT 8,
+                `principal_concept_id` int(10) unsigned DEFAULT NULL,
                 `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 `last_activity_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 `deleted_at` timestamp NULL DEFAULT NULL,

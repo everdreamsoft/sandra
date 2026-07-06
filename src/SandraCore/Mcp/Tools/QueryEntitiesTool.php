@@ -3,9 +3,12 @@ declare(strict_types=1);
 
 namespace SandraCore\Mcp\Tools;
 
+use SandraCore\Acl\AccessContext;
 use SandraCore\EntityFactory;
+use SandraCore\Mcp\AclAwareToolInterface;
 use SandraCore\Mcp\EntitySerializer;
 use SandraCore\Mcp\McpToolInterface;
+use SandraCore\Ql\AstExecutor;
 use SandraCore\System;
 
 /**
@@ -17,8 +20,10 @@ use SandraCore\System;
  * "top 10 by lastLogin" over 231 000 entities actually scans the full set
  * in one round trip and returns the true top 10.
  */
-class QueryEntitiesTool implements McpToolInterface
+class QueryEntitiesTool implements McpToolInterface, AclAwareToolInterface
 {
+    private ?AccessContext $access = null;
+
     /** @var array<string, array{factory: EntityFactory, options: array}> */
     private array $factories;
     private System $system;
@@ -27,6 +32,11 @@ class QueryEntitiesTool implements McpToolInterface
     {
         $this->factories = &$factories;
         $this->system = $system;
+    }
+
+    public function setAccess(?AccessContext $access): void
+    {
+        $this->access = $access;
     }
 
     public function name(): string
@@ -158,6 +168,58 @@ class QueryEntitiesTool implements McpToolInterface
         $fields = $args['fields'] ?? null;
 
         $factory = $this->factories[$name]['factory'];
+
+        // Principal-scoped request (graph ACL): route through the SandraQL
+        // executor, whose pre-flight enforces file readability. The args map
+        // 1:1 onto the canonical AST.
+        if ($this->access !== null) {
+            $ast = [
+                'sandraql' => '1.0',
+                'type' => 'query',
+                'match' => ['isa' => (string)$factory->entityIsa, 'file' => (string)$factory->entityContainedIn],
+            ];
+            $leaves = [];
+            foreach ($filters as $f) {
+                $leaves[] = ['ref' => (string)$f['ref'], 'op' => (string)$f['op'], 'value' => $f['value'] ?? null];
+            }
+            if (count($leaves) === 1) {
+                $ast['where'] = $leaves[0];
+            } elseif (count($leaves) > 1) {
+                $ast['where'] = ['and' => $leaves];
+            }
+            if ($sort !== null) {
+                $term = ['ref' => (string)$sort['ref']];
+                if (!empty($sort['direction'])) {
+                    $term['direction'] = strtoupper((string)$sort['direction']) === 'DESC' ? 'DESC' : 'ASC';
+                }
+                if (!empty($sort['numeric'])) {
+                    $term['numeric'] = true;
+                }
+                $ast['order'] = [$term];
+            }
+            $ast['limit'] = $limit;
+            if ($offset > 0) {
+                $ast['offset'] = $offset;
+            }
+            $select = [];
+            if (is_array($fields) && $fields !== []) {
+                $select['fields'] = array_values(array_map('strval', $fields));
+            }
+            if (!empty($args['include_storage'])) {
+                $select['storage'] = true;
+            }
+            if ($select !== []) {
+                $ast['select'] = $select;
+            }
+
+            $executor = (new AstExecutor($this->system))->withAccess($this->access);
+            $entities = $executor->execute($ast);
+            return [
+                'factory' => $name,
+                'count' => count($entities),
+                'entities' => AstExecutor::serialize($entities, $ast),
+            ];
+        }
 
         // Fresh factory so the query does not inherit cached state from prior calls.
         $queryFactory = new EntityFactory(

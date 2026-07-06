@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace SandraCore\Mcp\Tools;
 
+use SandraCore\Acl\AccessContext;
+use SandraCore\Mcp\AclAwareToolInterface;
 use SandraCore\Mcp\McpToolInterface;
 use SandraCore\Ql\AstExecutor;
 use SandraCore\Ql\Parser;
@@ -17,13 +19,19 @@ use SandraCore\System;
  * SandraQL is the unified query language shared with the JS library
  * (@everdreamsoft/sandraql). Pass either `query` (text) or `ast` (JSON).
  */
-class SandraQlTool implements McpToolInterface
+class SandraQlTool implements McpToolInterface, AclAwareToolInterface
 {
     private System $system;
+    private ?AccessContext $access = null;
 
     public function __construct(System $system)
     {
         $this->system = $system;
+    }
+
+    public function setAccess(?AccessContext $access): void
+    {
+        $this->access = $access;
     }
 
     public function name(): string
@@ -69,7 +77,7 @@ class SandraQlTool implements McpToolInterface
 
         try {
             $ast = $hasQuery ? Parser::parse($args['query']) : $args['ast'];
-            $executor = new AstExecutor($this->system);
+            $executor = (new AstExecutor($this->system))->withAccess($this->access);
             $entities = $executor->execute($ast);
             return [
                 'count' => count($entities),

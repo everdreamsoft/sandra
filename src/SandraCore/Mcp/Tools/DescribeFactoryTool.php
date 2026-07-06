@@ -5,11 +5,21 @@ namespace SandraCore\Mcp\Tools;
 
 use SandraCore\EntityFactory;
 use SandraCore\Mcp\EntitySerializer;
+use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\AclResolver;
+use SandraCore\Mcp\AclAwareToolInterface;
 use SandraCore\Mcp\McpToolInterface;
 use SandraCore\System;
 
-class DescribeFactoryTool implements McpToolInterface
+class DescribeFactoryTool implements McpToolInterface, AclAwareToolInterface
 {
+    private ?AccessContext $access = null;
+
+    public function setAccess(?AccessContext $access): void
+    {
+        $this->access = $access;
+    }
+
     /** @var array<string, array{factory: EntityFactory, options: array}> */
     private array $factories;
     private System $system;
@@ -48,6 +58,14 @@ class DescribeFactoryTool implements McpToolInterface
     {
         $name = $args['factory'] ?? '';
         if (!isset($this->factories[$name])) {
+            throw new \InvalidArgumentException("Unknown factory: $name");
+        }
+        if ($this->access !== null && !AclResolver::fileReadable(
+            $this->system,
+            $this->access,
+            (string)$this->factories[$name]['factory']->entityContainedIn
+        )) {
+            // graph ACL: behave exactly like an unknown factory (no existence leak)
             throw new \InvalidArgumentException("Unknown factory: $name");
         }
 

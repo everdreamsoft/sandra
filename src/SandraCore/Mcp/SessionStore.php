@@ -52,8 +52,8 @@ class SessionStore
     {
         try {
             $sql = "INSERT INTO `{$this->table}`
-                    (`id`, `token_hash`, `env`, `scopes`, `db_host`, `db_name`, `datagraph_version`)
-                    VALUES (:id, :token_hash, :env, :scopes, :db_host, :db_name, :version)
+                    (`id`, `token_hash`, `env`, `scopes`, `db_host`, `db_name`, `datagraph_version`, `principal_concept_id`)
+                    VALUES (:id, :token_hash, :env, :scopes, :db_host, :db_name, :version, :principal)
                     ON DUPLICATE KEY UPDATE
                         `token_hash` = VALUES(`token_hash`),
                         `env` = VALUES(`env`),
@@ -61,6 +61,7 @@ class SessionStore
                         `db_host` = VALUES(`db_host`),
                         `db_name` = VALUES(`db_name`),
                         `datagraph_version` = VALUES(`datagraph_version`),
+                        `principal_concept_id` = VALUES(`principal_concept_id`),
                         `last_activity_at` = CURRENT_TIMESTAMP,
                         `deleted_at` = NULL";
             $stmt = $this->pdo->prepare($sql);
@@ -72,6 +73,7 @@ class SessionStore
                 ':db_host' => $routeInfo['db_host'] ?? null,
                 ':db_name' => $routeInfo['db_name'] ?? null,
                 ':version' => (int)($routeInfo['datagraph_version'] ?? 8),
+                ':principal' => isset($routeInfo['principal_concept_id']) ? (int)$routeInfo['principal_concept_id'] : null,
             ]);
             $this->lastTouch[$sessionId] = microtime(true);
         } catch (PDOException $e) {
@@ -86,7 +88,7 @@ class SessionStore
     {
         try {
             $sql = "SELECT `id`, `token_hash`, `env`, `scopes`, `db_host`, `db_name`,
-                           `datagraph_version`, `last_activity_at`
+                           `datagraph_version`, `principal_concept_id`, `last_activity_at`
                     FROM `{$this->table}`
                     WHERE `id` = :id
                       AND `deleted_at` IS NULL

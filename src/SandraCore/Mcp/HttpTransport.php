@@ -64,6 +64,9 @@ class McpSession
             'db_host' => $row['db_host'] !== null ? (string)$row['db_host'] : null,
             'db_name' => $row['db_name'] !== null ? (string)$row['db_name'] : null,
             'datagraph_version' => isset($row['datagraph_version']) ? (int)$row['datagraph_version'] : 8,
+            'principal_concept_id' => isset($row['principal_concept_id']) && $row['principal_concept_id'] !== null
+                ? (int)$row['principal_concept_id']
+                : null,
             'is_static' => false,
             'token_hash' => (string)($row['token_hash'] ?? ''),
         ];
@@ -411,7 +414,7 @@ class HttpTransport
                 if ($this->authService !== null) {
                     $routeInfo = $this->authService->validateAndRoute($providedToken);
                 } elseif ($this->oauth !== null && $this->oauth->validateToken($providedToken)) {
-                    $routeInfo = ['env' => null, 'scopes' => TokenAuthService::ALL_SCOPES, 'is_static' => true, 'token_hash' => null];
+                    $routeInfo = ['env' => null, 'scopes' => TokenAuthService::ALL_SCOPES, 'principal_concept_id' => null, 'is_static' => true, 'token_hash' => null];
                 }
 
                 if ($routeInfo === null) {
@@ -585,9 +588,17 @@ class HttpTransport
             $this->sessionStore->touch($session->id);  // throttled internally
         }
 
-        // Dispatch to THIS session's McpServer
+        // Dispatch to THIS session's McpServer, scoped to the token's principal
+        // (graph-native ACL). The server is cached per env and shared between
+        // tokens, so the principal is applied per request and always reset.
+        $principal = $session->routeInfo['principal_concept_id'] ?? null;
         $t0 = microtime(true);
-        $response = $session->mcpServer->dispatchMessage($msg);
+        try {
+            $session->mcpServer->setRequestPrincipal($principal !== null ? (int)$principal : null);
+            $response = $session->mcpServer->dispatchMessage($msg);
+        } finally {
+            $session->mcpServer->setRequestPrincipal(null);
+        }
         $elapsed = round((microtime(true) - $t0) * 1000, 1);
 
         // Build common audit args. The status itself depends on whether the

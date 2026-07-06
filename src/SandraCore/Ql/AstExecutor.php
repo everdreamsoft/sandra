@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace SandraCore\Ql;
 
+use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\AclResolver;
 use SandraCore\DatabaseAdapter;
 use SandraCore\Entity;
 use SandraCore\EntityFactory;
@@ -25,10 +27,29 @@ use SandraCore\System;
 class AstExecutor
 {
     private System $system;
+    private ?AccessContext $access = null;
 
     public function __construct(System $system)
     {
         $this->system = $system;
+    }
+
+    /**
+     * Scope every execution to an acting principal (graph-native ACL).
+     * Default-deny: only files granted via sandra_allow_access are readable.
+     * Enforcement is a single pre-flight check on the query's anchor file —
+     * zero SQL overhead.
+     */
+    public function withAccess(?AccessContext $access): self
+    {
+        $this->access = $access;
+        return $this;
+    }
+
+    /** Convenience: resolve a principal's grants and scope the executor. */
+    public function asPrincipal(int|string $principal): self
+    {
+        return $this->withAccess(AclResolver::resolve($this->system, $principal));
     }
 
     /**
@@ -53,6 +74,15 @@ class AstExecutor
 
         $isa = $ast['match']['isa'];
         $file = $ast['match']['file'] ?? ($isa . '_file');
+
+        // ACL pre-flight: unreadable (or unknown-to-this-principal) file → empty
+        if ($this->access !== null) {
+            $fileId = $this->system->systemConcept->get($file, null, false);
+            if (!is_numeric($fileId) || !$this->access->canRead((int) $fileId)) {
+                return [];
+            }
+        }
+
         $limit = $ast['limit'] ?? null;
         $offset = $ast['offset'] ?? null;
         $sort = null;

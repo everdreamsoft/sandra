@@ -80,6 +80,16 @@ class AclResolver
         return [$files, $all];
     }
 
+    /** True when the principal may read entities contained in this file. */
+    public static function fileReadable(System $system, AccessContext $access, string $fileShortname): bool
+    {
+        if ($access->readAll) {
+            return true;
+        }
+        $fileId = self::findConcept($system, $fileShortname);
+        return $fileId !== null && $access->canRead($fileId);
+    }
+
     /** Resolve a shortname WITHOUT creating it. */
     private static function findConcept(System $system, string $shortname): ?int
     {
