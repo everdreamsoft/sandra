@@ -2,5 +2,6 @@
   "tests/conformance/parser.json": "8e51d64908670e8635b10ad00ccd2ba1b05c53481f11448f0d63287ebc6eaf49",
   "tests/conformance/seed.json": "965f8704a7a117362ac3f0d07e986a42b44f521f87451d95ac60182290357ea7",
   "tests/conformance/queries.json": "64bda7382eb97b36654b2edd44e7a23633bcc1df84c27a69fa3a3ecac65c4382",
+  "tests/conformance/acl.json": "753108734e959d103ebbd47429c4167133846d3bc39883e2c226fd29d80c807a",
   "resources/sandraql.schema.json": "96ef589eaf46f565ba22b66ace90ae19aeb1ba1da426a6786d0058f6a793d4ef"
 }

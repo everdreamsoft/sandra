@@ -1,0 +1,48 @@
+{
+  "description": "Cross-library ACL conformance. Extends seed.json: principals, roles and grants over the seeded files, then the same queries executed as different actors. Both the JS and PHP runners must produce identical rows.",
+  "principals": [
+    { "key": "alice_key", "factory": "api_key", "file": "keys_file", "refs": { "name": "alice-key" } },
+    { "key": "bob_key", "factory": "api_key", "file": "keys_file", "refs": { "name": "bob-key" } },
+    { "key": "root_key", "factory": "api_key", "file": "keys_file", "refs": { "name": "root-key" } }
+  ],
+  "roles": [
+    { "principal": "alice_key", "role": "hr" }
+  ],
+  "grants": [
+    { "subject": "hr", "file": "person_file" },
+    { "subject": "sandra_everyone", "file": "team_file" },
+    { "subject": "root_key", "file": "sandra_all_files", "write": true }
+  ],
+  "scenarios": [
+    {
+      "name": "granted role reads the file",
+      "actor": "alice_key",
+      "sandraql": "MATCH person ORDER BY name",
+      "expect": { "order": "strict", "rows": [ { "name": "Alice" }, { "name": "Bob" }, { "name": "Carol" }, { "name": "Dave" } ] }
+    },
+    {
+      "name": "default deny: ungranted principal sees nothing",
+      "actor": "bob_key",
+      "sandraql": "MATCH person ORDER BY name",
+      "expect": { "order": "strict", "rows": [] }
+    },
+    {
+      "name": "everyone role makes a file public",
+      "actor": "bob_key",
+      "sandraql": "MATCH team IN team_file",
+      "expect": { "order": "set", "rows": [ { "name": "Alpha" } ] }
+    },
+    {
+      "name": "wildcard reads everything",
+      "actor": "root_key",
+      "sandraql": "MATCH person WHERE city = \"Geneva\" ORDER BY name",
+      "expect": { "order": "strict", "rows": [ { "name": "Alice" }, { "name": "Carol" } ] }
+    },
+    {
+      "name": "filters still apply inside a granted file",
+      "actor": "alice_key",
+      "sandraql": "MATCH person WHERE HAS likes -> coffee AND NOT HAS status -> banned",
+      "expect": { "order": "set", "rows": [ { "name": "Alice" } ] }
+    }
+  ]
+}
