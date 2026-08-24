@@ -321,7 +321,7 @@ INSTRUCTIONS;
         $register(new DescribeFactoryTool($this->factories, $system));
         $register(new ListEntitiesTool($this->factories, $system));
         $register(new QueryEntitiesTool($this->factories, $system));
-        $register(new SandraQlTool($system));
+        $register(new SandraQlTool($system, $this->factories));
         $register(new SearchEntitiesTool($this->factories, $system));
         $register(new GetEntityTool($this->factories, $system));
         $register(new TraverseGraphTool($this->factories, $system));

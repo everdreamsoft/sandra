@@ -23,10 +23,19 @@ class SandraQlTool implements McpToolInterface, AclAwareToolInterface
 {
     private System $system;
     private ?AccessContext $access = null;
+    /** @var array<string, array{factory: \SandraCore\EntityFactory}> discovered factories, by is_a name */
+    private array $factories;
 
-    public function __construct(System $system)
+    /**
+     * @param array<string, array{factory: \SandraCore\EntityFactory}> $factories Discovered factory
+     *        registry (same one the other MCP tools share). Used to resolve the container
+     *        file when a query has no `IN file` clause — CsCannon-style factories don't
+     *        follow the `{isa}_file` naming convention the executor falls back to.
+     */
+    public function __construct(System $system, array &$factories = [])
     {
         $this->system = $system;
+        $this->factories = &$factories;
     }
 
     public function setAccess(?AccessContext $access): void
@@ -77,6 +86,18 @@ class SandraQlTool implements McpToolInterface, AclAwareToolInterface
 
         try {
             $ast = $hasQuery ? Parser::parse($args['query']) : $args['ast'];
+
+            // No explicit `IN file`: AstExecutor would guess `{isa}_file`, which is
+            // wrong for factories whose container has another name (e.g.
+            // blockchainEvent → blockchainEventFile). Use the discovered registry,
+            // exactly like list/query/describe tools do.
+            if (!isset($ast['match']['file']) && isset($ast['match']['isa'])) {
+                $isa = $ast['match']['isa'];
+                if (isset($this->factories[$isa]['factory'])) {
+                    $ast['match']['file'] = (string)$this->factories[$isa]['factory']->entityContainedIn;
+                }
+            }
+
             $executor = (new AstExecutor($this->system))->withAccess($this->access);
             $entities = $executor->execute($ast);
             return [
