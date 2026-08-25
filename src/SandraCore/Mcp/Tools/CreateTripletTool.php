@@ -3,18 +3,32 @@ declare(strict_types=1);
 
 namespace SandraCore\Mcp\Tools;
 
+use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\WriteGuard;
 use SandraCore\Exception\ConceptNotFoundException;
 use SandraCore\DatabaseAdapter;
+use SandraCore\Mcp\AclAwareToolInterface;
 use SandraCore\Mcp\McpToolInterface;
 use SandraCore\System;
 
-class CreateTripletTool implements McpToolInterface
+/**
+ * ACL-aware write: the guard goes to rawCreateTriplet, which decides from the
+ * endpoints' files — a link may be written only if every endpoint carrying a
+ * contained_in_file sits in a writable one.
+ */
+class CreateTripletTool implements McpToolInterface, AclAwareToolInterface
 {
     private System $system;
+    private ?AccessContext $access = null;
 
     public function __construct(System $system)
     {
         $this->system = $system;
+    }
+
+    public function setAccess(?AccessContext $access): void
+    {
+        $this->access = $access;
     }
 
     public function name(): string
@@ -61,7 +75,15 @@ class CreateTripletTool implements McpToolInterface
         $verbId = $this->resolveConceptId($args['verb'] ?? '');
         $targetId = $this->resolveConceptId($args['target'] ?? '');
 
-        $linkId = DatabaseAdapter::rawCreateTriplet($subjectId, $verbId, $targetId, $this->system);
+        $linkId = DatabaseAdapter::rawCreateTriplet(
+            $subjectId,
+            $verbId,
+            $targetId,
+            $this->system,
+            0,
+            true,
+            WriteGuard::forAccess($this->system, $this->access)
+        );
 
         if ($linkId === null) {
             throw new \RuntimeException('Failed to create triplet');

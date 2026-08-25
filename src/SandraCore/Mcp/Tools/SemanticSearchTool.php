@@ -3,14 +3,23 @@ declare(strict_types=1);
 
 namespace SandraCore\Mcp\Tools;
 
+use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\TripletVisibility;
+use SandraCore\Mcp\AclAwareToolInterface;
 use SandraCore\EntityFactory;
 use SandraCore\Mcp\EmbeddingService;
 use SandraCore\Mcp\EntitySerializer;
 use SandraCore\Mcp\McpToolInterface;
 use SandraCore\System;
 
-class SemanticSearchTool implements McpToolInterface
+class SemanticSearchTool implements McpToolInterface, AclAwareToolInterface
 {
+    private ?AccessContext $access = null;
+
+    public function setAccess(?AccessContext $access): void
+    {
+        $this->access = $access;
+    }
     /** @var array<string, array{factory: EntityFactory, options: array}> */
     private array $factories;
     private System $system;
@@ -87,6 +96,22 @@ class SemanticSearchTool implements McpToolInterface
         $includeStorage = !empty($args['include_storage']);
 
         $scored = $this->embeddingService->searchSimilar($query, $limit * 2, $factoryFilter);
+
+        // Drop hits the principal may not read BEFORE the threshold slice, so a
+        // hidden entity cannot push a visible one out of the page. Embeddings
+        // are built from an entity's own refs and storage, which makes a hit an
+        // exact disclosure of content, not a hint.
+        $visibility = TripletVisibility::forAccess($this->system, $this->access);
+        if ($visibility !== null && $scored !== []) {
+            $visible = array_flip($visibility->visibleConcepts(array_map(
+                static fn (array $item): int => (int)$item['conceptId'],
+                $scored
+            )));
+            $scored = array_values(array_filter(
+                $scored,
+                static fn (array $item): bool => isset($visible[(int)$item['conceptId']])
+            ));
+        }
 
         // Filter by threshold
         $scored = array_filter($scored, fn($item) => $item['similarity'] >= $threshold);

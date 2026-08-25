@@ -50,6 +50,16 @@ class AccessContext
         return $this->writeAll || isset($this->allowedWrite[$fileConceptId]);
     }
 
+    /**
+     * True when the principal holds a write grant of any kind. Distinguishes a
+     * writer scoped to one file from a purely read-only principal, which is
+     * what gates shared-vocabulary acts like minting a concept.
+     */
+    public function canWriteAnything(): bool
+    {
+        return $this->writeAll || $this->allowedWrite !== [];
+    }
+
     /** Admin = holds the write wildcard; may edit ACL triplets / create files. */
     public function isAdmin(): bool
     {

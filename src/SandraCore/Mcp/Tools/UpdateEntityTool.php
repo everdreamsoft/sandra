@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 namespace SandraCore\Mcp\Tools;
 
+use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\WriteGuard;
+use SandraCore\Mcp\AclAwareToolInterface;
 use SandraCore\Entity;
 use SandraCore\EntityFactory;
 use SandraCore\Mcp\EmbeddingService;
@@ -10,8 +13,14 @@ use SandraCore\Mcp\EntitySerializer;
 use SandraCore\Mcp\McpToolInterface;
 use SandraCore\System;
 
-class UpdateEntityTool implements McpToolInterface
+class UpdateEntityTool implements McpToolInterface, AclAwareToolInterface
 {
+    private ?AccessContext $access = null;
+
+    public function setAccess(?AccessContext $access): void
+    {
+        $this->access = $access;
+    }
     /** @var array<string, array{factory: EntityFactory, options: array}> */
     private array $factories;
     private System $system;
@@ -70,6 +79,10 @@ class UpdateEntityTool implements McpToolInterface
         $factory = $this->factories[$name]['factory'];
         $id = (int)($args['id'] ?? 0);
         $refs = $args['refs'] ?? [];
+
+        // Checked on the entity's own file, before loading it: the "not found"
+        // below would otherwise confirm existence in an ungranted file.
+        WriteGuard::forAccess($this->system, $this->access)?->assertCanWriteEntity($id);
 
         // Load only this single entity via a fresh factory with pre-set conceptArray
         $singleFactory = new EntityFactory(

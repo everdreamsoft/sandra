@@ -3,12 +3,21 @@ declare(strict_types=1);
 
 namespace SandraCore\Mcp\Tools;
 
+use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\WriteGuard;
+use SandraCore\Mcp\AclAwareToolInterface;
 use SandraCore\EntityFactory;
 use SandraCore\Mcp\McpToolInterface;
 use SandraCore\System;
 
-class CreateFactoryTool implements McpToolInterface
+class CreateFactoryTool implements McpToolInterface, AclAwareToolInterface
 {
+    private ?AccessContext $access = null;
+
+    public function setAccess(?AccessContext $access): void
+    {
+        $this->access = $access;
+    }
     /** @var array<string, array{factory: EntityFactory, options: array}> */
     private array $factories;
     /** @var array<string, array{isa: string, cif: string, options: array}> */
@@ -69,6 +78,7 @@ class CreateFactoryTool implements McpToolInterface
         }
 
         $cif = $args['contained_in_file'] ?? $name . '_file';
+        WriteGuard::forAccess($this->system, $this->access)?->assertCanCreateFactory($cif);
         $options = ['brothers' => [], 'joined' => []];
         $factory = new EntityFactory($name, $cif, $this->system);
 

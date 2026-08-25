@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace SandraCore\Mcp\Tools;
 
+use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\WriteGuard;
+use SandraCore\Exception\AccessDeniedException;
+use SandraCore\Mcp\AclAwareToolInterface;
 use PDO;
 use SandraCore\DatabaseAdapter;
 use SandraCore\Mcp\McpToolInterface;
@@ -13,8 +17,14 @@ use SandraCore\System;
  * Update mutable state on an existing triplet — currently the long-text
  * storage payload. Mirrors sandra_update_entity for triplet-anchored data.
  */
-class UpdateTripletTool implements McpToolInterface
+class UpdateTripletTool implements McpToolInterface, AclAwareToolInterface
 {
+    private ?AccessContext $access = null;
+
+    public function setAccess(?AccessContext $access): void
+    {
+        $this->access = $access;
+    }
     private System $system;
 
     public function __construct(System $system)
@@ -63,6 +73,16 @@ class UpdateTripletTool implements McpToolInterface
             throw new \InvalidArgumentException('storage is required (use empty string to clear)');
         }
         $storage = (string)$args['storage'];
+
+        // Rewriting the payload hanging off a link is a write on that link.
+        try {
+            WriteGuard::forAccess($this->system, $this->access)?->assertCanTouchLink($linkId);
+        } catch (AccessDeniedException $e) {
+            // Deliberately indistinguishable from a missing link: link ids are
+            // sequential, so a distinct denial would let a caller enumerate
+            // which links exist. The write still fails loudly.
+            throw new \InvalidArgumentException("Triplet with linkId $linkId not found");
+        }
 
         $pdo = $this->system->getConnection();
         $linkTable = $this->system->linkTable;

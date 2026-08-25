@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace SandraCore\Mcp\Tools;
 
+use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\AclResolver;
+use SandraCore\Acl\TripletVisibility;
+use SandraCore\Mcp\AclAwareToolInterface;
 use PDO;
 use SandraCore\Entity;
 use SandraCore\EntityFactory;
@@ -12,8 +16,14 @@ use SandraCore\QueryExecutor;
 use SandraCore\Search\SqlSearch;
 use SandraCore\System;
 
-class SearchEntitiesTool implements McpToolInterface
+class SearchEntitiesTool implements McpToolInterface, AclAwareToolInterface
 {
+    private ?AccessContext $access = null;
+
+    public function setAccess(?AccessContext $access): void
+    {
+        $this->access = $access;
+    }
     /** @var array<string, array{factory: EntityFactory, options: array}> */
     private array $factories;
     private System $system;
@@ -104,6 +114,10 @@ class SearchEntitiesTool implements McpToolInterface
         }
 
         $factory = $this->factories[$name]['factory'];
+
+        if (!$this->fileReadable($factory->entityContainedIn)) {
+            return ['items' => [], 'count' => 0, 'total' => 0];
+        }
 
         $searchFactory = new EntityFactory(
             $factory->entityIsa,
@@ -207,6 +221,10 @@ class SearchEntitiesTool implements McpToolInterface
             }
 
             $factory = $entry['factory'];
+            if (!$this->fileReadable($factory->entityContainedIn)) {
+                continue;
+            }
+
             $searchFactory = new EntityFactory(
                 $factory->entityIsa,
                 $factory->entityContainedIn,
@@ -275,6 +293,13 @@ class SearchEntitiesTool implements McpToolInterface
      *
      * @return array<array{type: string, id: int, shortname: string}>
      */
+    /** No principal, or a grant on this file. */
+    private function fileReadable(?string $file): bool
+    {
+        return $this->access === null
+            || AclResolver::fileReadable($this->system, $this->access, (string)$file);
+    }
+
     private function searchConcepts(string $query, bool $isLike, int $limit): array
     {
         $pdo = $this->system->getConnection();
@@ -291,6 +316,17 @@ class SearchEntitiesTool implements McpToolInterface
             ':query' => [$pattern, PDO::PARAM_STR],
             ':limit' => [$limit, PDO::PARAM_INT],
         ]);
+
+        $visibility = TripletVisibility::forAccess($this->system, $this->access);
+        if ($visibility !== null && $rows) {
+            // A concept can be file-scoped (that is how a private tag hides);
+            // matching its name in a search would hand it over.
+            $visible = array_flip($visibility->visibleConcepts(array_map(
+                static fn (array $r): int => (int)$r['id'],
+                $rows
+            )));
+            $rows = array_values(array_filter($rows, static fn (array $r): bool => isset($visible[(int)$r['id']])));
+        }
 
         $results = [];
         if ($rows) {

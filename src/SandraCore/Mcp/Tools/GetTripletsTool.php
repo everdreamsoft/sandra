@@ -4,6 +4,9 @@ declare(strict_types=1);
 namespace SandraCore\Mcp\Tools;
 
 use PDO;
+use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\TripletVisibility;
+use SandraCore\Mcp\AclAwareToolInterface;
 use SandraCore\Mcp\McpToolInterface;
 use SandraCore\QueryExecutor;
 use SandraCore\System;
@@ -12,14 +15,26 @@ use SandraCore\System;
  * Returns raw triplets (links) for a given concept ID directly from the database.
  * Resolves concept IDs to shortnames for readability.
  * Does NOT load any factory into memory.
+ *
+ * ACL-aware: for a principal-scoped request every query — details AND counts —
+ * carries the TripletVisibility filter, so a link touching an unreadable file
+ * simply does not exist for that caller. Counts go through the same fragment on
+ * purpose: a count that still saw the hidden links would give away what the
+ * detail listing withholds.
  */
-class GetTripletsTool implements McpToolInterface
+class GetTripletsTool implements McpToolInterface, AclAwareToolInterface
 {
     private System $system;
+    private ?AccessContext $access = null;
 
     public function __construct(System $system)
     {
         $this->system = $system;
+    }
+
+    public function setAccess(?AccessContext $access): void
+    {
+        $this->access = $access;
     }
 
     public function name(): string
@@ -74,9 +89,10 @@ class GetTripletsTool implements McpToolInterface
         $conceptTable = $this->system->conceptTable;
         $storageTable = $this->system->tableStorage;
         $deletedId = (int)$this->system->deletedUNID;
+        $aclFilter = TripletVisibility::forAccess($this->system, $this->access)?->sqlFilter('l') ?? '';
 
         if ($countOnly) {
-            return $this->executeCountOnly($pdo, $linkTable, $conceptId, $deletedId, $direction);
+            return $this->executeCountOnly($pdo, $linkTable, $conceptId, $deletedId, $direction, $aclFilter);
         }
 
         $storageSelect = $includeStorage ? ', ds.`value` AS storage' : '';
@@ -99,7 +115,7 @@ class GetTripletsTool implements McpToolInterface
                     LEFT JOIN `{$conceptTable}` ct ON l.idConceptTarget = ct.id
                     {$storageJoin}
                     WHERE l.idConceptStart = :conceptId
-                      AND l.flag != :deleted
+                      AND l.flag != :deleted{$aclFilter}
                     LIMIT 100";
 
             $rows = QueryExecutor::fetchAll($pdo, $sql, [
@@ -140,7 +156,7 @@ class GetTripletsTool implements McpToolInterface
                     LEFT JOIN `{$conceptTable}` ct ON l.idConceptTarget = ct.id
                     {$storageJoin}
                     WHERE l.idConceptTarget = :conceptId
-                      AND l.flag != :deleted
+                      AND l.flag != :deleted{$aclFilter}
                     LIMIT 100";
 
             $rows = QueryExecutor::fetchAll($pdo, $sql, [
@@ -175,13 +191,13 @@ class GetTripletsTool implements McpToolInterface
         ];
     }
 
-    private function executeCountOnly(\PDO $pdo, string $linkTable, int $conceptId, int $deletedId, string $direction): array
+    private function executeCountOnly(\PDO $pdo, string $linkTable, int $conceptId, int $deletedId, string $direction, string $aclFilter = ''): array
     {
         $outgoing = 0;
         $incoming = 0;
 
         if ($direction === 'outgoing' || $direction === 'both') {
-            $sql = "SELECT COUNT(*) FROM `{$linkTable}` WHERE idConceptStart = :conceptId AND flag != :deleted";
+            $sql = "SELECT COUNT(*) FROM `{$linkTable}` l WHERE l.idConceptStart = :conceptId AND l.flag != :deleted{$aclFilter}";
             $rows = QueryExecutor::fetchAll($pdo, $sql, [
                 ':conceptId' => [$conceptId, PDO::PARAM_INT],
                 ':deleted' => [$deletedId, PDO::PARAM_INT],
@@ -190,7 +206,7 @@ class GetTripletsTool implements McpToolInterface
         }
 
         if ($direction === 'incoming' || $direction === 'both') {
-            $sql = "SELECT COUNT(*) FROM `{$linkTable}` WHERE idConceptTarget = :conceptId AND flag != :deleted";
+            $sql = "SELECT COUNT(*) FROM `{$linkTable}` l WHERE l.idConceptTarget = :conceptId AND l.flag != :deleted{$aclFilter}";
             $rows = QueryExecutor::fetchAll($pdo, $sql, [
                 ':conceptId' => [$conceptId, PDO::PARAM_INT],
                 ':deleted' => [$deletedId, PDO::PARAM_INT],

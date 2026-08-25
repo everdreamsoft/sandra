@@ -3,13 +3,23 @@ declare(strict_types=1);
 
 namespace SandraCore\Mcp\Tools;
 
+use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\AclResolver;
+use SandraCore\Acl\TripletVisibility;
+use SandraCore\Mcp\AclAwareToolInterface;
 use SandraCore\EntityFactory;
 use SandraCore\Mcp\EntitySerializer;
 use SandraCore\Mcp\McpToolInterface;
 use SandraCore\System;
 
-class ListEntitiesTool implements McpToolInterface
+class ListEntitiesTool implements McpToolInterface, AclAwareToolInterface
 {
+    private ?AccessContext $access = null;
+
+    public function setAccess(?AccessContext $access): void
+    {
+        $this->access = $access;
+    }
     /** @var array<string, array{factory: EntityFactory, options: array}> */
     private array $factories;
     private System $system;
@@ -109,11 +119,25 @@ class ListEntitiesTool implements McpToolInterface
 
         $factory = $this->factories[$name]['factory'];
 
+        // Silent empty, like AstExecutor: an error would confirm the factory.
+        if ($this->access !== null
+            && !AclResolver::fileReadable($this->system, $this->access, (string)$factory->entityContainedIn)) {
+            return ['entities' => [], 'count' => 0, 'total' => 0, 'limit' => $limit, 'offset' => $offset];
+        }
+
         $listFactory = new EntityFactory(
             $factory->entityIsa,
             $factory->entityContainedIn,
             $this->system
         );
+
+        // brother_filters join across files exactly like SandraQL's HAS, so
+        // they need the same restriction or they answer what the ACL hides.
+        $visibility = TripletVisibility::forAccess($this->system, $this->access);
+        if ($visibility !== null) {
+            $listFactory->conceptManager->brotherVisibility =
+                static fn (string $alias): string => $visibility->sqlFilter($alias);
+        }
 
         // Apply brother entity filters (SQL-level via setFilter)
         $brotherFilters = $args['brother_filters'] ?? [];

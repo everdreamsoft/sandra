@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace SandraCore\Mcp\Tools;
 
+use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\AclResolver;
+use SandraCore\Acl\TripletVisibility;
+use SandraCore\Mcp\AclAwareToolInterface;
 use PDO;
 use SandraCore\Mcp\McpToolInterface;
 use SandraCore\QueryExecutor;
@@ -16,8 +20,14 @@ use SandraCore\System;
  * Entities (clients, products, etc.) use these concepts as verbs and targets
  * in their triplets.
  */
-class ListConceptsTool implements McpToolInterface
+class ListConceptsTool implements McpToolInterface, AclAwareToolInterface
 {
+    private ?AccessContext $access = null;
+
+    public function setAccess(?AccessContext $access): void
+    {
+        $this->access = $access;
+    }
     private System $system;
 
     public function __construct(System $system)
@@ -78,26 +88,31 @@ class ListConceptsTool implements McpToolInterface
 
         if ($query === '') {
             // List all concepts
-            $where = "shortname != ''";
+            $where = "c.shortname != ''";
         } elseif (str_contains($query, '%')) {
             // LIKE search (case-insensitive)
-            $where = "LOWER(shortname) LIKE :query AND shortname != ''";
+            $where = "LOWER(c.shortname) LIKE :query AND c.shortname != ''";
             $params[':query'] = [mb_strtolower($query), PDO::PARAM_STR];
         } else {
             // Partial match: wrap with %
-            $where = "LOWER(shortname) LIKE :query AND shortname != ''";
+            $where = "LOWER(c.shortname) LIKE :query AND c.shortname != ''";
             $params[':query'] = ['%' . mb_strtolower($query) . '%', PDO::PARAM_STR];
         }
 
+        // A concept carrying a contained_in_file follows that file's grants —
+        // the mechanism behind a private tag. Filter the listing, and the count
+        // with it, or the total gives away what the page withholds.
+        $where .= TripletVisibility::forAccess($this->system, $this->access)?->sqlFilter('c', ['id']) ?? '';
+
         // Count total
-        $countSql = "SELECT COUNT(*) AS cnt FROM `{$conceptTable}` WHERE {$where}";
+        $countSql = "SELECT COUNT(*) AS cnt FROM `{$conceptTable}` c WHERE {$where}";
         $countParams = $params;
         unset($countParams[':limit'], $countParams[':offset']);
         $countRows = QueryExecutor::fetchAll($pdo, $countSql, $countParams);
         $total = (int)($countRows[0]['cnt'] ?? 0);
 
         // Fetch page
-        $sql = "SELECT id, shortname FROM `{$conceptTable}` WHERE {$where} ORDER BY shortname ASC LIMIT :limit OFFSET :offset";
+        $sql = "SELECT c.id, c.shortname FROM `{$conceptTable}` c WHERE {$where} ORDER BY c.shortname ASC LIMIT :limit OFFSET :offset";
         $rows = QueryExecutor::fetchAll($pdo, $sql, $params);
 
         $concepts = [];

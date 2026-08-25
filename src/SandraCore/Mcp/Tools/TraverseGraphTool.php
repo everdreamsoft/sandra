@@ -4,8 +4,12 @@ declare(strict_types=1);
 namespace SandraCore\Mcp\Tools;
 
 use PDO;
+use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\AclResolver;
+use SandraCore\Acl\TripletVisibility;
 use SandraCore\Entity;
 use SandraCore\EntityFactory;
+use SandraCore\Mcp\AclAwareToolInterface;
 use SandraCore\Mcp\EntitySerializer;
 use SandraCore\Mcp\McpToolInterface;
 use SandraCore\QueryExecutor;
@@ -20,8 +24,13 @@ use SandraCore\System;
  * or onto a bare system concept (event → onBlockchain → counterparty). Each
  * reached node is materialised lazily — entities through their discovered
  * factory, concepts as {id, shortname}.
+ *
+ * ACL-aware: the hop itself is filtered by TripletVisibility, so a principal
+ * walks a graph where links into unreadable files are absent rather than
+ * refused. The walk cannot step onto a hidden node, which is also why
+ * describeNode() never has to re-check what it materialises.
  */
-class TraverseGraphTool implements McpToolInterface
+class TraverseGraphTool implements McpToolInterface, AclAwareToolInterface
 {
     /** Hard cap on reached nodes, so a hub verb cannot blow up the response. */
     public const MAX_NODES = 500;
@@ -31,11 +40,31 @@ class TraverseGraphTool implements McpToolInterface
     private System $system;
     /** @var array<string, string>|null is_a shortname → registry name (built on first use) */
     private ?array $isaIndex = null;
+    private ?AccessContext $access = null;
+    /** Memoised per request — a walk calls neighbors() once per node. */
+    private ?TripletVisibility $visibility = null;
+    private bool $visibilityResolved = false;
 
     public function __construct(array &$factories, System $system)
     {
         $this->factories = &$factories;
         $this->system = $system;
+    }
+
+    public function setAccess(?AccessContext $access): void
+    {
+        $this->access = $access;
+        $this->visibility = null;
+        $this->visibilityResolved = false;
+    }
+
+    private function visibility(): ?TripletVisibility
+    {
+        if (!$this->visibilityResolved) {
+            $this->visibility = TripletVisibility::forAccess($this->system, $this->access);
+            $this->visibilityResolved = true;
+        }
+        return $this->visibility;
     }
 
     public function name(): string
@@ -101,6 +130,14 @@ class TraverseGraphTool implements McpToolInterface
         $name = $args['factory'] ?? '';
         if (!isset($this->factories[$name])) {
             throw new \InvalidArgumentException("Unknown factory: $name");
+        }
+
+        // Gate on the start factory's file BEFORE loadEntity: a "not found in
+        // factory" error would otherwise confirm or deny the entity's existence
+        // in a file this principal may not read. Stay silent like AstExecutor.
+        if ($this->access !== null
+            && !AclResolver::fileReadable($this->system, $this->access, (string)$this->factories[$name]['factory']->entityContainedIn)) {
+            return ['entities' => [], 'hasCycle' => false, 'totalFound' => 0, 'truncated' => false];
         }
 
         $startId = (int)($args['startId'] ?? 0);
@@ -182,9 +219,10 @@ class TraverseGraphTool implements McpToolInterface
         $from = $backward ? 'idConceptTarget' : 'idConceptStart';
         $to = $backward ? 'idConceptStart' : 'idConceptTarget';
         $linkTable = $this->system->linkTable;
-        $sql = "SELECT `$to` AS n FROM `$linkTable`
-                WHERE `$from` = :cid AND idConceptLink = :verb AND flag != :deleted
-                ORDER BY id ASC";
+        $aclFilter = $this->visibility()?->sqlFilter('l') ?? '';
+        $sql = "SELECT l.`$to` AS n FROM `$linkTable` l
+                WHERE l.`$from` = :cid AND l.idConceptLink = :verb AND l.flag != :deleted{$aclFilter}
+                ORDER BY l.id ASC";
         $rows = QueryExecutor::fetchAll($this->system->getConnection(), $sql, [
             ':cid' => [$conceptId, PDO::PARAM_INT],
             ':verb' => [$verbId, PDO::PARAM_INT],

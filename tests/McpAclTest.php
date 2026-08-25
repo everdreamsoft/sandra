@@ -127,14 +127,35 @@ class McpAclTest extends SandraTestCase
     {
         $this->mcp->setRequestPrincipal($this->alicePrincipal);
         try {
-            foreach (['sandra_list_entities', 'sandra_get_triplets', 'sandra_create_entity', 'sandra_search'] as $tool) {
-                $out = $this->callTool($tool, ['factory' => 'employee', 'conceptId' => 1, 'refs' => ['name' => 'x']]);
-                $this->assertTrue($out['isError'], "$tool should be blocked for principal-scoped tokens");
-                $this->assertStringContainsString('not ACL-aware', $out['text'], $tool);
-            }
+            // sandra_embed_all is deliberately left out of ACL_AWARE_TOOLS: a
+            // bulk job over the whole graph that calls a paid API is not
+            // something a scoped agent should reach.
+            $out = $this->callTool('sandra_embed_all', ['limit' => 1]);
+            $this->assertTrue($out['isError'], 'sandra_embed_all should be blocked for principal-scoped tokens');
+            $this->assertStringContainsString('not ACL-aware', $out['text']);
         } finally {
             $this->mcp->setRequestPrincipal(null);
         }
+    }
+
+    /**
+     * Regression guard: a tool is either ACL-aware or explicitly refused. A new
+     * tool that is neither would silently serve principals unfiltered data.
+     */
+    public function testEveryToolIsEitherAclAwareOrBlocked(): void
+    {
+        $unclassified = [];
+        foreach ($this->mcp->getToolRegistry()->names() as $name) {
+            $tool = $this->mcp->getToolRegistry()->get($name);
+            $aclAware = $tool instanceof \SandraCore\Mcp\AclAwareToolInterface;
+            $listed = in_array($name, McpServer::ACL_AWARE_TOOLS, true);
+
+            if ($aclAware !== $listed) {
+                $unclassified[] = $name . ($aclAware ? ' (implements the interface but is not listed)' : ' (listed but does not implement the interface)');
+            }
+        }
+
+        $this->assertSame([], $unclassified, 'ACL_AWARE_TOOLS and AclAwareToolInterface must agree');
     }
 
     public function testPrincipalResetRestoresRoot(): void

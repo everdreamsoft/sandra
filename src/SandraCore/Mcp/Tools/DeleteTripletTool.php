@@ -3,12 +3,22 @@ declare(strict_types=1);
 
 namespace SandraCore\Mcp\Tools;
 
+use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\WriteGuard;
+use SandraCore\Exception\AccessDeniedException;
+use SandraCore\Mcp\AclAwareToolInterface;
 use SandraCore\Mcp\McpToolInterface;
 use SandraCore\QueryExecutor;
 use SandraCore\System;
 
-class DeleteTripletTool implements McpToolInterface
+class DeleteTripletTool implements McpToolInterface, AclAwareToolInterface
 {
+    private ?AccessContext $access = null;
+
+    public function setAccess(?AccessContext $access): void
+    {
+        $this->access = $access;
+    }
     private System $system;
 
     public function __construct(System $system)
@@ -45,6 +55,16 @@ class DeleteTripletTool implements McpToolInterface
         $linkId = (int)($args['linkId'] ?? 0);
         if ($linkId <= 0) {
             throw new \InvalidArgumentException('linkId must be a positive integer');
+        }
+
+        // Deleting a link one cannot see is the mirror of creating one.
+        try {
+            WriteGuard::forAccess($this->system, $this->access)?->assertCanTouchLink($linkId);
+        } catch (AccessDeniedException $e) {
+            // Deliberately indistinguishable from a missing link: link ids are
+            // sequential, so a distinct denial would let a caller enumerate
+            // which links exist. The write still fails loudly.
+            throw new \InvalidArgumentException("Triplet with linkId $linkId not found");
         }
 
         $pdo = $this->system->getConnection();

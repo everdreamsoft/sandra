@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace SandraCore\Mcp\Tools;
 
+use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\AclResolver;
+use SandraCore\Acl\TripletVisibility;
+use SandraCore\Mcp\AclAwareToolInterface;
 use PDO;
 use SandraCore\Mcp\McpToolInterface;
 use SandraCore\QueryExecutor;
@@ -13,8 +17,14 @@ use SandraCore\System;
  * Resolves reference key concept IDs to shortnames.
  * Does NOT load any factory into memory.
  */
-class GetReferencesTool implements McpToolInterface
+class GetReferencesTool implements McpToolInterface, AclAwareToolInterface
 {
+    private ?AccessContext $access = null;
+
+    public function setAccess(?AccessContext $access): void
+    {
+        $this->access = $access;
+    }
     private System $system;
 
     public function __construct(System $system)
@@ -73,6 +83,9 @@ class GetReferencesTool implements McpToolInterface
             $params[':conceptId'] = [$conceptId, PDO::PARAM_INT];
         }
         $params[':deleted'] = [$deletedId, PDO::PARAM_INT];
+
+        // References hang on a link, so they are exactly as visible as it is.
+        $where .= TripletVisibility::forAccess($this->system, $this->access)?->sqlFilter('l') ?? '';
 
         $sql = "SELECT r.id AS refId,
                        r.idConcept AS refKeyId,

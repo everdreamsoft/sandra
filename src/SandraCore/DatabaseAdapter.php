@@ -15,7 +15,19 @@ use SandraCore\Driver\DatabaseDriverInterface;
  */
 class DatabaseAdapter
 {
+    /**
+     * @deprecated Process-wide fallback only. Methods that receive a System
+     * resolve the driver per instance via {@see resolveDriver()} — required
+     * for multi-graph processes (MCP SystemRegistry) where MySQL and SQLite
+     * systems coexist and a shared static driver would build the wrong SQL.
+     */
     public static ?DatabaseDriverInterface $driver = null;
+
+    /** Driver of THIS system, falling back to the legacy static for old callers. */
+    private static function resolveDriver(?System $system): ?DatabaseDriverInterface
+    {
+        return $system?->getDriver() ?? self::$driver;
+    }
 
     /**
      * Create or update a reference value for a triplet.
@@ -52,19 +64,20 @@ class DatabaseAdapter
         if (strlen($value) > 255)
             $value = substr($value, 0, 255);
 
-        if (self::$driver !== null) {
-            $sql = self::$driver->getUpsertReferenceSQL($targetTable);
+        $driver = self::resolveDriver($system);
+        if ($driver !== null) {
+            $sql = $driver->getUpsertReferenceSQL($targetTable);
             $params = [
                 ':conceptId' => [$conceptId, PDO::PARAM_INT],
                 ':tripletId' => [$tripletId, PDO::PARAM_INT],
                 ':value' => $value,
             ];
-            if (self::$driver->getName() === 'mysql') {
+            if ($driver->getName() === 'mysql') {
                 $params[':value2'] = $value;
             }
             $id = QueryExecutor::insert($pdo, $sql, $params);
             // SQLite upsert doesn't update last_insert_rowid on conflict
-            if (self::$driver->getName() === 'sqlite' && ($id === '0' || $id === false)) {
+            if ($driver->getName() === 'sqlite' && ($id === '0' || $id === false)) {
                 $rows = QueryExecutor::fetchAll($pdo, "SELECT id FROM `$targetTable` WHERE idConcept = :c AND linkReferenced = :t", [
                     ':c' => [$conceptId, PDO::PARAM_INT],
                     ':t' => [$tripletId, PDO::PARAM_INT],
@@ -105,7 +118,12 @@ class DatabaseAdapter
      * @param bool $autocommit If false, wraps in a transaction
      * @return string|int|null The triplet ID, or null on error
      */
-    public static function rawCreateTriplet($conceptSubject, $conceptVerb, $conceptTarget, System $system, $updateOnExistingLK = 0, $autocommit = true)
+    /**
+     * @param \SandraCore\Acl\WriteGuard|null $guard When a principal is
+     *        acting, the graph ACL decides whether this link may be written.
+     *        Null — every legacy caller — keeps the unrestricted behaviour.
+     */
+    public static function rawCreateTriplet($conceptSubject, $conceptVerb, $conceptTarget, System $system, $updateOnExistingLK = 0, $autocommit = true, ?\SandraCore\Acl\WriteGuard $guard = null)
     {
 
         $pdo = $system->getConnection();
@@ -122,9 +140,16 @@ class DatabaseAdapter
         $conceptVerb = (int)$conceptVerb;
         $conceptTarget = (int)$conceptTarget;
 
+        $guard?->assertCanLink($conceptSubject, $conceptVerb, $conceptTarget);
+
         //if the link is existing and we try to update it instead of adding a new. For example card - set rarity - rare and we want to change the rarity
         //and not add a new link
         if ($updateOnExistingLK == 1) {
+
+            // The match below is on (subject, verb) ONLY — retargeting an
+            // existing link is the point of this flag. Which means the caller
+            // overwrites a target it may never have been able to see.
+            $guard?->assertCanRetarget($conceptSubject, $conceptVerb);
 
             $sql = "SELECT id FROM $tableLink
                     WHERE idConceptStart = :subject AND idConceptLink = :verb AND flag != :deletedFlag";
@@ -161,8 +186,9 @@ class DatabaseAdapter
         }
 
 
-        if (self::$driver !== null) {
-            $sql = self::$driver->getUpsertTripletSQL($tableLink);
+        $driver = self::resolveDriver($system);
+        if ($driver !== null) {
+            $sql = $driver->getUpsertTripletSQL($tableLink);
         } else {
             $sql = "INSERT INTO $tableLink (idConceptStart, idConceptLink, idConceptTarget, flag) VALUES (:subject, :verb, :target, 0) ON DUPLICATE KEY UPDATE flag = 0, id=LAST_INSERT_ID(id)";
         }
@@ -174,7 +200,7 @@ class DatabaseAdapter
         ]);
 
         // SQLite upsert doesn't update last_insert_rowid on conflict
-        if (self::$driver !== null && self::$driver->getName() === 'sqlite' && ($id === '0' || $id === false)) {
+        if ($driver !== null && $driver->getName() === 'sqlite' && ($id === '0' || $id === false)) {
             $rows = QueryExecutor::fetchAll($pdo, "SELECT id FROM $tableLink WHERE idConceptStart = :s AND idConceptLink = :l AND idConceptTarget = :t", [
                 ':s' => [$conceptSubject, PDO::PARAM_INT],
                 ':l' => [$conceptVerb, PDO::PARAM_INT],
@@ -227,13 +253,14 @@ class DatabaseAdapter
             $opened = true;
         }
 
-        if (self::$driver !== null) {
-            $sql = self::$driver->getUpsertStorageSQL($tableStorage);
+        $driver = self::resolveDriver($system);
+        if ($driver !== null) {
+            $sql = $driver->getUpsertStorageSQL($tableStorage);
             $params = [
                 ':storeValue' => $value,
                 ':linkId' => [$linkId, PDO::PARAM_INT],
             ];
-            if (self::$driver->getName() === 'mysql') {
+            if ($driver->getName() === 'mysql') {
                 $params[':storeValue2'] = $value;
             }
         } else {
@@ -513,7 +540,8 @@ class DatabaseAdapter
         }
 
         if ($random) {
-            $randomFunc = self::$driver !== null ? self::$driver->getRandomOrderSQL() : 'RAND()';
+            $driver = self::resolveDriver($system);
+            $randomFunc = $driver !== null ? $driver->getRandomOrderSQL() : 'RAND()';
             $randomSQL = "ORDER BY $randomFunc";
         }
 
@@ -605,8 +633,9 @@ class DatabaseAdapter
         // For numeric comparison operators, CAST the varchar value column
         $numericOperators = ['>', '>=', '<', '<='];
         if (in_array($operator, $numericOperators, true)) {
-            $castCol = self::$driver !== null
-                ? self::$driver->getCastNumericSQL('value')
+            $driver = self::resolveDriver($system);
+            $castCol = $driver !== null
+                ? $driver->getCastNumericSQL('value')
                 : 'CAST(value AS DECIMAL)';
             $valueCondition = "$castCol $operator :searchValue";
         } else {
@@ -743,8 +772,9 @@ class DatabaseAdapter
                 }
                 $whereSQL .= " AND $alias.value IN (" . implode(',', $placeholders) . ") ";
             } elseif (in_array($op, $numericOps, true)) {
-                $castCol = self::$driver !== null
-                    ? self::$driver->getCastNumericSQL("$alias.value")
+                $driver = self::resolveDriver($system);
+                $castCol = $driver !== null
+                    ? $driver->getCastNumericSQL("$alias.value")
                     : "CAST($alias.value AS DECIMAL)";
                 $bindParamArray[":val_{$i}"] = $value;
                 $whereSQL .= " AND $castCol $op :val_{$i} ";
@@ -813,8 +843,9 @@ class DatabaseAdapter
             if ($sortAlias !== null) {
                 $col = "$sortAlias.value";
                 if ($numeric) {
-                    $col = self::$driver !== null
-                        ? self::$driver->getCastNumericSQL($col)
+                    $driver = self::resolveDriver($system);
+                    $col = $driver !== null
+                        ? $driver->getCastNumericSQL($col)
                         : "CAST($col AS DECIMAL)";
                 }
                 $selectExtra = ", $col AS __sort_value";

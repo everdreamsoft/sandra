@@ -4,11 +4,22 @@ declare(strict_types=1);
 namespace SandraCore;
 
 use PDO;
+use PDOException;
 class ConceptManager
 {
 
     public $concepts;
     protected $filter, $filterSQL, $tableLink, $tableRef, $tableConcept;
+
+    /**
+     * Optional callable(string $alias): string returning a SQL fragment that
+     * restricts a filter join to the links the caller may see. Set by callers
+     * that hold an AccessContext (AstExecutor); null everywhere else, so the
+     * legacy factory path keeps its exact SQL.
+     *
+     * @var callable|null
+     */
+    public $brotherVisibility = null;
     private $system;
     private $pdo;
     private $deletedUnid;
@@ -20,6 +31,8 @@ class ConceptManager
     protected $filterCondition = '';
     protected $su = 1;
     protected $tableReference;
+    /** @var int[] restrict the main query to these idConceptStart values */
+    private $preFilterIds = [];
 
     public function __construct(System $system, $su = 1, $tableLinkParam = 'default', $tableReferenceParam = 'default')
     {
@@ -83,6 +96,19 @@ class ConceptManager
 
         $this->filter = $value;
         $this->buildFilterSQL();
+    }
+
+    /**
+     * Restrict the main query (getConceptsFromLinkAndTarget) to a candidate
+     * set of entity concept ids — the intersection then happens at SQL level
+     * instead of loading everything and filtering in PHP. Used by the
+     * QueryBuilder/SandraQL combined ref+brother path.
+     *
+     * @param int[] $ids Empty array clears the pre-filter.
+     */
+    public function setPreFilterIds(array $ids): void
+    {
+        $this->preFilterIds = array_values(array_map('intval', $ids));
     }
 
     public function buildFilterSQL($limit = 0)
@@ -175,6 +201,13 @@ class ConceptManager
 			AND link$tableCounter.idConceptTarget IS NULL";
                 }
             }
+
+            // Graph ACL: a filter join must not see links the caller cannot
+            // see, or HAS/NOT HAS discloses what the file grants hide —
+            // positively for an inclusion, by absence for an exclusion.
+            if ($this->brotherVisibility !== null) {
+                $join .= ($this->brotherVisibility)('link' . $tableCounter);
+            }
         }
 
         $this->filterJoin = $join;
@@ -192,13 +225,13 @@ class ConceptManager
     public function getResultsFromLink($linkId)
     {
 
-        $sql = "SELECT  l.idConceptStart, l.idConceptLink, l.`idConceptTarget` FROM  $this->tableLink l WHERE l.id = $linkId";
+        $sql = "SELECT  l.idConceptStart, l.idConceptLink, l.`idConceptTarget` FROM  $this->tableLink l WHERE l.id = :linkId";
 
         $start = microtime(true);
 
         try {
             $pdoResult = $this->pdo->prepare($sql);
-            $pdoResult->execute();
+            $pdoResult->execute([':linkId' => (int)$linkId]);
         } catch (\PDOException $exception) {
             System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             System::sandraException($exception);
@@ -256,6 +289,11 @@ class ConceptManager
         $orderBy = "ORDER BY $lastLinkJoined.idConceptStart";
 
 
+        $bindings = [
+            ':linkConcept' => $linkConcept,
+            ':targetConcept' => $targetConcept,
+        ];
+
         $joinSorter = '';
         $sorterWhere = '';
         //we sort by refConcepts
@@ -263,12 +301,14 @@ class ConceptManager
             $sortableRef = (int)CommonFunctions::somethingToConceptId($orderByRefConcept, $this->system);
 
             $joinSorter = "JOIN $this->tableReference refSorter ON l.id = refSorter.linkReferenced ";
-            $sorterWhere = " AND refSorter.idConcept = $sortableRef ";
+            $sorterWhere = " AND refSorter.idConcept = :sortableRef ";
+            $bindings[':sortableRef'] = $sortableRef;
             if (!$numberSort) {
                 $orderBy = " ORDER BY refSorter.value";
             } else {
-                $castExpr = DatabaseAdapter::$driver !== null
-                        ? DatabaseAdapter::$driver->getCastNumericSQL('refSorter.value')
+                $driver = $this->system->getDriver() ?? DatabaseAdapter::$driver;
+                $castExpr = $driver !== null
+                        ? $driver->getCastNumericSQL('refSorter.value')
                         : 'CAST(refSorter.value AS DECIMAL)';
                     $orderBy = " ORDER BY $castExpr";
             }
@@ -277,8 +317,17 @@ class ConceptManager
 
         $flag = '';
 
-        if (!$this->bypassFlags)
-            $flag = "AND l.flag != $deletedUNID";
+        if (!$this->bypassFlags) {
+            $flag = "AND l.flag != :deletedFlag";
+            $bindings[':deletedFlag'] = $deletedUNID;
+        }
+
+        // Candidate-set pre-filter (QueryBuilder/SandraQL combined path):
+        // sanitized int list, IN() clauses cannot use a single placeholder
+        $preFilter = '';
+        if ($this->preFilterIds !== []) {
+            $preFilter = " AND l.idConceptStart IN (" . implode(',', $this->preFilterIds) . ") ";
+        }
 
         //build selector
         $selector = "SELECT  l.idConceptStart, l.idConceptLink, l.`idConceptTarget` ";
@@ -289,9 +338,9 @@ class ConceptManager
 
         $sql = "$selector FROM  $this->tableLink l " .
             $this->filterJoin . $joinSorter . "
-	WHERE l.idConceptLink = $linkConcept  
-	AND l.idConceptTarget = $targetConcept
-	$flag $sorterWhere
+	WHERE l.idConceptLink = :linkConcept
+	AND l.idConceptTarget = :targetConcept
+	$flag $sorterWhere $preFilter
 	" . $this->filterCondition . " $hideLinks $orderBy $asc " . $limitSQL . $offsetSQL;
 
 
@@ -301,7 +350,7 @@ class ConceptManager
 
         try {
             $pdoResult = $this->pdo->prepare($sql);
-            $pdoResult->execute();
+            $pdoResult->execute($bindings);
         } catch (PDOException $exception) {
             System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
             System::sandraException($exception);
@@ -328,30 +377,33 @@ class ConceptManager
 
     public function getConceptsFromLink($linkConcept, $limit = 0, $debug = '')
     {
-        $deletedUNID = $this->deletedUnid;
+        $deletedUNID = (int)$this->deletedUnid;
 
         $hideLinks = "";
 
         if ($limit > 0)
-            $limitSQL = "LIMIT $limit";
+            $limitSQL = "LIMIT " . (int)$limit;
         else
             $limitSQL = '';
 
+        $bindings = [':linkConcept' => (int)$linkConcept];
 
         $flag = '';
 
-        if (!$this->bypassFlags)
-            $flag = "AND l.flag != $deletedUNID";
+        if (!$this->bypassFlags) {
+            $flag = "AND l.flag != :deletedFlag";
+            $bindings[':deletedFlag'] = $deletedUNID;
+        }
 
 
         $sql = "SELECT  l.idConceptStart, l.idConceptLink, l.`idConceptTarget` FROM  $this->tableLink l " .
-            $this->filterJoin . "	AND l.idConceptLink = $linkConcept	$flag 	" . $this->filterCondition . " $hideLinks ORDER BY l.idConceptStart DESC " . $limitSQL;
+            $this->filterJoin . "	AND l.idConceptLink = :linkConcept	$flag 	" . $this->filterCondition . " $hideLinks ORDER BY l.idConceptStart DESC " . $limitSQL;
 
         $start = microtime(true);
 
         try {
             $pdoResult = $this->pdo->prepare($sql);
-            $pdoResult->execute();
+            $pdoResult->execute($bindings);
         } catch (\PDOException $exception) {
             System::$sandraLogger->query($sql, microtime(true) - $start, $exception);
             System::sandraException($exception);
@@ -422,6 +474,8 @@ class ConceptManager
         ) {
             $concepts = implode(",", array_map('intval', $this->conceptArray[$list]));
 
+            $bindings = [];
+
             $refsFilter = '';
             if (!empty($refIdArray)) {
                 $refs = implode(",", array_map('intval', $refIdArray));
@@ -436,12 +490,14 @@ class ConceptManager
                 $sortableRef = (int)CommonFunctions::somethingToConceptId($orderByRefConcept, $this->system);
 
                 $joinSorter = "JOIN $this->tableReference refSorter ON x.id = refSorter.linkReferenced";
-                $sorterWhere = " AND  refSorter.idConcept = $sortableRef ";
+                $sorterWhere = " AND  refSorter.idConcept = :sortableRef ";
+                $bindings[':sortableRef'] = $sortableRef;
                 if (!$numberSort) {
                     $orderBy = " ORDER BY refSorter.value";
                 } else {
-                    $castExpr = DatabaseAdapter::$driver !== null
-                        ? DatabaseAdapter::$driver->getCastNumericSQL('refSorter.value')
+                    $driver = $this->system->getDriver() ?? DatabaseAdapter::$driver;
+                    $castExpr = $driver !== null
+                        ? $driver->getCastNumericSQL('refSorter.value')
                         : 'CAST(refSorter.value AS DECIMAL)';
                     $orderBy = " ORDER BY $castExpr";
                 }
@@ -451,15 +507,19 @@ class ConceptManager
 
             $filter = '';
             if ($idConceptLink > 0) {
-                $filter .= " AND x.idConceptLink = $idConceptLink ";
+                $filter .= " AND x.idConceptLink = :refLinkConcept ";
+                $bindings[':refLinkConcept'] = $idConceptLink;
             }
             if ($idConceptTarget > 0) {
-                $filter .= " AND x.idConceptTarget = $idConceptTarget ";
+                $filter .= " AND x.idConceptTarget = :refTargetConcept ";
+                $bindings[':refTargetConcept'] = $idConceptTarget;
             }
 
             $flag = '';
-            if (!$this->bypassFlags)
-                $flag = "AND x.flag != $deletedUNID";
+            if (!$this->bypassFlags) {
+                $flag = "AND x.flag != :deletedFlag";
+                $bindings[':deletedFlag'] = $deletedUNID;
+            }
 
             $sql = "
 			SELECT r.id, r.idConcept, r.linkReferenced, r.value, x.idConceptStart, x.idConceptLink, x.idConceptTarget, x.id
@@ -474,7 +534,7 @@ class ConceptManager
 
             try {
                 $pdoResult = $this->pdo->prepare($sql);
-                $pdoResult->execute();
+                $pdoResult->execute($bindings);
             } catch (PDOException $exception) {
                 System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
                 System::sandraException($exception);
@@ -526,7 +586,7 @@ class ConceptManager
 
             $sql = "
 			SELECT * FROM  $this->tableLink WHERE idConceptStart IN ($concepts)
-			AND flag != $deletedUNID";
+			AND flag != :deletedFlag";
             if ((!empty($lklkArray)) && is_array($lklkArray)) {
                 $lklks = implode(",", array_map('intval', $lklkArray));
                 $sql .= " AND idConceptLink IN ($lklks)";
@@ -539,7 +599,7 @@ class ConceptManager
 
             try {
                 $pdoResult = $this->pdo->prepare($sql);
-                $pdoResult->execute();
+                $pdoResult->execute([':deletedFlag' => $deletedUNID]);
             } catch (PDOException $exception) {
                 System::$sandraLogger->query($sql, microtime(true) - $start,  $exception);
                 System::sandraException($exception);

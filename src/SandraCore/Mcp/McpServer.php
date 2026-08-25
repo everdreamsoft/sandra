@@ -513,6 +513,30 @@ INSTRUCTIONS;
         'sandra_list_factories',
         'sandra_describe_factory',
         'sandra_get_schema',
+        'sandra_get_triplets',
+        'sandra_traverse',
+        // Writes. Each consults WriteGuard, which derives the right to write a
+        // link from its endpoints' files and keeps the ACL verbs, the shared
+        // vocabulary and factory creation behind the write wildcard.
+        'sandra_create_triplet',
+        'sandra_delete_triplet',
+        'sandra_update_triplet',
+        'sandra_create_entity',
+        'sandra_update_entity',
+        'sandra_link_entities',
+        'sandra_create_concept',
+        'sandra_create_factory',
+        'sandra_batch',
+        // Remaining reads. sandra_embed_all stays out on purpose: it is a bulk
+        // maintenance job that calls a paid API over the whole graph, not
+        // something a scoped agent needs.
+        'sandra_list_entities',
+        'sandra_get_entity',
+        'sandra_search',
+        'sandra_semantic_search',
+        'sandra_get_references',
+        'sandra_list_concepts',
+        'sandra_find_concept',
     ];
 
     /**

@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 namespace SandraCore\Mcp\Tools;
 
+use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\WriteGuard;
+use SandraCore\Mcp\AclAwareToolInterface;
 use SandraCore\DatabaseAdapter;
 use SandraCore\EntityFactory;
 use SandraCore\Mcp\EmbeddingService;
@@ -18,8 +21,14 @@ use SandraCore\System;
  *   "$concept.0" → ID of the first concept created
  *   "$entity.2"  → concept ID of the third entity created
  */
-class BatchTool implements McpToolInterface
+class BatchTool implements McpToolInterface, AclAwareToolInterface
 {
+    private ?AccessContext $access = null;
+
+    public function setAccess(?AccessContext $access): void
+    {
+        $this->access = $access;
+    }
     /** @var array<string, array{factory: EntityFactory, options: array}> */
     private array $factories;
     /** @var array<string, array{isa: string, cif: string, options: array}> */
@@ -121,6 +130,31 @@ class BatchTool implements McpToolInterface
             'triplets' => [],
         ];
 
+        // One guard for the whole batch. Every phase answers to the same rules
+        // as its single-shot tool — a batch must not be a way around them.
+        $guard = WriteGuard::forAccess($this->system, $this->access);
+
+        // Pre-flight the links that reach OUTSIDE the batch (both endpoints
+        // given literally). Those are the ones that could smuggle a write into
+        // an ungranted file, and the batch has no transaction — refusing them
+        // before phase 1 keeps a denial from leaving concepts and entities
+        // behind. Links onto $concept.N / $entity.N are checked in phase 3,
+        // once their ids exist; their files were authorised on creation.
+        if ($guard !== null) {
+            foreach ($tripletDefs as $def) {
+                $subject = $def['subject'] ?? '';
+                $target = $def['target'] ?? '';
+                if ($this->isBatchRef($subject) || $this->isBatchRef($target)) {
+                    continue;
+                }
+                $guard->assertCanLink(
+                    $this->resolveRef($subject, [], []),
+                    $this->resolveRef($def['verb'] ?? '', [], []),
+                    $this->resolveRef($target, [], [])
+                );
+            }
+        }
+
         // --- Phase 1: Create concepts ---
         $conceptIds = [];
         foreach ($conceptNames as $name) {
@@ -130,6 +164,9 @@ class BatchTool implements McpToolInterface
             }
             $existingId = $this->system->systemConcept->get($name, null, false);
             $created = ($existingId === null);
+            if ($created) {
+                $guard?->assertCanMintConcept();
+            }
             $id = $created
                 ? (int)$this->system->systemConcept->get($name, null, true)
                 : (int)$existingId;
@@ -149,6 +186,7 @@ class BatchTool implements McpToolInterface
 
             if (!isset($this->factories[$factoryName])) {
                 $cif = $def['contained_in_file'] ?? $factoryName . '_file';
+                $guard?->assertCanCreateFactory($cif);
                 $options = ['brothers' => [], 'joined' => []];
                 $factory = new EntityFactory($factoryName, $cif, $this->system);
                 $this->factories[$factoryName] = [
@@ -163,6 +201,7 @@ class BatchTool implements McpToolInterface
             }
 
             $factory = $this->factories[$factoryName]['factory'];
+            $guard?->assertCanCreateInFile((string)$factory->entityContainedIn);
             $entity = $factory->createNew($refs);
 
             $storage = $def['storage'] ?? null;
@@ -191,7 +230,7 @@ class BatchTool implements McpToolInterface
             $verbId = $this->resolveRef($def['verb'] ?? '', $conceptIds, $entityConceptIds);
             $targetId = $this->resolveRef($def['target'] ?? '', $conceptIds, $entityConceptIds);
 
-            $linkId = DatabaseAdapter::rawCreateTriplet($subjectId, $verbId, $targetId, $this->system);
+            $linkId = DatabaseAdapter::rawCreateTriplet($subjectId, $verbId, $targetId, $this->system, 0, true, $guard);
             if ($linkId === null) {
                 $results['triplets'][] = [
                     'error' => "Failed to create triplet ($subjectId → $verbId → $targetId)",
@@ -247,6 +286,12 @@ class BatchTool implements McpToolInterface
      * Resolve a value to a concept ID.
      * Supports: numeric ID, "$concept.N", "$entity.N", or shortname lookup.
      */
+    /** True for the "$concept.N" / "$entity.N" placeholders resolved mid-batch. */
+    private function isBatchRef(mixed $value): bool
+    {
+        return is_string($value) && str_starts_with($value, '$');
+    }
+
     private function resolveRef(mixed $value, array $conceptIds, array $entityConceptIds): int
     {
         if (is_numeric($value)) {

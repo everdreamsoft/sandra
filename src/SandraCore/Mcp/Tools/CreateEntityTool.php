@@ -3,14 +3,23 @@ declare(strict_types=1);
 
 namespace SandraCore\Mcp\Tools;
 
+use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\WriteGuard;
+use SandraCore\Mcp\AclAwareToolInterface;
 use SandraCore\EntityFactory;
 use SandraCore\Mcp\EmbeddingService;
 use SandraCore\Mcp\EntitySerializer;
 use SandraCore\Mcp\McpToolInterface;
 use SandraCore\System;
 
-class CreateEntityTool implements McpToolInterface
+class CreateEntityTool implements McpToolInterface, AclAwareToolInterface
 {
+    private ?AccessContext $access = null;
+
+    public function setAccess(?AccessContext $access): void
+    {
+        $this->access = $access;
+    }
     /** @var array<string, array{factory: EntityFactory, options: array}> */
     private array $factories;
     /** @var array<string, array{isa: string, cif: string, options: array}> */
@@ -67,8 +76,14 @@ class CreateEntityTool implements McpToolInterface
         $name = $args['factory'] ?? '';
         $refs = $args['refs'] ?? [];
 
+        $guard = WriteGuard::forAccess($this->system, $this->access);
+
         if (!isset($this->factories[$name])) {
             $cif = $args['contained_in_file'] ?? $name . '_file';
+            // An unknown factory name silently creates one here, so this path
+            // is a factory creation and takes the wildcard like the explicit
+            // tool does.
+            $guard?->assertCanCreateFactory($cif);
             $options = ['brothers' => [], 'joined' => []];
             $factory = new EntityFactory($name, $cif, $this->system);
             $this->factories[$name] = [
@@ -83,6 +98,7 @@ class CreateEntityTool implements McpToolInterface
         }
 
         $factory = $this->factories[$name]['factory'];
+        $guard?->assertCanCreateInFile((string)$factory->entityContainedIn);
         $entity = $factory->createNew($refs);
 
         $storage = $args['storage'] ?? null;

@@ -3,13 +3,22 @@ declare(strict_types=1);
 
 namespace SandraCore\Mcp\Tools;
 
+use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\WriteGuard;
+use SandraCore\Mcp\AclAwareToolInterface;
 use SandraCore\Exception\ConceptNotFoundException;
 use SandraCore\DatabaseAdapter;
 use SandraCore\Mcp\McpToolInterface;
 use SandraCore\System;
 
-class CreateConceptTool implements McpToolInterface
+class CreateConceptTool implements McpToolInterface, AclAwareToolInterface
 {
+    private ?AccessContext $access = null;
+
+    public function setAccess(?AccessContext $access): void
+    {
+        $this->access = $access;
+    }
     private System $system;
 
     public function __construct(System $system)
@@ -47,6 +56,8 @@ class CreateConceptTool implements McpToolInterface
         if ($name === '') {
             throw new \InvalidArgumentException('Concept name cannot be empty');
         }
+
+        WriteGuard::forAccess($this->system, $this->access)?->assertCanMintConcept();
 
         // Check if concept already exists (forceCreate=false to avoid auto-creation)
         $existingId = $this->system->systemConcept->get($name, null, false);

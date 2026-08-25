@@ -3,14 +3,24 @@ declare(strict_types=1);
 
 namespace SandraCore\Mcp\Tools;
 
+use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\AclResolver;
+use SandraCore\Acl\TripletVisibility;
+use SandraCore\Mcp\AclAwareToolInterface;
 use SandraCore\Entity;
 use SandraCore\EntityFactory;
 use SandraCore\Mcp\EntitySerializer;
 use SandraCore\Mcp\McpToolInterface;
 use SandraCore\System;
 
-class GetEntityTool implements McpToolInterface
+class GetEntityTool implements McpToolInterface, AclAwareToolInterface
 {
+    private ?AccessContext $access = null;
+
+    public function setAccess(?AccessContext $access): void
+    {
+        $this->access = $access;
+    }
     /** @var array<string, array{factory: EntityFactory, options: array}> */
     private array $factories;
     private System $system;
@@ -67,8 +77,17 @@ class GetEntityTool implements McpToolInterface
 
         $entry = $this->factories[$name];
         $factory = $entry['factory'];
+
         $options = $entry['options'];
         $id = (int)($args['id'] ?? 0);
+
+        // Word for word the "not found" raised further down when the entity is
+        // genuinely absent: a distinguishable refusal would tell the caller the
+        // factory exists and is merely out of reach.
+        if ($this->access !== null
+            && !AclResolver::fileReadable($this->system, $this->access, (string)$factory->entityContainedIn)) {
+            throw new \InvalidArgumentException("Entity with id $id not found in factory '$name'");
+        }
 
         $fields = $args['fields'] ?? null;
         if ($fields !== null) {

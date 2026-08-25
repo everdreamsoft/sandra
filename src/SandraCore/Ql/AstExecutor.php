@@ -5,6 +5,7 @@ namespace SandraCore\Ql;
 
 use SandraCore\Acl\AccessContext;
 use SandraCore\Acl\AclResolver;
+use SandraCore\Acl\TripletVisibility;
 use SandraCore\DatabaseAdapter;
 use SandraCore\Entity;
 use SandraCore\EntityFactory;
@@ -102,6 +103,17 @@ class AstExecutor
 
         $factory = new EntityFactory($isa, $file, $this->system);
 
+        // The file pre-flight above only gates the MATCHed entities. A HAS
+        // filter reaches ACROSS files, so its join has to be restricted too:
+        // `HAS memberOf -> privateCluster` would otherwise answer positively
+        // for a file the caller cannot read, and `NOT HAS` would answer by
+        // absence. Set before setFilter() — that is where the joins are built.
+        $visibility = TripletVisibility::forAccess($this->system, $this->access);
+        if ($visibility !== null) {
+            $factory->conceptManager->brotherVisibility =
+                static fn (string $alias): string => $visibility->sqlFilter($alias);
+        }
+
         // HAS filters go to SQL joins on every path
         foreach ($brotherFilters as $bf) {
             $factory->setFilter($bf['verb'] ?? 0, $bf['target'] ?? 0, $bf['exclude']);
@@ -129,7 +141,8 @@ class AstExecutor
         }
 
         // combined: ref query at SQL (keeps sort order), brother filters at SQL,
-        // intersect concept ids — pagination applied after the intersection
+        // ref candidates injected as a pre-filter into the brother query so only
+        // the intersection is materialized — pagination applied after
         $refConceptIds = DatabaseAdapter::searchConceptByRefQuery(
             $this->system,
             $refFilters,
@@ -143,6 +156,7 @@ class AstExecutor
             return [];
         }
 
+        $factory->setPreFilterIds($refConceptIds);
         $factory->populateLocal(); // brother filters applied by ConceptManager
         $brotherMatched = $factory->getEntities() ?: [];
 

@@ -416,6 +416,22 @@ class EntityFactory extends FactoryBase implements Dumpable
     }
 
     /**
+     * Restrict the next populateLocal() calls to a candidate set of entity
+     * concept ids, applied at SQL level (AND l.idConceptStart IN (...)).
+     *
+     * Unlike setting $conceptArray (which bypasses brother filters entirely),
+     * the pre-filter COMBINES with setFilter() joins — this is how the
+     * QueryBuilder/SandraQL combined ref+brother path intersects both filter
+     * families in a single query instead of loading everything into PHP.
+     *
+     * @param int[] $ids Empty array clears the pre-filter.
+     */
+    public function setPreFilterIds(array $ids): void
+    {
+        $this->conceptManager->setPreFilterIds($ids);
+    }
+
+    /**
      * Populate the factory from a structured reference query.
      *
      * Unlike populateLocal() which loads a LIMIT/OFFSET window of the full set,
