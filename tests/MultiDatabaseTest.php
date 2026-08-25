@@ -143,7 +143,11 @@ class MultiDatabaseTest extends TestCase
     private function createSQLiteSystem(): System
     {
         $driver = new SQLiteDriver();
-        return new System('lib', true, '', ':memory:', '', '', null, $driver);
+        // System pools PDO connections by host|db|user, so every ':memory:'
+        // system in the process SHARES one in-memory database. A unique env
+        // (= table prefix) per test isolates the data without fighting the pool.
+        $env = 'lib' . substr(md5(uniqid('', true)), 0, 8);
+        return new System($env, true, '', ':memory:', '', '', null, $driver);
     }
 
     public function testSQLiteIntegrationCreateBooks(): void
