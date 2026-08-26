@@ -503,9 +503,44 @@ INSTRUCTIONS;
         ]);
     }
 
+    /**
+     * List the tools the caller can actually use.
+     *
+     * An unfiltered listing contradicts the default-deny at call time: a
+     * principal was shown every tool on the server and refused most of them on
+     * use. That is confusing on its own, and it makes a scoped token
+     * indistinguishable from a root one at a glance — the very thing someone
+     * checks first when testing that their token took effect.
+     *
+     * Two rules, matching the ones enforced in buildToolsCallResult:
+     *   - a principal sees only ACL-aware tools, since the rest are refused;
+     *   - an admin-only tool is omitted for anyone without the write wildcard.
+     *
+     * Omission, not refusal-on-use, is what the second rule buys: a tool named
+     * in a listing describes a capability and where it points, which is worth
+     * something to an attacker and nothing to an agent that cannot call it.
+     */
     private function buildToolsListResult($id): array
     {
-        return $this->buildResult($id, ['tools' => $this->tools->listDefinitions()]);
+        $definitions = $this->tools->listDefinitions();
+
+        if ($this->requestPrincipal !== null) {
+            $isAdmin = $this->resolveRequestAccess()->isAdmin();
+
+            $definitions = array_values(array_filter(
+                $definitions,
+                function (array $d) use ($isAdmin): bool {
+                    if (! $this->isAclAware($d['name'])) {
+                        return false;
+                    }
+
+                    return $isAdmin
+                        || ! $this->tools->get($d['name']) instanceof AdminOnlyToolInterface;
+                }
+            ));
+        }
+
+        return $this->buildResult($id, ['tools' => $definitions]);
     }
 
     /** Principal (concept id) the current request acts as; null = unrestricted. */
@@ -668,6 +703,20 @@ INSTRUCTIONS;
                 ]);
             }
             $candidate = $this->tools->get($name);
+
+            // Defence in depth. The tool enforces this itself — it must, since a
+            // root request never reaches this branch — but a capability that
+            // edits production should not rest on one check inside one class.
+            if ($candidate instanceof AdminOnlyToolInterface && ! $this->resolveRequestAccess()->isAdmin()) {
+                $this->log("   tool=$name BLOCKED for principal {$this->requestPrincipal} (admin only)");
+
+                return $this->buildResult($id, [
+                    'content' => [['type' => 'text', 'text' => 'Error: tool "'.$name
+                        .'" is restricted to administrators.']],
+                    'isError' => true,
+                ]);
+            }
+
             if ($candidate instanceof AclAwareToolInterface) {
                 $aclTool = $candidate;
                 $aclTool->setAccess($this->resolveRequestAccess());
