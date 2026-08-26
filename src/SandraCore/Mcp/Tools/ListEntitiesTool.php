@@ -136,7 +136,7 @@ class ListEntitiesTool implements McpToolInterface, AclAwareToolInterface
         $visibility = TripletVisibility::forAccess($this->system, $this->access);
         if ($visibility !== null) {
             $listFactory->conceptManager->brotherVisibility =
-                static fn (string $alias): string => $visibility->sqlFilter($alias);
+                static fn (string $alias): string => $visibility->linkFilter($alias);
         }
 
         // Apply brother entity filters (SQL-level via setFilter)

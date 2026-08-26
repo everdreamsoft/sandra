@@ -117,6 +117,14 @@ function cmdCreate(PDO $pdo, string $table, array $opts, array $dbConfig): void
     $skipBootstrap = !empty($opts['no-bootstrap']);
     $version = isset($opts['version']) ? (int)$opts['version'] : 8;
     $principal = isset($opts['principal']) ? (int)$opts['principal'] : null;
+    $provisionAs = isset($opts['provision-as']) && is_string($opts['provision-as'])
+        ? trim($opts['provision-as'])
+        : null;
+
+    if ($principal !== null && $provisionAs !== null) {
+        fwrite(STDERR, "Error: --principal and --provision-as are exclusive (one binds an existing concept, the other mints one)\n");
+        exit(1);
+    }
 
     if ($principal !== null && $principal <= 0) {
         fwrite(STDERR, "Error: --principal must be a positive concept id\n");
@@ -161,8 +169,8 @@ function cmdCreate(PDO $pdo, string $table, array $opts, array $dbConfig): void
     }
 
     try {
-        $sql = "INSERT INTO `{$table}` (token_hash, name, env, scopes, db_host, db_name, datagraph_version, principal_concept_id, expires_at)
-                VALUES (:hash, :name, :env, :scopes, :db_host, :db_name, :version, :principal, :expires_at)";
+        $sql = "INSERT INTO `{$table}` (token_hash, name, env, scopes, db_host, db_name, datagraph_version, principal_concept_id, provision_as, expires_at)
+                VALUES (:hash, :name, :env, :scopes, :db_host, :db_name, :version, :principal, :provision_as, :expires_at)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             ':hash' => $hash,
@@ -173,6 +181,7 @@ function cmdCreate(PDO $pdo, string $table, array $opts, array $dbConfig): void
             ':db_name' => $dbName,
             ':version' => $version,
             ':principal' => $principal,
+            ':provision_as' => $provisionAs,
             ':expires_at' => $expiresAt,
         ]);
         $id = (int)$pdo->lastInsertId();
@@ -369,6 +378,11 @@ function cmdHelp(?string $command = null): void
         echo "  --name=NAME            Human-readable label (required)\n";
         echo "  --env=ENV              SANDRA_ENV / table prefix (required)\n";
         echo "  --scopes=SCOPES        CSV: mcp:r,mcp:w,api:r,api:w (default: all)\n";
+        echo "  --provision-as=HANDLE  Mint a principal for this handle on the token's FIRST\n";
+        echo "                         connection: a 'user' entity, a file of its own\n";
+        echo "                         (user_<id>_file) and read+write grants on it. The\n";
+        echo "                         token is then bound to it for good. Exclusive with\n";
+        echo "                         --principal.\n";
         echo "  --principal=CONCEPT_ID Act as this concept (graph ACL): the token only sees\n";
         echo "                         files granted via sandra_allow_access to that principal\n";
         echo "  --expires-days=N       Expire after N days (default: never)\n";

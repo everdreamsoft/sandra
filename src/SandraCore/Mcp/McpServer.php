@@ -26,6 +26,8 @@ use SandraCore\Mcp\Tools\CreateFactoryTool;
 use SandraCore\Mcp\Tools\DeleteTripletTool;
 use SandraCore\Mcp\Tools\UpdateTripletTool;
 use SandraCore\Mcp\Tools\BatchTool;
+use SandraCore\Mcp\Tools\CreateFileTool;
+use SandraCore\Mcp\Tools\GroupTool;
 use SandraCore\Mcp\Tools\FindConceptTool;
 use SandraCore\Mcp\Tools\ListConceptsTool;
 use SandraCore\Mcp\Tools\SemanticSearchTool;
@@ -238,18 +240,26 @@ INSTRUCTIONS;
     }
 
     /** Register a factory by name (like ApiHandler::register) */
-    public function register(string $name, EntityFactory $factory, array $options = []): self
+    /**
+     * @param bool $alias Second key onto a factory already registered under its
+     *        qualified name — see doDiscover(). Resolution by name finds it;
+     *        anything that ENUMERATES factories must skip it, or every aliased
+     *        facet is counted twice.
+     */
+    public function register(string $name, EntityFactory $factory, array $options = [], bool $alias = false): self
     {
         $mergedOptions = array_merge(self::$defaultOptions, $options);
         $this->factories[$name] = [
             'factory' => $factory,
             'options' => $mergedOptions,
+            'alias' => $alias,
         ];
         // Store lightweight metadata for rebuilding factories with a fresh System
         $this->factoryMeta[$name] = [
             'isa' => $factory->entityIsa,
             'cif' => $factory->entityContainedIn,
             'options' => $mergedOptions,
+            'alias' => $alias,
         ];
         return $this;
     }
@@ -338,6 +348,8 @@ INSTRUCTIONS;
         $register(new FindConceptTool($system));
         $register(new ListConceptsTool($system));
         $register(new BatchTool($this->factories, $this->factoryMeta, $system, $embeddingService));
+        $register(new GroupTool($system));
+        $register(new CreateFileTool($system));
 
         if ($embeddingService !== null) {
             $register(new SemanticSearchTool($this->factories, $system, $embeddingService));
@@ -359,6 +371,7 @@ INSTRUCTIONS;
             $this->factories[$name] = [
                 'factory' => $factory,
                 'options' => $meta['options'],
+                'alias' => $meta['alias'] ?? false,
             ];
         }
 
@@ -501,6 +514,9 @@ INSTRUCTIONS;
     /** @var array<int, array{ctx: AccessContext, at: int}> short-lived per-principal cache */
     private array $accessCache = [];
 
+    /** @var array<string, true> host-declared ACL-aware tools; see declareAclAware() */
+    private array $declaredAclAware = [];
+
     private const ACCESS_CACHE_TTL = 30; // seconds — grants changes propagate quickly
 
     /**
@@ -527,6 +543,8 @@ INSTRUCTIONS;
         'sandra_create_concept',
         'sandra_create_factory',
         'sandra_batch',
+        'sandra_group',
+        'sandra_create_file',
         // Remaining reads. sandra_embed_all stays out on purpose: it is a bulk
         // maintenance job that calls a paid API over the whole graph, not
         // something a scoped agent needs.
@@ -540,6 +558,18 @@ INSTRUCTIONS;
     ];
 
     /**
+     * Tools whose success can change who may read or write what — including for
+     * the caller itself. After one of these, the cached AccessContexts are
+     * dropped rather than served stale.
+     */
+    private const GRANT_CHANGING_TOOLS = [
+        'sandra_group',
+        'sandra_create_triplet',
+        'sandra_delete_triplet',
+        'sandra_batch',
+    ];
+
+    /**
      * Scope the NEXT dispatches to a principal (token principal_concept_id).
      * Set per request by the transport and reset in its finally block —
      * the server instance is cached per env and shared between tokens.
@@ -547,6 +577,46 @@ INSTRUCTIONS;
     public function setRequestPrincipal(?int $principalConceptId): void
     {
         $this->requestPrincipal = $principalConceptId;
+    }
+
+    /**
+     * Declare host-registered tools as ACL-aware.
+     *
+     * ACL_AWARE_TOOLS is a const, so an application embedding this server and
+     * registering its own tools after boot() has no way to say "this one
+     * enforces the ACL" — and every tool it adds is refused to every principal.
+     * That is safe and unusable at once, since the host's tools are usually the
+     * only ones its agents are meant to call.
+     *
+     * The interface is REQUIRED here, not merely documented. A name on a list is
+     * a claim; implementing setAccess() is the only thing that lets a tool
+     * receive the context it would need to honour that claim. Refusing the
+     * declaration is what keeps a tool that cannot filter from passing for one
+     * that does — a no-op setAccess() is still a deliberate, reviewable
+     * statement that this tool reads nothing the ACL governs.
+     */
+    public function declareAclAware(string ...$names): void
+    {
+        foreach ($names as $name) {
+            if (!in_array($name, $this->tools->names(), true)) {
+                throw new \InvalidArgumentException(
+                    "Cannot declare unknown tool '$name' as ACL-aware; register it first."
+                );
+            }
+            if (!$this->tools->get($name) instanceof AclAwareToolInterface) {
+                throw new \InvalidArgumentException(
+                    "Tool '$name' cannot be declared ACL-aware: it does not implement AclAwareToolInterface."
+                );
+            }
+            $this->declaredAclAware[$name] = true;
+        }
+    }
+
+    /** The built-in allowlist, plus whatever the host declared. */
+    private function isAclAware(string $name): bool
+    {
+        return isset($this->declaredAclAware[$name])
+            || in_array($name, self::ACL_AWARE_TOOLS, true);
     }
 
     private function resolveRequestAccess(): AccessContext
@@ -588,11 +658,12 @@ INSTRUCTIONS;
         // tools, and those run with the principal's AccessContext injected.
         $aclTool = null;
         if ($this->requestPrincipal !== null) {
-            if (!in_array($name, self::ACL_AWARE_TOOLS, true)) {
+            if (!$this->isAclAware($name)) {
                 $this->log("   tool=$name BLOCKED for principal {$this->requestPrincipal} (not ACL-aware)");
+                $available = array_merge(self::ACL_AWARE_TOOLS, array_keys($this->declaredAclAware));
                 return $this->buildResult($id, [
                     'content' => [['type' => 'text', 'text' => 'Error: this token acts as a principal (graph ACL) and tool "'
-                        . $name . '" is not ACL-aware yet. Available tools: ' . implode(', ', self::ACL_AWARE_TOOLS) . '.']],
+                        . $name . '" is not ACL-aware yet. Available tools: ' . implode(', ', $available) . '.']],
                     'isError' => true,
                 ]);
             }
@@ -607,6 +678,16 @@ INSTRUCTIONS;
             $result = $this->tools->call($name, $arguments);
             $elapsed = round((microtime(true) - $t0) * 1000);
             $this->log("   tool=$name completed in {$elapsed}ms (call #{$this->callsSinceBoot})");
+
+            // A write may have changed the caller's OWN grants — creating a
+            // group hands it a new file, joining one opens another. The
+            // resolved AccessContext is cached for ACCESS_CACHE_TTL seconds, so
+            // without this the principal would be refused a file it just earned
+            // until the cache expired. Re-resolving costs a handful of indexed
+            // queries and only happens after a write.
+            if (in_array($name, self::GRANT_CHANGING_TOOLS, true)) {
+                $this->accessCache = [];
+            }
             return $this->buildResult($id, [
                 'content' => [['type' => 'text', 'text' => json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)]],
             ]);

@@ -4,7 +4,9 @@ declare(strict_types=1);
 namespace SandraCore\Mcp\Tools;
 
 use SandraCore\Acl\AccessContext;
+use SandraCore\Acl\FileManager;
 use SandraCore\Acl\WriteGuard;
+use SandraCore\Exception\AccessDeniedException;
 use SandraCore\Mcp\AclAwareToolInterface;
 use SandraCore\Exception\ConceptNotFoundException;
 use SandraCore\DatabaseAdapter;
@@ -55,6 +57,10 @@ class CreateConceptTool implements McpToolInterface, AclAwareToolInterface
         $name = $args['name'] ?? '';
         if ($name === '') {
             throw new \InvalidArgumentException('Concept name cannot be empty');
+        }
+
+        if (FileManager::isReserved($name)) {
+            throw new AccessDeniedException("'$name' is reserved system vocabulary and cannot be created.");
         }
 
         WriteGuard::forAccess($this->system, $this->access)?->assertCanMintConcept();

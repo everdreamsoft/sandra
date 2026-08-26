@@ -158,6 +158,80 @@ class McpAclTest extends SandraTestCase
         $this->assertSame([], $unclassified, 'ACL_AWARE_TOOLS and AclAwareToolInterface must agree');
     }
 
+    /**
+     * A host application registers its own tools after boot(). Those must be
+     * declarable as ACL-aware — otherwise embedding the server means every
+     * principal is refused every tool the host actually cares about — and the
+     * declaration must be refused for a tool that cannot receive an
+     * AccessContext, since such a tool could only ever pretend to filter.
+     */
+    public function testHostToolsCanBeDeclaredAclAwareOnlyWithTheInterface(): void
+    {
+        $this->mcp->registerTool($this->hostTool('host_blind', false));
+        $this->mcp->registerTool($this->hostTool('host_scoped', true));
+
+        try {
+            $this->mcp->declareAclAware('host_blind');
+            $this->fail('A tool without AclAwareToolInterface must not be declarable.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('does not implement', $e->getMessage());
+        }
+
+        try {
+            $this->mcp->declareAclAware('never_registered');
+            $this->fail('An unregistered tool must not be declarable.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('unknown tool', $e->getMessage());
+        }
+
+        $this->mcp->declareAclAware('host_scoped');
+        $this->mcp->setRequestPrincipal($this->alicePrincipal);
+
+        $blind = $this->callTool('host_blind', []);
+        $this->assertTrue($blind['isError'], 'An undeclared host tool stays blocked for a principal.');
+        $this->assertStringContainsString('not ACL-aware', $blind['text']);
+
+        $scoped = $this->callTool('host_scoped', []);
+        $this->assertFalse($scoped['isError']);
+        // The point of the interface: the tool was handed the principal's access.
+        $this->assertSame('employee_file', $scoped['json']);
+    }
+
+    /** A stand-in for a tool an embedding application registers itself. */
+    private function hostTool(string $name, bool $aclAware): \SandraCore\Mcp\McpToolInterface
+    {
+        if (!$aclAware) {
+            return new class($name) implements \SandraCore\Mcp\McpToolInterface {
+                public function __construct(private string $n) {}
+                public function name(): string { return $this->n; }
+                public function description(): string { return 'stub'; }
+                public function inputSchema(): array { return ['type' => 'object', 'properties' => []]; }
+                public function execute(array $args): mixed { return 'ran'; }
+            };
+        }
+
+        return new class($name, $this->system) implements \SandraCore\Mcp\McpToolInterface, \SandraCore\Mcp\AclAwareToolInterface {
+            private ?\SandraCore\Acl\AccessContext $access = null;
+            public function __construct(private string $n, private \SandraCore\System $system) {}
+            public function name(): string { return $this->n; }
+            public function description(): string { return 'stub'; }
+            public function inputSchema(): array { return ['type' => 'object', 'properties' => []]; }
+            public function setAccess(?\SandraCore\Acl\AccessContext $access): void { $this->access = $access; }
+            public function execute(array $args): mixed
+            {
+                // Report what it was granted, by name, so the test sees the
+                // context actually arrived rather than merely that it ran.
+                $names = [];
+                foreach (array_keys($this->access?->allowedRead ?? []) as $fileId) {
+                    $names[] = (string) $this->system->systemConcept->getShortname((int) $fileId);
+                }
+                sort($names);
+
+                return implode(',', $names);
+            }
+        };
+    }
+
     public function testPrincipalResetRestoresRoot(): void
     {
         $this->mcp->setRequestPrincipal($this->alicePrincipal);

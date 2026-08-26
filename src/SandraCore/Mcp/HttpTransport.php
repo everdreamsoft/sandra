@@ -542,6 +542,63 @@ class HttpTransport
         @fclose($conn);
     }
 
+    /**
+     * Mint the principal a token was issued for, on its first connection.
+     *
+     * Only for a token that explicitly carries `provision_as`. Every existing
+     * token has it NULL and is untouched — which matters, because stamping a
+     * principal flips a token from unrestricted root to principal-scoped and
+     * narrows what it may call. Static and OAuth tokens have no row to stamp
+     * and are skipped.
+     *
+     * @param  array<string, mixed>|null $routeInfo
+     * @return array<string, mixed>|null the same routeInfo, principal filled in
+     */
+    private function provisionPrincipal(?array $routeInfo): ?array
+    {
+        if ($routeInfo === null
+            || empty($routeInfo['provision_as'])
+            || !empty($routeInfo['principal_concept_id'])
+            || empty($routeInfo['token_hash'])
+            || !empty($routeInfo['is_static'])
+            || $this->authService === null
+            || $this->systemRegistry === null) {
+            return $routeInfo;
+        }
+
+        $handle = (string) $routeInfo['provision_as'];
+
+        try {
+            // Same arguments as handleApiRequest, so SystemRegistry hands back
+            // the very System the McpServer will use lazily — no second
+            // connection.
+            $system = $this->systemRegistry->get(
+                $routeInfo['env'] ?? $this->systemRegistry->getDefaultEnv(),
+                $routeInfo['db_host'] ?? null,
+                $routeInfo['db_name'] ?? null,
+                $routeInfo['datagraph_version'] ?? null
+            );
+
+            $principal = (new UserProvisioner($system))->provision($handle);
+            // Conditional write: if another process got there first, its
+            // principal is the one that comes back and we adopt it.
+            $bound = $this->authService->stampPrincipal((string) $routeInfo['token_hash'], $principal);
+
+            $routeInfo['principal_concept_id'] = $bound;
+            $routeInfo['provision_as'] = null;
+
+            $this->sessionStore?->bindPrincipal((string) $routeInfo['token_hash'], $bound);
+            $this->log("   Provisioned principal $bound for handle '$handle'");
+        } catch (\Throwable $e) {
+            // Never hand out an unprovisioned-but-root session: a token asking
+            // to be scoped must not fall back to acting as root.
+            $this->log("   Provisioning FAILED for handle '$handle': " . $e->getMessage());
+            throw $e;
+        }
+
+        return $routeInfo;
+    }
+
     private function handlePost($conn, array $headers, string $body, string $peer, ?array $routeInfo, ?McpSession $existingSession): void
     {
         $msg = json_decode($body, true);
@@ -565,6 +622,14 @@ class HttpTransport
             // Create a NEW session without touching existing ones
             $sessionId = bin2hex(random_bytes(16));
             $mcpServer = $this->selectMcpServer($routeInfo);
+
+            // First connection of a token carrying `provision_as`: mint the
+            // principal now. It has to happen HERE — after the token row is
+            // known, before the routeInfo is frozen into the session and
+            // persisted, since both the dispatch and a later resume read the
+            // principal from the session and not from the token.
+            $routeInfo = $this->provisionPrincipal($routeInfo);
+
             $session = new McpSession($sessionId, $mcpServer, $routeInfo);
             $this->sessions[$sessionId] = $session;
             $this->cleanupSessions();

@@ -80,9 +80,12 @@ class UpdateEntityTool implements McpToolInterface, AclAwareToolInterface
         $id = (int)($args['id'] ?? 0);
         $refs = $args['refs'] ?? [];
 
-        // Checked on the entity's own file, before loading it: the "not found"
-        // below would otherwise confirm existence in an ungranted file.
-        WriteGuard::forAccess($this->system, $this->access)?->assertCanWriteEntity($id);
+        // Judged on the FACET being written — the factory's file — not on the
+        // union of the entity's files: an HR facet must not freeze a colleague
+        // out of their own refs. Checked before loading, so the "not found"
+        // below cannot confirm existence in an ungranted file.
+        WriteGuard::forAccess($this->system, $this->access)
+            ?->assertCanWriteFacet($id, (string) $factory->entityContainedIn);
 
         // Load only this single entity via a fresh factory with pre-set conceptArray
         $singleFactory = new EntityFactory(

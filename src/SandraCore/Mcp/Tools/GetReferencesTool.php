@@ -84,8 +84,9 @@ class GetReferencesTool implements McpToolInterface, AclAwareToolInterface
         }
         $params[':deleted'] = [$deletedId, PDO::PARAM_INT];
 
-        // References hang on a link, so they are exactly as visible as it is.
-        $where .= TripletVisibility::forAccess($this->system, $this->access)?->sqlFilter('l') ?? '';
+        // References hang on a link, so they are exactly as visible as it is —
+        // and that includes the cif link, whose refs ARE a facet's payload.
+        $where .= TripletVisibility::forAccess($this->system, $this->access)?->linkFilter('l') ?? '';
 
         $sql = "SELECT r.id AS refId,
                        r.idConcept AS refKeyId,

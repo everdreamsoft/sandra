@@ -242,11 +242,18 @@ class McpWriteAclTest extends SandraTestCase
         ], $this->writer), 'secrets_file carries no write grant');
     }
 
-    public function testCreateEntityCannotSmuggleInANewFactory(): void
+    public function testCreateEntityCannotBringAFileIntoBeing(): void
     {
         $args = ['factory' => 'invented', 'refs' => ['title' => 'x']];
 
-        $this->assertDenied($this->call('sandra_create_entity', $args, $this->writer), 'unknown factory = new ACL unit');
+        $this->assertDenied($this->call('sandra_create_entity', $args, $this->writer), 'no grant on invented_file');
+        $this->assertDenied(
+            $this->call('sandra_create_entity', $args, $this->admin),
+            'not even the wildcard: a file is a permission boundary, declared on purpose'
+        );
+
+        // Declared explicitly, it works — for whoever may write it.
+        $this->assertGranted($this->call('sandra_create_file', ['name' => 'invented_file'], $this->admin));
         $this->assertGranted($this->call('sandra_create_entity', $args, $this->admin));
     }
 
@@ -296,10 +303,38 @@ class McpWriteAclTest extends SandraTestCase
 
     // ---------------------------------------------------------- create_factory
 
-    public function testCreatingAFactoryTakesTheWildcard(): void
+    public function testCreatingAFactoryNeedsADeclaredFileAndTheWildcard(): void
     {
-        $this->assertDenied($this->call('sandra_create_factory', ['name' => 'cluster'], $this->writer), 'new ACL unit');
+        $this->assertDenied($this->call('sandra_create_factory', ['name' => 'cluster'], $this->writer), 'undeclared file');
+        $this->assertDenied($this->call('sandra_create_factory', ['name' => 'cluster'], $this->admin), 'undeclared file');
+
+        $this->assertGranted($this->call('sandra_create_file', ['name' => 'cluster_file'], $this->admin));
+        $this->assertDenied(
+            $this->call('sandra_create_factory', ['name' => 'cluster'], $this->writer),
+            'the file exists now, but the writer holds no grant on it'
+        );
         $this->assertGranted($this->call('sandra_create_factory', ['name' => 'cluster'], $this->admin));
+    }
+
+    public function testOnlyTheWildcardMayDeclareAFile(): void
+    {
+        $this->assertDenied($this->call('sandra_create_file', ['name' => 'writer_made_file'], $this->writer), 'new boundary');
+        $this->assertDenied($this->call('sandra_create_file', ['name' => 'reader_made_file'], $this->reader), 'new boundary');
+    }
+
+    public function testReservedVocabularyCannotBeMinted(): void
+    {
+        foreach (['sandra_allow_access', 'has_role', 'sandra_all_files', 'contained_in_file'] as $name) {
+            $this->assertDenied(
+                $this->call('sandra_create_concept', ['name' => $name], $this->admin),
+                "$name is system vocabulary"
+            );
+        }
+
+        $this->assertDenied(
+            $this->call('sandra_create_file', ['name' => 'sandra_architect_file'], $this->admin),
+            'nor may a file take a reserved name'
+        );
     }
 
     // -------------------------------------------------------------------- batch

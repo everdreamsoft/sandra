@@ -89,7 +89,7 @@ class GetTripletsTool implements McpToolInterface, AclAwareToolInterface
         $conceptTable = $this->system->conceptTable;
         $storageTable = $this->system->tableStorage;
         $deletedId = (int)$this->system->deletedUNID;
-        $aclFilter = TripletVisibility::forAccess($this->system, $this->access)?->sqlFilter('l') ?? '';
+        $aclFilter = TripletVisibility::forAccess($this->system, $this->access)?->linkFilter('l') ?? '';
 
         if ($countOnly) {
             return $this->executeCountOnly($pdo, $linkTable, $conceptId, $deletedId, $direction, $aclFilter);

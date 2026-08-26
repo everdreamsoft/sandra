@@ -71,6 +71,11 @@ final class WriteGuard
     /** @throws AccessDeniedException */
     public function assertCanLink(int $subject, int $verb, int $target): void
     {
+        if ($verb === $this->cifId && $this->cifId > 0) {
+            $this->assertCanAttachFacet($subject, $target);
+            return;
+        }
+
         if ($this->isProtectedVerb($verb) && !$this->access->isAdmin()) {
             throw new AccessDeniedException(
                 'Writing an ACL triplet (has_role / sandra_allow_access / sandra_allow_write) requires the write wildcard.'
@@ -158,6 +163,68 @@ final class WriteGuard
     }
 
     /**
+     * Attaching (or retracting) a facet — a `contained_in_file` link — is not
+     * the generic link write, and must not be judged like one.
+     *
+     * The generic rule asks that every endpoint's files be writable. Applied
+     * here it would forbid the whole point of facets: annotating a PUBLIC
+     * concept privately. Alice may write her own file and may read the public
+     * blockchain address, but she will never be able to write
+     * `blockchainAddressFile` — under the generic rule she could never attach
+     * her private label to it.
+     *
+     * The rule that fits:
+     *
+     *   write the DESTINATION file, and be able to READ the subject
+     *   (or the subject is bare vocabulary, i.e. a brand-new entity).
+     *
+     * The read clause is not cosmetic. Without it the endpoint rule becomes an
+     * escalation: a principal who guesses the id of a concept it cannot see
+     * could file that concept under its own file, make it visible to itself,
+     * and so reveal the links touching it.
+     *
+     * Known and accepted: a principal holding write on a WIDELY READABLE file
+     * can publish into it a concept it is allowed to read. That is inherent to
+     * holding such a grant — it could equally retype the data by hand — and in
+     * the intended deployment a user writes only their own private file.
+     *
+     * @throws AccessDeniedException
+     */
+    public function assertCanAttachFacet(int $subject, int $file): void
+    {
+        if (!$this->access->canWrite($file)) {
+            throw new AccessDeniedException('No write grant on the file this facet would be filed under.');
+        }
+
+        $visibility = TripletVisibility::forAccess($this->system, $this->access);
+        if ($visibility === null) {
+            return; // readAll: nothing to hide from this principal
+        }
+
+        if ($visibility->visibleConcepts([$subject]) === []) {
+            throw new AccessDeniedException(
+                'Cannot file a concept you cannot read; doing so would reveal it to yourself.'
+            );
+        }
+    }
+
+    /**
+     * Writing ONE facet of an entity — its refs, its storage. The unit is the
+     * (entity, file) pair, which every tool already holds: it reaches the
+     * entity through a factory, and a factory is exactly one facet.
+     *
+     * `assertCanWriteEntity()` stays for callers acting on the whole concept,
+     * but must not be used for a ref update: it requires write on EVERY file,
+     * so one HR facet would freeze a colleague out of their own `slack_id`.
+     *
+     * @throws AccessDeniedException
+     */
+    public function assertCanWriteFacet(int $entityId, string $fileShortname): void
+    {
+        $this->assertCanCreateInFile($fileShortname);
+    }
+
+    /**
      * Soft-deleting a link, or rewriting the storage hanging off it, is a write
      * on that link — same endpoint rule as creating it. Without this, a caller
      * could delete a link it was never allowed to see.
@@ -220,6 +287,8 @@ final class WriteGuard
      */
     public function assertCanCreateInFile(string $fileShortname): void
     {
+        $this->assertFileDeclared($fileShortname);
+
         if ($this->access->writeAll) {
             return;
         }
@@ -228,6 +297,32 @@ final class WriteGuard
         if (!is_numeric($fileId) || !$this->access->canWrite((int) $fileId)) {
             throw new AccessDeniedException("No write grant on file '$fileShortname'.");
         }
+    }
+
+    /**
+     * A file is declared, never a side effect.
+     *
+     * Naming an unknown `contained_in_file` used to mint the concept on the
+     * spot — i.e. create a permission boundary by accident, with nobody
+     * deciding whether it should be visible. Files now come from
+     * FileManager::create() (`sandra_create_file`).
+     *
+     * A file already holding entities counts as declared, so every graph that
+     * predates the rule keeps working: what is refused is a file that exists
+     * NOWHERE yet, which is exactly the accidental case.
+     *
+     * @throws AccessDeniedException
+     */
+    public function assertFileDeclared(string $fileShortname): void
+    {
+        if ((new FileManager($this->system))->isDeclared($fileShortname)) {
+            return;
+        }
+
+        throw new AccessDeniedException(
+            "File '$fileShortname' does not exist. A file is a permission boundary and is created "
+            . 'explicitly with sandra_create_file, never as a side effect of writing an entity.'
+        );
     }
 
     /**
@@ -253,11 +348,24 @@ final class WriteGuard
      */
     public function assertCanCreateFactory(string $fileShortname): void
     {
-        if (!$this->access->isAdmin()) {
-            throw new AccessDeniedException(
-                "Creating factory file '$fileShortname' defines a new ACL unit and requires the write wildcard."
-            );
+        $this->assertFileDeclared($fileShortname);
+
+        if ($this->access->isAdmin()) {
+            return;
         }
+
+        // Only a NEW file is a new ACL unit. Declaring another is_a inside a
+        // file the principal already writes creates no permission: it is the
+        // ordinary write that lets a user keep several kinds of thing — notes,
+        // labels, wallets — in their own file.
+        $fileId = $this->system->systemConcept->get($fileShortname, null, false);
+        if (is_numeric($fileId) && $this->access->canWrite((int) $fileId)) {
+            return;
+        }
+
+        throw new AccessDeniedException(
+            "Creating factory file '$fileShortname' defines a new ACL unit and requires the write wildcard."
+        );
     }
 
     /**

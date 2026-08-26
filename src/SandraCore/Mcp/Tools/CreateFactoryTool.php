@@ -6,6 +6,7 @@ namespace SandraCore\Mcp\Tools;
 use SandraCore\Acl\AccessContext;
 use SandraCore\Acl\WriteGuard;
 use SandraCore\Mcp\AclAwareToolInterface;
+use SandraCore\Mcp\FactoryDiscovery;
 use SandraCore\EntityFactory;
 use SandraCore\Mcp\McpToolInterface;
 use SandraCore\System;
@@ -18,6 +19,23 @@ class CreateFactoryTool implements McpToolInterface, AclAwareToolInterface
     {
         $this->access = $access;
     }
+
+    /**
+     * Registry key for (is_a, requested file). Falls back to the bare is_a when
+     * no file is named, or when the registered factory already sits in it.
+     */
+    private function keyFor(string $isa, ?string $cif): string
+    {
+        if ($cif === null || !isset($this->factories[$isa])) {
+            return $isa;
+        }
+        if ((string) $this->factories[$isa]['factory']->entityContainedIn === $cif) {
+            return $isa;
+        }
+
+        return FactoryDiscovery::qualifiedName($isa, $cif);
+    }
+
     /** @var array<string, array{factory: EntityFactory, options: array}> */
     private array $factories;
     /** @var array<string, array{isa: string, cif: string, options: array}> */
@@ -66,6 +84,12 @@ class CreateFactoryTool implements McpToolInterface, AclAwareToolInterface
             throw new \InvalidArgumentException('Factory name cannot be empty');
         }
 
+        // Naming a file that differs from the registered one is a request for
+        // ANOTHER facet, not a duplicate — previously it answered "already
+        // exists" and silently discarded the file.
+        $isa = $name;
+        $name = $this->keyFor($isa, $args['contained_in_file'] ?? null);
+
         if (isset($this->factories[$name])) {
             $factory = $this->factories[$name]['factory'];
             return [
@@ -77,17 +101,18 @@ class CreateFactoryTool implements McpToolInterface, AclAwareToolInterface
             ];
         }
 
-        $cif = $args['contained_in_file'] ?? $name . '_file';
+        $cif = $args['contained_in_file'] ?? $isa . '_file';
         WriteGuard::forAccess($this->system, $this->access)?->assertCanCreateFactory($cif);
         $options = ['brothers' => [], 'joined' => []];
-        $factory = new EntityFactory($name, $cif, $this->system);
+        // The registry key may be qualified (`note@alice_file`); the is_a is not.
+        $factory = new EntityFactory($isa, $cif, $this->system);
 
         $this->factories[$name] = [
             'factory' => $factory,
             'options' => $options,
         ];
         $this->factoryMeta[$name] = [
-            'isa' => $name,
+            'isa' => $isa,
             'cif' => $cif,
             'options' => $options,
         ];

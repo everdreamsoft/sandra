@@ -38,7 +38,7 @@ class TraverseGraphTool implements McpToolInterface, AclAwareToolInterface
     /** @var array<string, array{factory: EntityFactory, options: array}> */
     private array $factories;
     private System $system;
-    /** @var array<string, string>|null is_a shortname → registry name (built on first use) */
+    /** @var array<string, string[]>|null is_a shortname → registry names (built on first use) */
     private ?array $isaIndex = null;
     private ?AccessContext $access = null;
     /** Memoised per request — a walk calls neighbors() once per node. */
@@ -219,7 +219,7 @@ class TraverseGraphTool implements McpToolInterface, AclAwareToolInterface
         $from = $backward ? 'idConceptTarget' : 'idConceptStart';
         $to = $backward ? 'idConceptStart' : 'idConceptTarget';
         $linkTable = $this->system->linkTable;
-        $aclFilter = $this->visibility()?->sqlFilter('l') ?? '';
+        $aclFilter = $this->visibility()?->linkFilter('l') ?? '';
         $sql = "SELECT l.`$to` AS n FROM `$linkTable` l
                 WHERE l.`$from` = :cid AND l.idConceptLink = :verb AND l.flag != :deleted{$aclFilter}
                 ORDER BY l.id ASC";
@@ -270,8 +270,16 @@ class TraverseGraphTool implements McpToolInterface, AclAwareToolInterface
         $index = $this->isaIndex();
         foreach ($targets as $isaTarget) {
             $isa = $this->system->systemConcept->getShortname($isaTarget);
-            if ($isa !== null && isset($index[$isa])) {
-                return $index[$isa];
+            foreach ($index[$isa] ?? [] as $regName) {
+                // With facets an is_a spans several files. Materialise the node
+                // through the first one this principal may read, or a colleague
+                // is either handed the HR facet or degraded to a bare concept
+                // when they were entitled to their own.
+                $cif = (string) $this->factories[$regName]['factory']->entityContainedIn;
+                if ($this->access === null
+                    || AclResolver::fileReadable($this->system, $this->access, $cif)) {
+                    return $regName;
+                }
             }
         }
         return null;
@@ -284,10 +292,9 @@ class TraverseGraphTool implements McpToolInterface, AclAwareToolInterface
             $this->isaIndex = [];
             foreach ($this->factories as $regName => $entry) {
                 $isa = (string)$entry['factory']->entityIsa;
-                // first registration wins (discovery dedups as isa_file for later ones)
-                if (!isset($this->isaIndex[$isa])) {
-                    $this->isaIndex[$isa] = $regName;
-                }
+                // Every facet of an is_a, oldest first: discovery registers the
+                // oldest under the bare name and qualifies the rest.
+                $this->isaIndex[$isa][] = $regName;
             }
         }
         return $this->isaIndex;

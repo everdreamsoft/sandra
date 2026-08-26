@@ -20,6 +20,9 @@ class SandraQlAclConformanceTest extends SandraTestCase
     /** @var array<string, int> principal key -> concept id */
     private array $principalIds = [];
 
+    /** @var array<string, \SandraCore\Entity> seed key -> entity, for the facets */
+    private array $entitiesByKey = [];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -48,6 +51,7 @@ class SandraQlAclConformanceTest extends SandraTestCase
                 $entity->delete();
             }
             $byKey[$spec['key']] = $entity;
+            $this->entitiesByKey[$spec['key']] = $entity;
         }
         foreach ($seed['joined'] ?? [] as $join) {
             $byKey[$join['from']]->setJoinedEntity($join['verb'], $byKey[$join['to']], $join['refs'] ?? []);
@@ -73,6 +77,22 @@ class SandraQlAclConformanceTest extends SandraTestCase
                 $this->system
             );
         }
+        // Facets: file an ALREADY SEEDED concept under a second file, with its
+        // own refs. Refs hang on the contained_in_file triplet, so each file
+        // carries a disjoint set for the same concept.
+        foreach ($acl['facets'] ?? [] as $facet) {
+            $concept = (int) $this->entitiesByKey[$facet['entity']]->subjectConcept->idConcept;
+            $link = (int) \SandraCore\DatabaseAdapter::rawCreateTriplet(
+                $concept,
+                (int) $sc->get('contained_in_file'),
+                (int) $sc->get($facet['file']),
+                $this->system
+            );
+            foreach ($facet['refs'] as $key => $value) {
+                \SandraCore\DatabaseAdapter::rawCreateReference($link, (int) $sc->get((string) $key), (string) $value, $this->system);
+            }
+        }
+
         foreach ($acl['grants'] as $g) {
             $subjectId = $this->principalIds[$g['subject']] ?? (int) $sc->get($g['subject']);
             \SandraCore\DatabaseAdapter::rawCreateTriplet(

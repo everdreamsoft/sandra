@@ -21,8 +21,15 @@ use SandraCore\System;
  */
 class SandraQlTool implements McpToolInterface, AclAwareToolInterface
 {
+    /** Applied when the query carries no LIMIT — a remote client must opt in to more. */
+    public const DEFAULT_LIMIT = 100;
+    /** Hard ceiling: queries asking for more are clamped, never refused. */
+    public const MAX_LIMIT = 1000;
+
     private System $system;
     private ?AccessContext $access = null;
+    private int $defaultLimit;
+    private int $maxLimit;
     /** @var array<string, array{factory: \SandraCore\EntityFactory}> discovered factories, by is_a name */
     private array $factories;
 
@@ -36,6 +43,17 @@ class SandraQlTool implements McpToolInterface, AclAwareToolInterface
     {
         $this->system = $system;
         $this->factories = &$factories;
+
+        // Guardrails live at the MCP boundary (not in AstExecutor) so the
+        // embedded executor and the AST conformance contract shared with
+        // sandra-js keep their unbounded semantics. Overridable per server.
+        $envDefault = getenv('SANDRA_QL_DEFAULT_LIMIT');
+        $envMax = getenv('SANDRA_QL_MAX_LIMIT');
+        $this->defaultLimit = is_numeric($envDefault) && (int)$envDefault > 0 ? (int)$envDefault : self::DEFAULT_LIMIT;
+        $this->maxLimit = is_numeric($envMax) && (int)$envMax > 0 ? (int)$envMax : self::MAX_LIMIT;
+        if ($this->defaultLimit > $this->maxLimit) {
+            $this->defaultLimit = $this->maxLimit;
+        }
     }
 
     public function setAccess(?AccessContext $access): void
@@ -56,7 +74,9 @@ class SandraQlTool implements McpToolInterface, AclAwareToolInterface
              . 'LIMIT 10\') or `ast` with the canonical JSON AST. Supports MATCH '
              . '[IN file], WHERE with = != > >= < <= LIKE IN, HAS verb -> target, '
              . 'NOT HAS, AND (OR is not yet supported by the PHP executor), '
-             . 'ORDER BY [NUMERIC], LIMIT/OFFSET, SELECT fields [WITH STORAGE].';
+             . 'ORDER BY [NUMERIC], LIMIT/OFFSET, SELECT fields [WITH STORAGE]. '
+             . "Queries without LIMIT get a server default of {$this->defaultLimit} results; "
+             . "LIMIT is capped at {$this->maxLimit} (use OFFSET to paginate).";
     }
 
     public function inputSchema(): array
@@ -87,6 +107,18 @@ class SandraQlTool implements McpToolInterface, AclAwareToolInterface
         try {
             $ast = $hasQuery ? Parser::parse($args['query']) : $args['ast'];
 
+            // Guardrails: a query without LIMIT gets the server default; a
+            // LIMIT above the ceiling is clamped. Surfaced in the response so
+            // agents know the result window was bounded.
+            $requestedLimit = isset($ast['limit']) && is_int($ast['limit']) ? $ast['limit'] : null;
+            $appliedLimit = $requestedLimit ?? $this->defaultLimit;
+            $limitClamped = false;
+            if ($appliedLimit > $this->maxLimit) {
+                $appliedLimit = $this->maxLimit;
+                $limitClamped = true;
+            }
+            $ast['limit'] = $appliedLimit;
+
             // No explicit `IN file`: AstExecutor would guess `{isa}_file`, which is
             // wrong for factories whose container has another name (e.g.
             // blockchainEvent → blockchainEventFile). Use the discovered registry,
@@ -100,11 +132,20 @@ class SandraQlTool implements McpToolInterface, AclAwareToolInterface
 
             $executor = (new AstExecutor($this->system))->withAccess($this->access);
             $entities = $executor->execute($ast);
-            return [
+            $result = [
                 'count' => count($entities),
                 'ast' => $ast,
                 'entities' => AstExecutor::serialize($entities, $ast),
+                'appliedLimit' => $appliedLimit,
             ];
+            if ($requestedLimit === null) {
+                $result['note'] = "No LIMIT in query - server default of {$this->defaultLimit} applied. "
+                    . "Add LIMIT (max {$this->maxLimit}) or OFFSET to page through more results.";
+            } elseif ($limitClamped) {
+                $result['note'] = "Requested LIMIT {$requestedLimit} exceeds the server ceiling - "
+                    . "clamped to {$this->maxLimit}. Use OFFSET to page through more results.";
+            }
+            return $result;
         } catch (SandraQlSyntaxException $e) {
             return ['error' => 'SandraQL syntax error: ' . $e->getMessage()];
         } catch (SandraQlValidationException $e) {

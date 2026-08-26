@@ -1,48 +1,197 @@
 {
-  "description": "Cross-library ACL conformance. Extends seed.json: principals, roles and grants over the seeded files, then the same queries executed as different actors. Both the JS and PHP runners must produce identical rows.",
+  "description": "Cross-library ACL conformance. Extends seed.json: principals, roles and grants over the seeded files, then the same queries executed as different actors. Both the JS and PHP runners must produce identical rows. Also pins FACETS: one concept filed in several files, one disjoint ref set per file, visible as soon as ONE of its files is readable.",
   "principals": [
-    { "key": "alice_key", "factory": "api_key", "file": "keys_file", "refs": { "name": "alice-key" } },
-    { "key": "bob_key", "factory": "api_key", "file": "keys_file", "refs": { "name": "bob-key" } },
-    { "key": "root_key", "factory": "api_key", "file": "keys_file", "refs": { "name": "root-key" } }
+    {
+      "key": "alice_key",
+      "factory": "api_key",
+      "file": "keys_file",
+      "refs": {
+        "name": "alice-key"
+      }
+    },
+    {
+      "key": "bob_key",
+      "factory": "api_key",
+      "file": "keys_file",
+      "refs": {
+        "name": "bob-key"
+      }
+    },
+    {
+      "key": "root_key",
+      "factory": "api_key",
+      "file": "keys_file",
+      "refs": {
+        "name": "root-key"
+      }
+    },
+    {
+      "key": "payroll_key",
+      "factory": "api_key",
+      "file": "keys_file",
+      "refs": {
+        "name": "payroll-key"
+      }
+    }
   ],
   "roles": [
-    { "principal": "alice_key", "role": "hr" }
+    {
+      "principal": "alice_key",
+      "role": "hr"
+    }
   ],
   "grants": [
-    { "subject": "hr", "file": "person_file" },
-    { "subject": "sandra_everyone", "file": "team_file" },
-    { "subject": "root_key", "file": "sandra_all_files", "write": true }
+    {
+      "subject": "hr",
+      "file": "person_file"
+    },
+    {
+      "subject": "sandra_everyone",
+      "file": "team_file"
+    },
+    {
+      "subject": "root_key",
+      "file": "sandra_all_files",
+      "write": true
+    },
+    {
+      "subject": "payroll_key",
+      "file": "person_file"
+    },
+    {
+      "subject": "payroll_key",
+      "file": "hr_private_file"
+    }
   ],
   "scenarios": [
     {
       "name": "granted role reads the file",
       "actor": "alice_key",
       "sandraql": "MATCH person ORDER BY name",
-      "expect": { "order": "strict", "rows": [ { "name": "Alice" }, { "name": "Bob" }, { "name": "Carol" }, { "name": "Dave" } ] }
+      "expect": {
+        "order": "strict",
+        "rows": [
+          {
+            "name": "Alice"
+          },
+          {
+            "name": "Bob"
+          },
+          {
+            "name": "Carol"
+          },
+          {
+            "name": "Dave"
+          }
+        ]
+      }
     },
     {
       "name": "default deny: ungranted principal sees nothing",
       "actor": "bob_key",
       "sandraql": "MATCH person ORDER BY name",
-      "expect": { "order": "strict", "rows": [] }
+      "expect": {
+        "order": "strict",
+        "rows": []
+      }
     },
     {
       "name": "everyone role makes a file public",
       "actor": "bob_key",
       "sandraql": "MATCH team IN team_file",
-      "expect": { "order": "set", "rows": [ { "name": "Alpha" } ] }
+      "expect": {
+        "order": "set",
+        "rows": [
+          {
+            "name": "Alpha"
+          }
+        ]
+      }
     },
     {
       "name": "wildcard reads everything",
       "actor": "root_key",
       "sandraql": "MATCH person WHERE city = \"Geneva\" ORDER BY name",
-      "expect": { "order": "strict", "rows": [ { "name": "Alice" }, { "name": "Carol" } ] }
+      "expect": {
+        "order": "strict",
+        "rows": [
+          {
+            "name": "Alice"
+          },
+          {
+            "name": "Carol"
+          }
+        ]
+      }
     },
     {
       "name": "filters still apply inside a granted file",
       "actor": "alice_key",
       "sandraql": "MATCH person WHERE HAS likes -> coffee AND NOT HAS status -> banned",
-      "expect": { "order": "set", "rows": [ { "name": "Alice" } ] }
+      "expect": {
+        "order": "set",
+        "rows": [
+          {
+            "name": "Alice"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a private facet does not unpublish the concept",
+      "actor": "alice_key",
+      "sandraql": "MATCH person IN person_file ORDER BY name",
+      "expect": {
+        "order": "strict",
+        "rows": [
+          {
+            "name": "Alice"
+          },
+          {
+            "name": "Bob"
+          },
+          {
+            "name": "Carol"
+          },
+          {
+            "name": "Dave"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a facet is unreadable without a grant on its file",
+      "actor": "alice_key",
+      "sandraql": "MATCH person IN hr_private_file",
+      "expect": {
+        "order": "set",
+        "rows": []
+      }
+    },
+    {
+      "name": "the facet's own refs are readable with the grant",
+      "actor": "payroll_key",
+      "sandraql": "MATCH person IN hr_private_file",
+      "expect": {
+        "order": "set",
+        "rows": [
+          {
+            "name": "Alice",
+            "salary": "90000"
+          }
+        ]
+      }
+    }
+  ],
+  "facets": [
+    {
+      "entity": "alice",
+      "isa": "person",
+      "file": "hr_private_file",
+      "refs": {
+        "name": "Alice",
+        "salary": "90000"
+      }
     }
   ]
 }

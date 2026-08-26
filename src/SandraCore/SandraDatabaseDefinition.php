@@ -133,6 +133,7 @@ class SandraDatabaseDefinition
                         `db_name` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
                         `datagraph_version` tinyint(3) unsigned NOT NULL DEFAULT 8,
                         `principal_concept_id` int(10) unsigned DEFAULT NULL,
+                        `provision_as` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
                         `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         `expires_at` timestamp NULL DEFAULT NULL,
                         `disabled_at` timestamp NULL DEFAULT NULL,
@@ -163,6 +164,26 @@ class SandraDatabaseDefinition
                     System::$pdo->get()->exec(
                         "ALTER TABLE `$sharedTokenTable`
                          ADD COLUMN `datagraph_version` tinyint(3) unsigned NOT NULL DEFAULT 8"
+                    );
+                }
+            }
+
+            // Migration: add provision_as (handle to mint a principal for on this
+            // token's first connection; NULL = never provision, which is what
+            // every existing token is — root tokens keep acting as root).
+            try {
+                System::$pdo->get()->exec(
+                    "ALTER TABLE `$sharedTokenTable`
+                     ADD COLUMN IF NOT EXISTS `provision_as` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL"
+                );
+            } catch (\Throwable $e) {
+                $check = System::$pdo->get()->query(
+                    "SHOW COLUMNS FROM `$sharedTokenTable` LIKE 'provision_as'"
+                );
+                if ($check !== false && $check->fetch() === false) {
+                    System::$pdo->get()->exec(
+                        "ALTER TABLE `$sharedTokenTable`
+                         ADD COLUMN `provision_as` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL"
                     );
                 }
             }

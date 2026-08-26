@@ -58,7 +58,8 @@ class FactoryDiscovery
                 WHERE isa.idConceptLink = :isaId
                   AND cif.idConceptLink = :cifId
                   AND isa.flag != :deleted1
-                  AND cif.flag != :deleted2";
+                  AND cif.flag != :deleted2
+                ORDER BY isa.idConceptTarget ASC, cif.idConceptTarget ASC";
 
         $rows = QueryExecutor::fetchAll($pdo, $sql, [
             ':isaId' => [(int)$isaId, PDO::PARAM_INT],
@@ -83,11 +84,12 @@ class FactoryDiscovery
                 continue;
             }
 
-            // Use isaShortname as the factory name (deduplicate if needed)
-            $name = $isaShortname;
-            if (isset($factories[$name])) {
-                $name = $isaShortname . '_' . $cifShortname;
-            }
+            // The oldest pair keeps the bare is_a — deterministic thanks to the
+            // ORDER BY above, so a facet added later never steals a name that
+            // clients already use. Every further file for that is_a is qualified.
+            $name = isset($factories[$isaShortname])
+                ? self::qualifiedName($isaShortname, $cifShortname)
+                : $isaShortname;
 
             $this->log("Discovery: found factory '$name' (is_a=$isaShortname, file=$cifShortname)");
             $factories[$name] = new EntityFactory($isaShortname, $cifShortname, $this->system);
@@ -95,6 +97,31 @@ class FactoryDiscovery
 
         $this->log("Discovery: total " . count($factories) . " factories discovered");
         return $factories;
+    }
+
+    /**
+     * Registry name of a factory identified by its PAIR, for every file beyond
+     * the first one of that is_a.
+     *
+     * Facets make several files per is_a the norm rather than the exception —
+     * `person` lives in `person_file`, in `eds_employee_file` and in
+     * `eds_colleagues_file`. Keying by is_a alone meant the first pair returned
+     * by the optimiser took the bare name and the rest got `{isa}_{cif}`, with
+     * no ORDER BY: which one won flipped between boots.
+     *
+     *   person, first file seen -> person
+     *   person / eds_employee_file (a later facet) -> person@eds_employee_file
+     *
+     * `@` rather than `_` because `{isa}_{cif}` is ambiguous: `person_eds` +
+     * `employee_file` would collide with `person` + `eds_employee_file`.
+     *
+     * The bare name is NOT reserved for a `{isa}_file` convention: real graphs
+     * name files freely (`livresFile`, `blockchainAddressFile`), so reserving it
+     * would rename nearly every existing factory.
+     */
+    public static function qualifiedName(string $isa, string $cif): string
+    {
+        return $isa . '@' . $cif;
     }
 
     private function log(string $message): void

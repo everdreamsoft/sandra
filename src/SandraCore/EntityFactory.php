@@ -1031,6 +1031,62 @@ class EntityFactory extends FactoryBase implements Dumpable
      * @param bool $autocommit If false, wraps in a transaction (call DatabaseAdapter::commit() when done)
      * @return Entity The newly created entity
      */
+    /**
+     * File an EXISTING concept under this factory's file, with its own refs — a
+     * facet. Mirrors sandra-js Factory.attachFacet().
+     *
+     * `createNew()` mints a new concept; this one does not. Refs hang on the
+     * contained_in_file triplet, so filing the same concept under a second file
+     * gives it a second, DISJOINT ref set — one public address carrying a
+     * private label per user who tracks it.
+     *
+     * A facet may carry NO caller-supplied ref: "I follow this address", with the
+     * presence itself as the information, is a legitimate record. What it may
+     * never be is ref-LESS, because populateLocal builds its entity list by
+     * iterating the REFERENCES query — a link with no reference at all never
+     * enters the loop and the facet would be invisible, its owner included.
+     * createNew() has always avoided that by writing a creationTimestamp
+     * unconditionally; this does the same rather than refuse the case.
+     */
+    public function attachFacet(int $conceptId, array $refs): Entity
+    {
+        // Idempotent (unique key on the triplet): the concept usually carries
+        // this is_a already, but a facet filed under a factory of another type
+        // has to stay queryable.
+        DatabaseAdapter::rawCreateTriplet(
+            $conceptId, $this->sc->get('is_a'), $this->sc->get($this->entityIsa), $this->system
+        );
+
+        $link = (int) DatabaseAdapter::rawCreateTriplet(
+            $conceptId,
+            $this->sc->get($this->entityReferenceContainer),
+            $this->sc->get($this->entityContainedIn),
+            $this->system
+        );
+
+        // Same as createNew: without it a facet carrying no caller ref would not
+        // materialise at all.
+        DatabaseAdapter::rawCreateReference($link, $this->sc->get('creationTimestamp'), (string) time(), $this->system);
+
+        foreach ($refs as $key => $value) {
+            if ($value === null || is_array($value)) {
+                continue;
+            }
+            DatabaseAdapter::rawCreateReference($link, $this->sc->get((string) $key), (string) $value, $this->system);
+        }
+
+        $this->conceptArray = [$conceptId];
+        $this->populateLocal();
+
+        foreach ($this->getEntities() as $entity) {
+            if ((int) $entity->subjectConcept->idConcept === $conceptId) {
+                return $entity;
+            }
+        }
+
+        throw new \RuntimeException("Facet created but entity $conceptId could not be reloaded.");
+    }
+
     public function createNew($dataArray, $linArray = null, $autocommit = true): Entity
     {
         if ($this->validator !== null) {

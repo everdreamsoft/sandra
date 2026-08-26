@@ -6,6 +6,7 @@ namespace SandraCore\Mcp\Tools;
 use SandraCore\Acl\AccessContext;
 use SandraCore\Acl\WriteGuard;
 use SandraCore\Mcp\AclAwareToolInterface;
+use SandraCore\Mcp\FactoryDiscovery;
 use SandraCore\DatabaseAdapter;
 use SandraCore\EntityFactory;
 use SandraCore\Mcp\EmbeddingService;
@@ -181,20 +182,22 @@ class BatchTool implements McpToolInterface, AclAwareToolInterface
         // --- Phase 2: Create entities ---
         $entityConceptIds = [];
         foreach ($entityDefs as $def) {
-            $factoryName = $def['factory'] ?? '';
+            $isa = (string) ($def['factory'] ?? '');
+            $factoryName = $this->keyFor($isa, $def['contained_in_file'] ?? null);
             $refs = $def['refs'] ?? [];
 
             if (!isset($this->factories[$factoryName])) {
-                $cif = $def['contained_in_file'] ?? $factoryName . '_file';
+                $cif = $def['contained_in_file'] ?? $isa . '_file';
                 $guard?->assertCanCreateFactory($cif);
                 $options = ['brothers' => [], 'joined' => []];
-                $factory = new EntityFactory($factoryName, $cif, $this->system);
+                // Registry key may be qualified; the is_a never is.
+                $factory = new EntityFactory($isa, $cif, $this->system);
                 $this->factories[$factoryName] = [
                     'factory' => $factory,
                     'options' => $options,
                 ];
                 $this->factoryMeta[$factoryName] = [
-                    'isa' => $factoryName,
+                    'isa' => $isa,
                     'cif' => $cif,
                     'options' => $options,
                 ];
@@ -286,6 +289,22 @@ class BatchTool implements McpToolInterface, AclAwareToolInterface
      * Resolve a value to a concept ID.
      * Supports: numeric ID, "$concept.N", "$entity.N", or shortname lookup.
      */
+/**
+     * Registry key for (is_a, requested file). Falls back to the bare is_a when
+     * no file is named, or when the registered factory already sits in it.
+     */
+    private function keyFor(string $isa, ?string $cif): string
+    {
+        if ($cif === null || !isset($this->factories[$isa])) {
+            return $isa;
+        }
+        if ((string) $this->factories[$isa]['factory']->entityContainedIn === $cif) {
+            return $isa;
+        }
+
+        return FactoryDiscovery::qualifiedName($isa, $cif);
+    }
+
     /** True for the "$concept.N" / "$entity.N" placeholders resolved mid-batch. */
     private function isBatchRef(mixed $value): bool
     {

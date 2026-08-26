@@ -101,9 +101,15 @@ class SemanticSearchTool implements McpToolInterface, AclAwareToolInterface
         // hidden entity cannot push a visible one out of the page. Embeddings
         // are built from an entity's own refs and storage, which makes a hit an
         // exact disclosure of content, not a hint.
+        //
+        // The STRICT rule here, unlike everywhere else: the embedding table is
+        // keyed by concept id, one vector per concept and not one per facet, so
+        // whichever facet was embedded last owns the vector. A faceted entity is
+        // therefore excluded unless every one of its facets is readable — the
+        // similarity score alone would otherwise disclose an ungranted facet.
         $visibility = TripletVisibility::forAccess($this->system, $this->access);
         if ($visibility !== null && $scored !== []) {
-            $visible = array_flip($visibility->visibleConcepts(array_map(
+            $visible = array_flip($visibility->fullyVisibleConcepts(array_map(
                 static fn (array $item): int => (int)$item['conceptId'],
                 $scored
             )));

@@ -62,9 +62,54 @@ class TokenAuthService
     }
 
     /**
+     * Bind a token to the principal it now acts as, once and for all.
+     *
+     * The UPDATE is conditional on `principal_concept_id IS NULL`, then the row
+     * is read back: if another process provisioned the same token first, its
+     * principal wins and this one adopts it. Whichever `user` entity lost is
+     * simply never referenced.
+     *
+     * The in-memory cache MUST be patched here. It is keyed on the PLAINTEXT
+     * token and lives as long as the process — the HTTP server is a `while
+     * (true)` accept loop — so without this every later request would keep
+     * seeing `principal_concept_id => null` and act as root until restart.
+     * The cached entries carry their own `token_hash`, so they can be found
+     * without the plaintext ever reaching this far.
+     *
+     * @return int the principal actually bound to the token
+     */
+    public function stampPrincipal(string $hash, int $conceptId): int
+    {
+        $stmt = $this->pdo->prepare(
+            "UPDATE `{$this->tokenTable}`
+             SET `principal_concept_id` = :principal, `provision_as` = NULL
+             WHERE `token_hash` = :hash AND `principal_concept_id` IS NULL"
+        );
+        $stmt->execute([':principal' => $conceptId, ':hash' => $hash]);
+
+        $read = $this->pdo->prepare(
+            "SELECT `principal_concept_id` FROM `{$this->tokenTable}` WHERE `token_hash` = :hash LIMIT 1"
+        );
+        $read->execute([':hash' => $hash]);
+        $row = $read->fetch(\PDO::FETCH_ASSOC);
+        $bound = ($row !== false && $row['principal_concept_id'] !== null)
+            ? (int) $row['principal_concept_id']
+            : $conceptId;
+
+        foreach ($this->tokenCache as $plaintext => $info) {
+            if (($info['token_hash'] ?? null) === $hash) {
+                $this->tokenCache[$plaintext]['principal_concept_id'] = $bound;
+                $this->tokenCache[$plaintext]['provision_as'] = null;
+            }
+        }
+
+        return $bound;
+    }
+
+    /**
      * Validate a Bearer token and return routing info.
      *
-     * @return array{env: string, scopes: string[], db_host: ?string, db_name: ?string, datagraph_version: int, principal_concept_id: ?int, is_static: bool, token_hash: ?string}|null
+     * @return array{env: string, scopes: string[], db_host: ?string, db_name: ?string, datagraph_version: int, principal_concept_id: ?int, provision_as: ?string, is_static: bool, token_hash: ?string}|null
      *         null if token is invalid, expired, or disabled
      */
     public function validateAndRoute(string $token): ?array
@@ -92,6 +137,9 @@ class TokenAuthService
                 'principal_concept_id' => isset($row['principal_concept_id']) && $row['principal_concept_id'] !== null
                     ? (int)$row['principal_concept_id']
                     : null,
+                'provision_as' => isset($row['provision_as']) && $row['provision_as'] !== null
+                    ? (string)$row['provision_as']
+                    : null,
                 'is_static' => false,
                 'token_hash' => $hash,
             ];
@@ -108,6 +156,7 @@ class TokenAuthService
                 'db_name' => null,
                 'datagraph_version' => 8,
                 'principal_concept_id' => null,  // static token = unrestricted root
+                'provision_as' => null,          // and never provisioned
                 'is_static' => true,
                 'token_hash' => null,
             ];
@@ -215,7 +264,7 @@ class TokenAuthService
     private function lookupToken(string $hash): ?array
     {
         try {
-            $sql = "SELECT `env`, `scopes`, `db_host`, `db_name`, `datagraph_version`, `principal_concept_id`, `expires_at`, `disabled_at`
+            $sql = "SELECT `env`, `scopes`, `db_host`, `db_name`, `datagraph_version`, `principal_concept_id`, `provision_as`, `expires_at`, `disabled_at`
                     FROM `{$this->tokenTable}`
                     WHERE `token_hash` = :hash
                       AND `disabled_at` IS NULL

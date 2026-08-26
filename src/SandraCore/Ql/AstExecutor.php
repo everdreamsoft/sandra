@@ -111,7 +111,7 @@ class AstExecutor
         $visibility = TripletVisibility::forAccess($this->system, $this->access);
         if ($visibility !== null) {
             $factory->conceptManager->brotherVisibility =
-                static fn (string $alias): string => $visibility->sqlFilter($alias);
+                static fn (string $alias): string => $visibility->linkFilter($alias);
         }
 
         // HAS filters go to SQL joins on every path

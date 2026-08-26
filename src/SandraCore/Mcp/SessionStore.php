@@ -148,6 +148,29 @@ class SessionStore
      * Physically remove soft-deleted rows older than $daysOld.
      * Safe housekeeping. Returns the number of rows removed.
      */
+    /**
+     * Bind every still-open session of a token to a principal.
+     *
+     * A session row is written at `initialize` and read back on resume; it is
+     * never rewritten (ids are fresh random, so the ON DUPLICATE KEY of
+     * create() never fires again) and has no TTL. Without this, a session
+     * opened before provisioning would keep a null principal — i.e. keep acting
+     * as root — for as long as the client reuses it.
+     */
+    public function bindPrincipal(string $tokenHash, int $principalId): void
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                "UPDATE `{$this->table}`
+                 SET `principal_concept_id` = :principal
+                 WHERE `token_hash` = :hash AND `principal_concept_id` IS NULL AND `deleted_at` IS NULL"
+            );
+            $stmt->execute([':principal' => $principalId, ':hash' => $tokenHash]);
+        } catch (\Throwable $e) {
+            $this->log('bindPrincipal failed: ' . $e->getMessage());
+        }
+    }
+
     public function purgeOld(int $daysOld = 30): int
     {
         try {
