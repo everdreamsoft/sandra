@@ -232,6 +232,38 @@ class McpAclTest extends SandraTestCase
         };
     }
 
+    /**
+     * Every tool's `properties` must ENCODE as a JSON object.
+     *
+     * PHP writes an empty array as `[]`, and JSON-Schema requires `properties`
+     * to be an object, so a tool taking no argument silently emits `[]` unless
+     * it returns `(object) []`. Clients validate the whole tools/list against
+     * the schema, so one such tool fails the LISTING — every other tool becomes
+     * unreachable, and the error names a numeric index rather than the tool.
+     *
+     * Checked on the encoded JSON, not the PHP value: json_decode with
+     * associative arrays turns `{}` back into `[]`, so a check on the decoded
+     * form cannot tell the two apart. That is exactly how this first slipped
+     * past a verification of mine.
+     */
+    public function testEveryToolEncodesPropertiesAsAnObject(): void
+    {
+        $response = $this->mcp->dispatchMessage([
+            'jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list',
+        ]);
+
+        $decoded = json_decode(json_encode($response['result']['tools']));
+        $offenders = [];
+
+        foreach ($decoded as $tool) {
+            if (! is_object($tool->inputSchema->properties ?? null)) {
+                $offenders[] = $tool->name;
+            }
+        }
+
+        $this->assertSame([], $offenders, 'inputSchema.properties must encode as a JSON object');
+    }
+
     public function testPrincipalResetRestoresRoot(): void
     {
         $this->mcp->setRequestPrincipal($this->alicePrincipal);
