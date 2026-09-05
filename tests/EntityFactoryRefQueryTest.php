@@ -260,4 +260,50 @@ class EntityFactoryRefQueryTest extends SandraTestCase
         $this->assertSame($sorted, $logins,
             'top-N must be sorted by SQL — caller should not need to re-sort');
     }
+
+    /**
+     * A range comparison against a NON-numeric value must compare as strings.
+     *
+     * The range operators cast the varchar value column to DECIMAL, which is right
+     * for a number and destroys a date: CAST('2026-08-01' AS DECIMAL) is 2026, the
+     * same as CAST('2026-03-02'). Cast unconditionally, a date range matches every
+     * row of the year and reads exactly like a filter that worked.
+     */
+    public function testDateRangeComparesLexicographicallyNotNumerically(): void
+    {
+        $factory = $this->createFactory(self::ISA, self::FILE);
+        $factory->populateLocal();
+
+        $dates = ['2026-01-15', '2026-03-02', '2026-07-31', '2026-08-01', '2026-09-20', '2027-02-10'];
+        foreach ($dates as $i => $date) {
+            $factory->createNew(['name' => "dated_{$i}", 'seenOn' => $date]);
+        }
+
+        $q = $this->createFactory(self::ISA, self::FILE);
+        $after = $q->populateFromRefQuery([['ref' => 'seenOn', 'op' => '>=', 'value' => '2026-08-01']]);
+        $got = array_values(array_map(fn ($e) => (string) $e->get('seenOn'), $after));
+        sort($got);
+
+        $this->assertSame(['2026-08-01', '2026-09-20', '2027-02-10'], $got,
+            'a date range must select the dates on or after the bound, not every date '
+            .'that casts to the same year');
+
+        $q2 = $this->createFactory(self::ISA, self::FILE);
+        $before = $q2->populateFromRefQuery([['ref' => 'seenOn', 'op' => '<', 'value' => '2026-08-01']]);
+        $this->assertCount(3, $before, 'the complement must hold too');
+    }
+
+    /** A range on a genuinely numeric ref still compares as a number, not as text. */
+    public function testNumericRangeStillCasts(): void
+    {
+        $factory = $this->seed(25);
+
+        $high = $factory->populateFromRefQuery([['ref' => 'lastLogin', 'op' => '>=', 'value' => 1770000000]]);
+        foreach ($high as $e) {
+            $this->assertGreaterThanOrEqual(1770000000, (int) $e->get('lastLogin'),
+                'numeric comparison must not degrade to a string comparison, '
+                .'under which "9" would beat "1770000000"');
+        }
+        $this->assertNotEmpty($high);
+    }
 }
