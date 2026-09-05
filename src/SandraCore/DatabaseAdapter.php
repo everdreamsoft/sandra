@@ -602,9 +602,14 @@ class DatabaseAdapter
         $bindParamArray[':deletedFlag'] = [$deletedUNID, \PDO::PARAM_INT];
         $bindParamArray[':searchValue'] = $value;
 
-        // For numeric comparison operators, CAST the varchar value column
+        // Range operators CAST the varchar value column, but ONLY when the bound
+        // value is itself numeric. A date is a string: CAST('2026-08-01' AS DECIMAL)
+        // is 2026, exactly like CAST('2026-03-02'), so casting a date range makes
+        // every date in a year compare equal and the filter silently matches
+        // everything — which reads as a working filter. Comparing as strings is the
+        // correct ordering for a zero-padded value such as an ISO date.
         $numericOperators = ['>', '>=', '<', '<='];
-        if (in_array($operator, $numericOperators, true)) {
+        if (in_array($operator, $numericOperators, true) && is_numeric($value)) {
             $castCol = self::$driver !== null
                 ? self::$driver->getCastNumericSQL('value')
                 : 'CAST(value AS DECIMAL)';
@@ -743,11 +748,16 @@ class DatabaseAdapter
                 }
                 $whereSQL .= " AND $alias.value IN (" . implode(',', $placeholders) . ") ";
             } elseif (in_array($op, $numericOps, true)) {
-                $castCol = self::$driver !== null
-                    ? self::$driver->getCastNumericSQL("$alias.value")
-                    : "CAST($alias.value AS DECIMAL)";
+                // Same rule as searchConcept: cast only a numeric comparison. A date
+                // range cast to DECIMAL collapses to its year and matches every row.
+                $col = "$alias.value";
+                if (is_numeric($value)) {
+                    $col = self::$driver !== null
+                        ? self::$driver->getCastNumericSQL($col)
+                        : "CAST($col AS DECIMAL)";
+                }
                 $bindParamArray[":val_{$i}"] = $value;
-                $whereSQL .= " AND $castCol $op :val_{$i} ";
+                $whereSQL .= " AND $col $op :val_{$i} ";
             } else {
                 $bindParamArray[":val_{$i}"] = $value;
                 $whereSQL .= " AND $alias.value $op :val_{$i} ";
